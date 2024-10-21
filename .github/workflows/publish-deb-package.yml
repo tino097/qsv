@@ -31,7 +31,29 @@ jobs:
         id: build
         run: |
           chmod +x scripts/build-deb.sh
-          echo "DEB_PATHS=$(./scripts/build-deb.sh)" >> $GITHUB_OUTPUT
+          echo "Running build-deb.sh..."
+          build_output=$(./scripts/build-deb.sh)
+          echo "Build script output:"
+          echo "$build_output"
+          
+          # Extract paths from the output
+          deb_paths=$(echo "$build_output" | grep -oP '/[^ ]*\.deb' | tr '\n' ' ')
+          
+          echo "Extracted .deb paths:"
+          echo "$deb_paths"
+          
+          echo "DEB_PATHS=$deb_paths" >> $GITHUB_OUTPUT
+
+      - name: List built packages
+        run: |
+          echo "Built packages:"
+          ls -l ${{ steps.build.outputs.DEB_PATHS }}
+
+      - name: Upload Debian Packages as Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: debian-packages
+          path: ${{ steps.build.outputs.DEB_PATHS }}
 
       - name: Upload Debian Packages as Artifacts
         uses: actions/upload-artifact@v3
