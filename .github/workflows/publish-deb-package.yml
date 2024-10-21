@@ -30,8 +30,8 @@ jobs:
       - name: Build all Debian packages
         id: build
         run: |
-          chmod +x .scripts/build_all_debs.sh
-          echo "DEB_PATHS=$(.scripts/build_all_debs.sh)" >> $GITHUB_OUTPUT
+          chmod +x .scripts/build-deb.sh
+          echo "DEB_PATHS=$(.scripts/build-deb.sh)" >> $GITHUB_OUTPUT
 
       - name: Upload Debian Packages as Artifacts
         uses: actions/upload-artifact@v3
