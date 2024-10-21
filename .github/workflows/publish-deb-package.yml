@@ -59,4 +59,5 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: debian-packages
-          path: ${{ steps.build.outputs.DEB_PATHS }}
+          path: |
+            /home/runner/work/qsv/qsv/target/debian/*.deb
