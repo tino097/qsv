@@ -191,6 +191,9 @@ join_test!(
     join_outer_full,
     |wrk: Workdir, mut cmd: process::Command, headers: bool| {
         cmd.arg("--full");
+
+        wrk.assert_success(&mut cmd);
+
         let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
         let expected = make_rows(
             headers,
@@ -301,3 +304,67 @@ fn join_cross_no_headers() {
     ];
     assert_eq!(got, expected);
 }
+
+join_test!(
+    join_right_semi,
+    |wrk: Workdir, mut cmd: process::Command, headers: bool| {
+        cmd.arg("--right-semi");
+        let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+        let expected = make_rows(
+            headers,
+            true,
+            vec![
+                svec!["Boston", "Logan Airport"],
+                svec!["Boston", "Boston Garden"],
+                svec!["Buffalo", "Ralph Wilson Stadium"],
+            ],
+        );
+        assert_eq!(got, expected);
+    }
+);
+
+join_test!(
+    join_right_semi_casei,
+    |wrk: Workdir, mut cmd: process::Command, headers: bool| {
+        cmd.arg("--right-semi").arg("--ignore-case");
+        let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+        let expected = make_rows(
+            headers,
+            true,
+            vec![
+                svec!["Boston", "Logan Airport"],
+                svec!["Boston", "Boston Garden"],
+                svec!["Buffalo", "Ralph Wilson Stadium"],
+                svec!["BOSTON", "BOSTON COMMON"],
+            ],
+        );
+        assert_eq!(got, expected);
+    }
+);
+
+join_test!(
+    join_right_anti,
+    |wrk: Workdir, mut cmd: process::Command, headers: bool| {
+        cmd.arg("--right-anti");
+        let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+        let expected = make_rows(
+            headers,
+            true,
+            vec![
+                svec!["Orlando", "Disney World"],
+                svec!["BOSTON", "BOSTON COMMON"],
+            ],
+        );
+        assert_eq!(got, expected);
+    }
+);
+
+join_test!(
+    join_right_anti_casei,
+    |wrk: Workdir, mut cmd: process::Command, headers: bool| {
+        cmd.arg("--right-anti").arg("--ignore-case");
+        let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+        let expected = make_rows(headers, true, vec![svec!["Orlando", "Disney World"]]);
+        assert_eq!(got, expected);
+    }
+);
