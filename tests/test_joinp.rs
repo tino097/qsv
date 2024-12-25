@@ -1738,3 +1738,78 @@ fn test_joinp_cache_schema() {
         .arg("2");
     wrk.assert_err(&mut cmd);
 }
+
+joinp_test!(
+    joinp_right_semi,
+    |wrk: Workdir, mut cmd: process::Command| {
+        cmd.arg("--right-semi");
+        let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+        let expected = vec![
+            svec!["city", "place"],
+            svec!["Boston", "Logan Airport"],
+            svec!["Boston", "Boston Garden"],
+            svec!["Buffalo", "Ralph Wilson Stadium"],
+        ];
+        assert_eq!(got, expected);
+    }
+);
+
+joinp_test_tab!(
+    joinp_right_semi_tab,
+    |wrk: Workdir, mut cmd: process::Command| {
+        cmd.arg("--right-semi");
+        let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+        let expected = vec![
+            svec!["city", "place"],
+            svec!["Boston", "Logan Airport"],
+            svec!["Boston", "Boston Garden"],
+            svec!["Buffalo", "Ralph Wilson Stadium"],
+        ];
+        assert_eq!(got, expected);
+    }
+);
+
+joinp_test_comments!(
+    joinp_right_semi_comments,
+    |wrk: Workdir, mut cmd: process::Command| {
+        cmd.arg("--right-semi");
+        let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+        let expected = vec![
+            svec!["city", "place"],
+            svec!["Boston", "Logan Airport"],
+            svec!["Boston", "Boston Garden"],
+            svec!["Buffalo", "Ralph Wilson Stadium"],
+        ];
+        assert_eq!(got, expected);
+    }
+);
+
+joinp_test!(
+    joinp_right_anti,
+    |wrk: Workdir, mut cmd: process::Command| {
+        cmd.arg("--right-anti");
+        let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+        let expected = vec![svec!["city", "place"], svec!["Orlando", "Disney World"]];
+        assert_eq!(got, expected);
+    }
+);
+
+joinp_test_tab!(
+    joinp_right_anti_tab,
+    |wrk: Workdir, mut cmd: process::Command| {
+        cmd.arg("--right-anti");
+        let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+        let expected = vec![svec!["city", "place"], svec!["Orlando", "Disney World"]];
+        assert_eq!(got, expected);
+    }
+);
+
+joinp_test_comments!(
+    joinp_right_anti_comments,
+    |wrk: Workdir, mut cmd: process::Command| {
+        cmd.arg("--right-anti");
+        let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+        let expected = vec![svec!["city", "place"], svec!["Orlando", "Disney World"]];
+        assert_eq!(got, expected);
+    }
+);
