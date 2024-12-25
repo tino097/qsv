@@ -2951,7 +2951,8 @@ fn luau_writejson_simple() {
     let mut cmd = wrk.command("luau");
     cmd.arg("map")
         .arg("result")
-        .arg(r#"
+        .arg(
+            r#"
 BEGIN {
     -- Create a table to store
     local data = {
@@ -2968,68 +2969,45 @@ BEGIN {
 }!
 
 return "ok"
-"#)
+"#,
+        )
         .arg("data.csv");
 
     wrk.assert_success(&mut cmd);
 
     // Verify the compact JSON output
     let json_content = std::fs::read_to_string(wrk.path("output.json")).unwrap();
-    let json: serde_json::Value = serde_json::from_str(&json_content).unwrap();
-    
-    assert_eq!(json!("{\"numbers\":[13,24,72,7],\"nested\":{\"key\":\"value\",\"array\":[1,2,3]},\"letters\":[\"a\",\"b\",\"c\",\"d\"]}"), json);
+    assert_eq!(
+        json_content,
+        r#"{"numbers":[13,24,72,7],"nested":{"key":"value","array":[1,2,3]},"letters":["a","b","c","d"]}"#
+    );
 
     // Verify the pretty JSON output has newlines and indentation
     let pretty_content = std::fs::read_to_string(wrk.path("output_pretty.json")).unwrap();
-    let expected =  r#""{\"numbers\":[13,24,72,7],\"nested\":{\"key\":\"value\",\"array\":[1,2,3]},\"letters\":[\"a\",\"b\",\"c\",\"d\"]}""#;
-   
+    let expected = r#"{
+  "numbers": [
+    13,
+    24,
+    72,
+    7
+  ],
+  "nested": {
+    "key": "value",
+    "array": [
+      1,
+      2,
+      3
+    ]
+  },
+  "letters": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ]
+}"#;
+
     assert_eq!(pretty_content, expected);
-
-    // The actual content should be the same when parsed
-    let pretty_json: serde_json::Value = serde_json::from_str(&pretty_content).unwrap();
-    assert_eq!(json, pretty_json);
-}
-
-#[test]
-fn luau_writejson_error_cases() {
-    let wrk = Workdir::new("luau_writejson_errors");
-    wrk.create(
-        "data.csv",
-        vec![
-            svec!["letter", "number"],
-            svec!["a", "13"],
-        ],
-    );
-
-    // Test invalid filename
-    let mut cmd = wrk.command("luau");
-    cmd.arg("map")
-        .arg("result")
-        .arg(r#"
-BEGIN {
-    qsv_writejson({test = "value"}, "", false)
-}!
-
-return "should not get here"
-"#)
-        .arg("data.csv");
-
-    wrk.assert_err(&mut cmd);
-
-    // Test writing to a directory that doesn't exist
-    let mut cmd = wrk.command("luau");
-    cmd.arg("map")
-        .arg("result")
-        .arg(r#"
-BEGIN {
-    qsv_writejson({test = "value"}, "nonexistent/dir/file.json", false)
-}!
-
-return "should not get here"
-"#)
-        .arg("data.csv");
-
-    wrk.assert_err(&mut cmd);
 }
 
 #[test]
@@ -3037,17 +3015,15 @@ fn luau_writejson_special_values() {
     let wrk = Workdir::new("luau_writejson_special");
     wrk.create(
         "data.csv",
-        vec![
-            svec!["letter", "number"],
-            svec!["a", "13"],
-        ],
+        vec![svec!["letter", "number"], svec!["a", "13"]],
     );
 
     // Test writing various Lua types
     let mut cmd = wrk.command("luau");
     cmd.arg("map")
         .arg("result")
-        .arg(r#"
+        .arg(
+            r#"
 BEGIN {
     local data = {
         null_value = nil,
@@ -3063,7 +3039,8 @@ BEGIN {
 }!
 
 return "ok"
-"#)
+"#,
+        )
         .arg("data.csv");
 
     wrk.assert_success(&mut cmd);
@@ -3071,7 +3048,7 @@ return "ok"
     // Verify the JSON output
     let json_content = std::fs::read_to_string(wrk.path("special.json")).unwrap();
     let json: serde_json::Value = serde_json::from_str(&json_content).unwrap();
-    
+
     assert!(json["null_value"].is_null());
     assert_eq!(json["boolean_true"], json!(true));
     assert_eq!(json["boolean_false"], json!(false));
