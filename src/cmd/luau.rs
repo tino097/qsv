@@ -1846,35 +1846,58 @@ fn setup_helpers(
 
             let sanitized_filename = sanitize(filepath);
 
-            // // Convert Lua value to serde_json::Value using proper serialization
-            // let json_value = serde_json::to_string(&table_or_value).map_err(|e| {
-            //     mlua::Error::RuntimeError(format!("Failed to convert Luau value to JSON: {e}"))
-            // })?;
+            // Convert Lua value to serde_json::Value using proper serialization
+            let json_value = if pretty.unwrap_or(false) {
+                match serde_json::to_string_pretty(&table_or_value) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return helper_err!(
+                            "qsv_writejson",
+                            "Failed to convert Luau value to JSON: {e}"
+                        );
+                    },
+                }
+            } else {
+                match serde_json::to_string(&table_or_value) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return helper_err!(
+                            "qsv_writejson",
+                            "Failed to convert Luau value to JSON: {e}"
+                        );
+                    },
+                }
+            };
 
             // Create file
-            let file = std::fs::File::create(&sanitized_filename).map_err(|e| {
-                mlua::Error::RuntimeError(format!(
-                    "Failed to create JSON file \"{}\": {e}",
-                    sanitized_filename
-                ))
-            })?;
+            let file = match std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(&sanitized_filename)
+            {
+                Ok(f) => f,
+                Err(e) => {
+                    return helper_err!(
+                        "qsv_writejson",
+                        "Failed to create JSON file \"{sanitized_filename}\": {e}"
+                    );
+                },
+            };
+            let mut file = std::io::BufWriter::with_capacity(DEFAULT_WTR_BUFFER_CAPACITY, file);
 
             // Write JSON
-            if pretty.unwrap_or(false) {
-                serde_json::to_writer_pretty(file, &table_or_value).map_err(|e| {
-                    mlua::Error::RuntimeError(format!("Failed to write pretty JSON to file: {e}"))
-                })?;
-            } else {
-                serde_json::to_writer(file, &table_or_value).map_err(|e| {
-                    mlua::Error::RuntimeError(format!("Failed to write JSON to file: {e}"))
-                })?;
+            if let Err(e) = file.write_all(json_value.as_bytes()) {
+                return helper_err!(
+                    "qsv_writejson",
+                    "Failed to write JSON to file \"{sanitized_filename}\": {e}"
+                );
             }
 
-            // info!(
-            //     "qsv_writejson() - saved {} bytes to file: {}",
-            //     json_value.to_string().len(),
-            //     sanitized_filename
-            // );
+            info!(
+                "qsv_writejson() - saved {} bytes to file: {sanitized_filename}",
+                json_value.to_string().len()
+            );
 
             Ok(true)
         },
