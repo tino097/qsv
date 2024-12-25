@@ -45,6 +45,13 @@ joinp options:
                            corresponding row in the first data set. When no
                            corresponding row exists, it is padded out with
                            empty fields. (This is the reverse of 'outer left'.)
+    --right-anti           This returns only the rows in the second CSV data set
+                           that do not have a corresponding row in the first
+                           data set. The output schema is the same as the
+                           second dataset.
+    --right-semi           This returns only the rows in the second CSV data set
+                           that have a corresponding row in the first data set.
+                           The output schema is the same as the second data set.
     --full                 Do a 'full outer' join. This returns all rows in
                            both data sets with matching records joined. If
                            there is no match, the missing side will be padded
@@ -208,6 +215,7 @@ use std::{
     env,
     fs::File,
     io::{self, BufReader, BufWriter, Read, Write},
+    mem::swap,
     path::{Path, PathBuf},
     str,
 };
@@ -231,6 +239,8 @@ struct Args {
     flag_left_anti:        bool,
     flag_left_semi:        bool,
     flag_right:            bool,
+    flag_right_anti:       bool,
+    flag_right_semi:       bool,
     flag_full:             bool,
     flag_cross:            bool,
     flag_coalesce:         bool,
@@ -311,40 +321,59 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         args.flag_left_anti,
         args.flag_left_semi,
         args.flag_right,
+        args.flag_right_anti,
+        args.flag_right_semi,
         args.flag_full,
         args.flag_cross,
         args.flag_asof,
     ) {
         // default inner join
-        (false, false, false, false, false, false, false) => {
+        (false, false, false, false, false, false, false, false, false) => {
             join.run(JoinType::Inner, validation, maintain_order, false)
         },
         // left join
-        (true, false, false, false, false, false, false) => {
+        (true, false, false, false, false, false, false, false, false) => {
             join.run(JoinType::Left, validation, maintain_order, false)
         },
         // left anti join
-        (false, true, false, false, false, false, false) => {
+        (false, true, false, false, false, false, false, false, false) => {
             join.run(JoinType::Anti, validation, maintain_order, false)
         },
         // left semi join
-        (false, false, true, false, false, false, false) => {
+        (false, false, true, false, false, false, false, false, false) => {
             join.run(JoinType::Semi, validation, maintain_order, false)
         },
         // right join
-        (false, false, false, true, false, false, false) => {
+        (false, false, false, true, false, false, false, false, false) => {
             join.run(JoinType::Right, validation, maintain_order, false)
         },
+        // right anti join
+        // swap left and right data sets and run left anti join
+        (false, false, false, false, true, false, false, false, false) => {
+            let mut swapped_join = join;
+            swap(&mut swapped_join.left_lf, &mut swapped_join.right_lf);
+            swap(&mut swapped_join.left_sel, &mut swapped_join.right_sel);
+            swapped_join.run(JoinType::Anti, validation, maintain_order, false)
+        },
+        // right semi join
+        // swap left and right data sets and run left semi join
+        (false, false, false, false, false, true, false, false, false) => {
+            let mut swapped_join = join;
+            swap(&mut swapped_join.left_lf, &mut swapped_join.right_lf);
+            swap(&mut swapped_join.left_sel, &mut swapped_join.right_sel);
+            swapped_join.run(JoinType::Semi, validation, maintain_order, false)
+        },
         // full join
-        (false, false, false, false, true, false, false) => {
+        (false, false, false, false, false, false, true, false, false) => {
             join.run(JoinType::Full, validation, maintain_order, false)
         },
         // cross join
-        (false, false, false, false, false, true, false) => {
+        (false, false, false, false, false, false, false, true, false) => {
             join.run(JoinType::Cross, validation, MaintainOrderJoin::None, false)
         },
+
         // as of join
-        (false, false, false, false, false, false, true) => {
+        (false, false, false, false, false, false, false, false, true) => {
             // safety: flag_strategy is always is_some() as it has a default value
             args.flag_strategy = Some(args.flag_strategy.unwrap().to_lowercase());
             let strategy = match args.flag_strategy.as_deref() {
