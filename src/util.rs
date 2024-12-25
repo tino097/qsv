@@ -1341,6 +1341,23 @@ pub fn round_num(dec_f64: f64, places: u32) -> String {
 }
 
 #[inline]
+/// Transforms a byte slice into a ByteString with optional case-insensitive conversion.
+///
+/// This function takes a byte slice and attempts to convert it to a UTF-8 string. If successful,
+/// it trims whitespace and optionally converts to lowercase. If the input is not valid UTF-8,
+/// it returns the original bytes unchanged.
+///
+/// It's fine-tuned for speed and memory usage, using simdutf8 for UTF-8 validation and
+/// to_lowercase_into for non-allocating, in-place lowercase conversion.
+///
+/// # Arguments
+///
+/// * `bs` - The input byte slice to transform
+/// * `casei` - If true, converts the string to lowercase. If false, leaves case unchanged.
+///
+/// # Returns
+///
+/// * A `ByteString` (Vec<u8>) containing the transformed bytes
 pub fn transform(bs: &[u8], casei: bool) -> ByteString {
     if let Ok(s) = simdutf8::basic::from_utf8(bs) {
         if casei {
