@@ -46,6 +46,13 @@ join options:
                            corresponding row in the first data set. When no
                            corresponding row exists, it is padded out with
                            empty fields. (This is the reverse of 'outer left'.)
+    --right-anti           This returns only the rows in the second CSV data set
+                           that do not have a corresponding row in the first
+                           data set. The output schema is the same as the
+                           second dataset.
+    --right-semi           This returns only the rows in the second CSV data set
+                           that have a corresponding row in the first data set.
+                           The output schema is the same as the second data set.
     --full                 Do a 'full outer' join. This returns all rows in
                            both data sets with matching records joined. If
                            there is no match, the missing side will be padded
@@ -71,7 +78,7 @@ Common options:
                            Must be a single character. (default: ,)
 "#;
 
-use std::{collections::hash_map::Entry, fmt, io, iter::repeat, str};
+use std::{collections::hash_map::Entry, fmt, io, iter::repeat, mem::swap, str};
 
 use ahash::AHashMap;
 use byteorder::{BigEndian, WriteBytesExt};
@@ -96,6 +103,8 @@ struct Args {
     flag_left_anti:   bool,
     flag_left_semi:   bool,
     flag_right:       bool,
+    flag_right_anti:  bool,
+    flag_right_semi:  bool,
     flag_full:        bool,
     flag_cross:       bool,
     flag_output:      Option<String>,
@@ -113,36 +122,63 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         args.flag_left_anti,
         args.flag_left_semi,
         args.flag_right,
+        args.flag_right_anti,
+        args.flag_right_semi,
         args.flag_full,
         args.flag_cross,
     ) {
-        (true, false, false, false, false, false) => {
+        // default inner join
+        (false, false, false, false, false, false, false, false) => {
+            state.write_headers()?;
+            state.inner_join()
+        },
+        // left join
+        (true, false, false, false, false, false, false, false) => {
             state.write_headers()?;
             state.outer_join(false)
         },
-        (false, true, false, false, false, false) => {
+        // left anti join
+        (false, true, false, false, false, false, false, false) => {
             state.write_headers1()?;
             state.left_join(true)
         },
-        (false, false, true, false, false, false) => {
+        // left semi join
+        (false, false, true, false, false, false, false, false) => {
             state.write_headers1()?;
             state.left_join(false)
         },
-        (false, false, false, true, false, false) => {
+        // right join
+        (false, false, false, true, false, false, false, false) => {
             state.write_headers()?;
             state.outer_join(true)
         },
-        (false, false, false, false, true, false) => {
+        // right anti join
+        // swap left and right data sets and run left anti join
+        (false, false, false, false, true, false, false, false) => {
+            state.write_headers1()?;
+            let mut swapped_join = state;
+            swap(&mut swapped_join.rdr1, &mut swapped_join.rdr2);
+            swap(&mut swapped_join.sel1, &mut swapped_join.sel2);
+            swapped_join.left_join(true)
+        },
+        // right semi join
+        // swap left and right data sets and run left semi join
+        (false, false, false, false, false, true, false, false) => {
+            state.write_headers1()?;
+            let mut swapped_join = state;
+            swap(&mut swapped_join.rdr1, &mut swapped_join.rdr2);
+            swap(&mut swapped_join.sel1, &mut swapped_join.sel2);
+            swapped_join.left_join(false)
+        },
+        // full outer join
+        (false, false, false, false, false, false, true, false) => {
             state.write_headers()?;
             state.full_outer_join()
         },
-        (false, false, false, false, false, true) => {
+        // cross join
+        (false, false, false, false, false, false, false, true) => {
             state.write_headers()?;
             state.cross_join()
-        },
-        (false, false, false, false, false, false) => {
-            state.write_headers()?;
-            state.inner_join()
         },
         _ => fail_incorrectusage_clierror!("Please pick exactly one join operation."),
     }
