@@ -1931,39 +1931,42 @@ fn setup_helpers(
 
         let mut file = if newfile_flag {
             // create a new file. If the file already exists, overwrite it.
-            std::fs::File::create(sanitized_filename.clone()).map_err(|e| {
-                mlua::Error::RuntimeError(format!(
-                    "qsv_writefile() - Error creating a new file: {e}"
-                ))
-            })?
+            match std::fs::File::create(sanitized_filename.clone()) {
+                Ok(f) => f,
+                Err(e) => {
+                    return helper_err!("qsv_writefile", "Error creating a new file: {e}");
+                },
+            }
         } else {
             // append to an existing file. If the file does not exist, create it.
-            OpenOptions::new()
+            match OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(sanitized_filename.clone())
-                .map_err(|e| {
-                    mlua::Error::RuntimeError(format!(
-                        "qsv_writefile() - Error opening existing file: {e}"
-                    ))
-                })?
+            {
+                Ok(f) => f,
+                Err(e) => {
+                    return helper_err!("qsv_writefile", "Error opening existing file: {e}");
+                },
+            }
         };
+
         if newfile_flag {
             log::info!("qsv_writefile() - created file: {sanitized_filename}");
         } else {
             let data_as_bytes = data.as_bytes();
-            file.write_all(data_as_bytes).map_err(|e| {
-                mlua::Error::RuntimeError(format!(
-                    "qsv_writefile() - Error appending to existing file: {e}"
-                ))
-            })?;
+            if let Err(e) = file.write_all(data_as_bytes) {
+                return helper_err!("qsv_writefile", "Error appending to existing file: {e}");
+            }
             log::info!(
                 "qsv_writefile() - appending {} bytes to file: {sanitized_filename}",
                 data_as_bytes.len()
             );
         }
 
-        file.flush()?;
+        if let Err(e) = file.flush() {
+            return helper_err!("qsv_writefile", "Error flushing file: {e}");
+        }
 
         Ok(sanitized_filename)
     })?;
