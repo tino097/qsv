@@ -380,6 +380,7 @@ enum Command {
     Lens,
     #[cfg(all(feature = "luau", feature = "feature_capable"))]
     Luau,
+    Outliers,
     Partition,
     #[cfg(all(feature = "polars", feature = "feature_capable"))]
     PivotP,
@@ -480,6 +481,7 @@ impl Command {
             Command::Lens => cmd::lens::run(argv),
             #[cfg(all(feature = "luau", feature = "feature_capable"))]
             Command::Luau => cmd::luau::run(argv),
+            Command::Outliers => cmd::outliers::run(argv),
             Command::Partition => cmd::partition::run(argv),
             #[cfg(all(feature = "polars", feature = "feature_capable"))]
             Command::PivotP => cmd::pivotp::run(argv),

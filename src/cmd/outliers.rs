@@ -19,8 +19,6 @@ outliers options:
 Common options:
     -h, --help             Display this message
     -o, --output <file>    Write output to <file> instead of stdout.
-    -n, --no-headers       When set, the first row will not be interpreted
-                          as headers.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                           Must be a single character. (default: ,)
 
@@ -42,26 +40,49 @@ Examples:
     qsv outliers -m both -q data.csv
 "#;
 
-use polars::prelude::*;
-use std::collections::HashMap;
+use std::{collections::HashMap, fs::File, io, path::Path, str};
+
+use csv::{ByteRecord, Reader};
 use indicatif::{ProgressBar, ProgressStyle};
+use serde::Deserialize;
+
+use crate::{
+    cmd::stats::StatsData,
+    config::{Config, Delimiter},
+    select::SelectColumns,
+    util,
+    util::{get_stats_records, StatsMode},
+    CliResult,
+};
+
+#[derive(Deserialize)]
+struct Args {
+    arg_input:      Option<String>,
+    flag_select:    SelectColumns,
+    flag_method:    Option<String>,
+    flag_force:     bool,
+    flag_quiet:     bool,
+    flag_delimiter: Option<Delimiter>,
+    flag_output:    Option<String>,
+}
 
 #[derive(Debug)]
 struct OutlierResult {
-    column: String,
-    data_type: String,
-    outlier_count: usize,
+    column:          String,
+    data_type:       String,
+    outlier_count:   usize,
     outlier_details: Vec<OutlierDetail>,
 }
 
 #[derive(Debug)]
 struct OutlierDetail {
-    value: String,
-    reason: String,
+    value:      String,
+    reason:     String,
     fence_type: FenceType, // inner or outer
+    record_no:  u64,       // Add this field
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 enum FenceType {
     Inner,
     Outer,
@@ -85,17 +106,38 @@ fn is_outlier(value: f64, lower_fence: f64, upper_fence: f64) -> bool {
 }
 
 fn process_outliers(
-    df: &DataFrame,
+    // rdr: &mut Reader<Box<dyn io::Read>>,
+    rdr: &mut Reader<Box<dyn io::Read + Send>>, // Add + Send trait bound
     stats: &[StatsData],
     method: FenceType,
     quiet: bool,
 ) -> CliResult<Vec<OutlierResult>> {
-    let mut results = Vec::new();
+    let mut results: Vec<OutlierResult> = stats
+        .iter()
+        .map(|stat| OutlierResult {
+            column:          stat.field.clone(),
+            data_type:       stat.r#type.clone(),
+            outlier_count:   0,
+            outlier_details: Vec::new(),
+        })
+        .collect();
+
+    eprintln!("results: {:#?}", results);
+
+    // Create index map for column positions
+    let headers = rdr.headers()?.clone();
+    let col_indices: HashMap<_, _> = headers
+        .iter()
+        .enumerate()
+        .map(|(i, name)| (name.to_string(), i))
+        .collect();
+    eprintln!("col_indices: {:#?}", col_indices);
+
     let pb = if !quiet {
-        let pb = ProgressBar::new(stats.len() as u64);
+        let pb = ProgressBar::new_spinner();
         pb.set_style(
-            ProgressStyle::default_bar()
-                .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} columns")
+            ProgressStyle::default_spinner()
+                .template("{spinner:.green} [{elapsed_precise}] Processing record {pos}")
                 .unwrap(),
         );
         Some(pb)
@@ -103,189 +145,199 @@ fn process_outliers(
         None
     };
 
-    for stat in stats {
+    let mut record = ByteRecord::new();
+    let mut record_count = 0;
+    while rdr.read_byte_record(&mut record)? {
+        record_count += 1;
         if let Some(pb) = &pb {
-            pb.inc(1);
+            pb.set_position(record_count);
         }
 
-        let mut outlier_details = Vec::new();
-        
-        match stat.r#type.as_str() {
-            "Integer" | "Float" => {
-                // Process numeric outliers using fences
-                if let (Some(lower_inner), Some(upper_inner), Some(lower_outer), Some(upper_outer)) = (
-                    stat.lower_inner_fence,
-                    stat.upper_inner_fence,
-                    stat.lower_outer_fence,
-                    stat.upper_outer_fence,
-                ) {
-                    let col = df.column(&stat.field)?;
-                    let values = col.f64()?;
-                    
-                    values.into_iter().flatten().enumerate().for_each(|(idx, val)| {
-                        let (is_inner, is_outer) = (
-                            is_outlier(val, lower_inner, upper_inner),
-                            is_outlier(val, lower_outer, upper_outer),
-                        );
-                        
-                        match (method, is_inner, is_outer) {
-                            (FenceType::Inner, true, _) |
-                            (FenceType::Outer, _, true) |
-                            (FenceType::Both, true, _) => {
-                                outlier_details.push(OutlierDetail {
-                                    value: val.to_string(),
-                                    reason: format!("Outside {} fences ({:.2}, {:.2})", 
-                                        if is_outer { "outer" } else { "inner" },
-                                        if is_outer { lower_outer } else { lower_inner },
-                                        if is_outer { upper_outer } else { upper_inner }),
-                                    fence_type: if is_outer { FenceType::Outer } else { FenceType::Inner },
-                                });
-                            },
-                            _ => {},
-                        }
-                    });
-                }
-            },
-            "Date" | "DateTime" => {
-                // Process date outliers using fences (converted to days)
-                if let (Some(lower_inner), Some(upper_inner), Some(lower_outer), Some(upper_outer)) = (
-                    stat.lower_inner_fence,
-                    stat.upper_inner_fence,
-                    stat.lower_outer_fence,
-                    stat.upper_outer_fence,
-                ) {
-                    let col = df.column(&stat.field)?;
-                    if let Ok(dates) = col.datetime() {
-                        dates.into_iter().flatten().enumerate().for_each(|(idx, val)| {
-                            let days = val.timestamp_millis() as f64 / (24.0 * 60.0 * 60.0 * 1000.0);
+        for (result_idx, stat) in stats.iter().enumerate() {
+            let col_idx = match col_indices.get(&stat.field) {
+                Some(idx) => idx,
+                None => continue,
+            };
+
+            // Get the field as a byte slice
+            let field = record.get(*col_idx).unwrap_or_default();
+
+            match stat.r#type.as_str() {
+                "Integer" | "Float" => {
+                    if let (
+                        Some(lower_inner),
+                        Some(upper_inner),
+                        Some(lower_outer),
+                        Some(upper_outer),
+                    ) = (
+                        stat.lower_inner_fence,
+                        stat.upper_inner_fence,
+                        stat.lower_outer_fence,
+                        stat.upper_outer_fence,
+                    ) {
+                        // Parse the bytes directly as a float
+                        // if let Ok(val) = str::from_utf8(field)
+                        //     .ok()
+                        //     .and_then(|s| s.parse::<f64>().ok())
+                        // {
+                        //     let (is_inner, is_outer) = (
+                        //         is_outlier(val, lower_inner, upper_inner),
+                        //         is_outlier(val, lower_outer, upper_outer),
+                        //     );
+                        if let Some(val) = str::from_utf8(field)
+                            .ok()
+                            .and_then(|s| s.parse::<f64>().ok())
+                        {
                             let (is_inner, is_outer) = (
-                                is_outlier(days, lower_inner, upper_inner),
-                                is_outlier(days, lower_outer, upper_outer),
+                                is_outlier(val, lower_inner, upper_inner),
+                                is_outlier(val, lower_outer, upper_outer),
                             );
-                            
-                            match (method, is_inner, is_outer) {
-                                (FenceType::Inner, true, _) |
-                                (FenceType::Outer, _, true) |
-                                (FenceType::Both, true, _) => {
-                                    outlier_details.push(OutlierDetail {
-                                        value: val.to_string(),
-                                        reason: format!("Outside {} fences", 
-                                            if is_outer { "outer" } else { "inner" }),
-                                        fence_type: if is_outer { FenceType::Outer } else { FenceType::Inner },
+
+                            match (method.clone(), is_inner, is_outer) {
+                                (FenceType::Inner, true, _)
+                                | (FenceType::Outer, _, true)
+                                | (FenceType::Both, true, _) => {
+                                    results[result_idx].outlier_count += 1;
+                                    results[result_idx].outlier_details.push(OutlierDetail {
+                                        value:      val.to_string(),
+                                        reason:     format!(
+                                            "Outside {} fences ({:.2}, {:.2})",
+                                            if is_outer { "outer" } else { "inner" },
+                                            if is_outer { lower_outer } else { lower_inner },
+                                            if is_outer { upper_outer } else { upper_inner }
+                                        ),
+                                        fence_type: if is_outer {
+                                            FenceType::Outer
+                                        } else {
+                                            FenceType::Inner
+                                        },
+                                        record_no:  record_count,
                                     });
                                 },
                                 _ => {},
                             }
-                        });
-                    }
-                }
-            },
-            "String" => {
-                // Process string outliers using length statistics
-                if let (Some(mean_len), Some(stddev)) = (stat.avg_length, stat.stddev) {
-                    let col = df.column(&stat.field)?;
-                    let strings = col.utf8()?;
-                    
-                    strings.into_iter().flatten().enumerate().for_each(|(idx, val)| {
-                        let len = val.len() as f64;
-                        let z_score = (len - mean_len) / stddev;
-                        
-                        if z_score.abs() > 3.0 {
-                            outlier_details.push(OutlierDetail {
-                                value: val.to_string(),
-                                reason: format!("Unusual length: {} (z-score: {:.2})", len, z_score),
-                                fence_type: FenceType::Both,
-                            });
                         }
-                    });
-                }
-                
-                // Also check for rare categories using antimode information
-                if let Some(ref antimode) = stat.antimode {
-                    if !antimode.starts_with("*ALL") { // Skip if all values are unique
-                        let antimodes: Vec<&str> = antimode.split(',').collect();
-                        let col = df.column(&stat.field)?;
-                        let strings = col.utf8()?;
-                        
-                        strings.into_iter().flatten().enumerate().for_each(|(idx, val)| {
-                            if antimodes.contains(&val) {
-                                outlier_details.push(OutlierDetail {
-                                    value: val.to_string(),
-                                    reason: "Rare category (antimode)".to_string(),
+                    }
+                },
+                "String" => {
+                    // Convert bytes to string only when needed
+                    if let Ok(val) = str::from_utf8(field) {
+                        // Check string length outliers
+                        if let (Some(mean_len), Some(stddev_len)) =
+                            (stat.avg_length, stat.stddev_length)
+                        {
+                            let len = val.len() as f64;
+                            let z_score = (len - mean_len) / stddev_len;
+
+                            if z_score.abs() > 3.0 {
+                                results[result_idx].outlier_count += 1;
+                                results[result_idx].outlier_details.push(OutlierDetail {
+                                    value:      val.to_string(),
+                                    reason:     format!(
+                                        "Unusual length: {} (z-score: {:.2})",
+                                        len, z_score
+                                    ),
                                     fence_type: FenceType::Both,
+                                    record_no:  record_count,
                                 });
                             }
-                        });
-                    }
-                }
-            },
-            _ => {}, // Skip other types
-        }
+                        }
 
-        if !outlier_details.is_empty() {
-            results.push(OutlierResult {
-                column: stat.field.clone(),
-                data_type: stat.r#type.clone(),
-                outlier_count: outlier_details.len(),
-                outlier_details,
-            });
+                        // Check rare categories
+                        if let Some(ref antimode) = stat.antimode {
+                            if !antimode.starts_with("*ALL") {
+                                let antimodes: Vec<&str> = antimode.split(',').collect();
+                                if antimodes.contains(&val) {
+                                    results[result_idx].outlier_count += 1;
+                                    results[result_idx].outlier_details.push(OutlierDetail {
+                                        value:      val.to_string(),
+                                        reason:     "Rare category (antimode)".to_string(),
+                                        fence_type: FenceType::Both,
+                                        record_no:  record_count,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                },
+                _ => {},
+            }
         }
     }
 
     if let Some(pb) = &pb {
-        pb.finish_with_message("Analysis complete");
+        pb.finish_with_message(format!("Processed {} records", record_count));
     }
 
+    results.retain(|result| result.outlier_count > 0);
     Ok(results)
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
-    
+
     // Get stats records
     let schema_args = util::SchemaArgs {
-        flag_enum_threshold: 0,
-        flag_ignore_case: false,
-        flag_strict_dates: false,
+        flag_enum_threshold:  0,
+        flag_ignore_case:     false,
+        flag_strict_dates:    false,
         flag_pattern_columns: crate::select::SelectColumns::parse("").unwrap(),
         flag_dates_whitelist: String::new(),
-        flag_prefer_dmy: false,
-        flag_force: args.flag_force,
-        flag_stdout: false,
-        flag_jobs: None,
-        flag_no_headers: args.flag_no_headers,
-        flag_delimiter: args.flag_delimiter.clone(),
-        arg_input: Some(args.arg_input.clone()),
-        flag_memcheck: false,
+        flag_prefer_dmy:      false,
+        flag_force:           args.flag_force,
+        flag_stdout:          false,
+        flag_jobs:            None,
+        flag_no_headers:      false,
+        flag_delimiter:       args.flag_delimiter.clone(),
+        arg_input:            args.arg_input.clone(),
+        flag_memcheck:        false,
     };
 
-    let (csv_fields, csv_stats) = get_stats_records(&schema_args, StatsMode::FrequencyForceStats)?;
+    let (_csv_fields, csv_stats) = get_stats_records(&schema_args, StatsMode::FrequencyForceStats)?;
+
+    // Read CSV file using Config
+    let rconfig = Config::new(args.arg_input.as_ref())
+        .delimiter(args.flag_delimiter)
+        .select(args.flag_select);
+
+    let mut rdr = rconfig.reader()?;
+
+    let headers = rdr.byte_headers()?.clone();
+    let sel = rconfig.selection(&headers)?;
 
     // Read the CSV file
-    let mut csv_reader = LazyCsvReader::new(&args.arg_input)
-        .with_has_header(!args.flag_no_headers)
-        .with_delimiter(args.flag_delimiter.unwrap_or(Delimiter(b',')).0);
+    // let mut csv_reader = LazyCsvReader::new(&args.arg_input)
+    //     .with_has_header(!args.flag_no_headers)
+    //     .with_delimiter(args.flag_delimiter.unwrap_or(Delimiter(b',')).0);
 
-    if args.flag_infer_dates {
-        csv_reader = csv_reader.with_try_parse_dates(true);
-    }
-
-    let df = csv_reader.finish()?.collect()?;
+    // let df = csv_reader.finish()?.collect()?;
 
     // Process selected columns
-    let selected_stats = if let Some(select) = args.flag_select {
-        let selected: Vec<String> = select.split(',').map(String::from).collect();
-        csv_stats
-            .into_iter()
-            .filter(|stat| selected.contains(&stat.field))
-            .collect()
-    } else {
-        csv_stats
-    };
+    // let selected_stats = if let Some(select) = args.flag_select {
+    //     let selected: Vec<String> = select.split(',').map(String::from).collect();
+    //     csv_stats
+    //         .into_iter()
+    //         .filter(|stat| selected.contains(&stat.field))
+    //         .collect()
+    // } else {
+    //     csv_stats
+    // };
+
+    // Process selected columns
+    // let selected_stats: Vec<StatsData> = csv_stats.into_iter().filter(|(_, stat)|
+    // sel.contains(&stat.field)).collect();
+
+    let mut selected_stats: Vec<StatsData> = Vec::new();
+    for (idx, stat) in csv_stats.iter().enumerate() {
+        if sel.contains(&idx) {
+            selected_stats.push(stat.clone());
+        }
+    }
+    eprintln!("selected_stats: {:#?}", selected_stats);
 
     // Process outliers
     let method = FenceType::from_str(args.flag_method.as_deref().unwrap_or("outer"));
-    let results = process_outliers(&df, &selected_stats, method, args.flag_quiet)?;
+    let results = process_outliers(&mut rdr, &selected_stats, method, args.flag_quiet)?;
 
     // Write results
     let mut wtr: Box<dyn io::Write> = match args.flag_output {
@@ -294,25 +346,25 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     };
 
     // Write summary
-    writeln!(wtr, "\nOutlier Analysis Summary:")?;
-    writeln!(wtr, "=======================")?;
-    
-    for result in &results {
-        writeln!(
-            wtr,
-            "\nColumn: {} ({})",
-            result.column, result.data_type
-        )?;
-        writeln!(wtr, "Found {} outliers", result.outlier_count)?;
-        
-        if !args.flag_quiet {
-            writeln!(wtr, "\nOutlier Details:")?;
-            for detail in &result.outlier_details {
-                writeln!(
-                    wtr,
-                    "  - Value: {:<20} | Reason: {}",
-                    detail.value, detail.reason
-                )?;
+    if results.is_empty() {
+        writeln!(wtr, "No outliers found")?;
+    } else {
+        writeln!(wtr, "\nOutlier Analysis Summary:")?;
+        writeln!(wtr, "=======================")?;
+
+        for result in &results {
+            writeln!(wtr, "\nColumn: {} ({})", result.column, result.data_type)?;
+            writeln!(wtr, "Found {} outliers", result.outlier_count)?;
+
+            if !args.flag_quiet {
+                writeln!(wtr, "\nOutlier Details:")?;
+                for detail in &result.outlier_details {
+                    writeln!(
+                        wtr,
+                        "  - Record #{:<6} | Value: {:<20} | Reason: {}",
+                        detail.record_no, detail.value, detail.reason
+                    )?;
+                }
             }
         }
     }

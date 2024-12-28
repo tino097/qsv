@@ -381,7 +381,7 @@ impl StatsArgs {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Default, Debug)]
 pub struct StatsData {
     pub field:                String,
     // type is a reserved keyword in Rust
@@ -398,6 +398,9 @@ pub struct StatsData {
     pub max_length:           Option<usize>,
     pub sum_length:           Option<usize>,
     pub avg_length:           Option<f64>,
+    pub stddev_length:        Option<f64>,
+    pub variance_length:      Option<f64>,
+    pub cv_length:           Option<f64>,
     pub mean:                 Option<f64>,
     pub sem:                  Option<f64>,
     pub stddev:               Option<f64>,
@@ -448,6 +451,9 @@ const STATSDATA_TYPES_ARRAY: [JsonTypes; MAX_STAT_COLUMNS] = [
     JsonTypes::Int,    //max_length
     JsonTypes::Int,    //sum_length
     JsonTypes::Float,  //avg_length
+    JsonTypes::Float,  //stddev_length
+    JsonTypes::Float,  //variance_length
+    JsonTypes::Float,  //cv_length
     JsonTypes::Float,  //mean
     JsonTypes::Float,  //sem
     JsonTypes::Float,  //geometric_mean
@@ -494,7 +500,7 @@ const MS_IN_DAY_INT: i64 = 86_400_000;
 const DAY_DECIMAL_PLACES: u32 = 5;
 
 // maximum number of output columns
-const MAX_STAT_COLUMNS: usize = 39;
+const MAX_STAT_COLUMNS: usize = 42;
 
 // maximum number of antimodes to display
 const MAX_ANTIMODES: usize = 10;
@@ -1192,6 +1198,9 @@ impl Args {
             "max_length",
             "sum_length",
             "avg_length",
+            "stddev_length",
+            "variance_length",
+            "cv_length",
             "mean",
             "sem",
             "geometric_mean",
@@ -1336,6 +1345,7 @@ pub struct Stats {
     sum_stotlen:   u64,
     minmax:        Option<TypedMinMax>,
     online:        Option<OnlineStats>,
+    online_len:    Option<OnlineStats>,
     nullcount:     u64,
     max_precision: u16,
     modes:         Option<Unsorted<Vec<u8>>>,
@@ -1361,8 +1371,16 @@ fn timestamp_ms_to_rfc3339(timestamp: i64, typ: FieldType) -> String {
 
 impl Stats {
     fn new(which: WhichStats) -> Stats {
-        let (mut sum, mut minmax, mut online, mut modes, mut median, mut quartiles, mut mad) =
-            (None, None, None, None, None, None, None);
+        let (
+            mut sum,
+            mut minmax,
+            mut online,
+            mut online_len,
+            mut modes,
+            mut median,
+            mut quartiles,
+            mut mad,
+        ) = (None, None, None, None, None, None, None, None);
         if which.sum {
             sum = Some(TypedSum::default());
         }
@@ -1371,6 +1389,7 @@ impl Stats {
         }
         if which.dist {
             online = Some(stats::OnlineStats::default());
+            online_len = Some(stats::OnlineStats::default());
         }
         if which.mode || which.cardinality {
             modes = Some(stats::Unsorted::default());
@@ -1390,6 +1409,7 @@ impl Stats {
             sum_stotlen: 0,
             minmax,
             online,
+            online_len,
             nullcount: 0,
             max_precision: 0,
             modes,
@@ -1433,6 +1453,9 @@ impl Stats {
         match t {
             TString => {
                 self.is_ascii &= sample.is_ascii();
+                if let Some(v) = self.online_len.as_mut() {
+                    v.add(&sample.len());
+                }
             },
             TFloat | TInteger => {
                 if sample_type == TNull {
@@ -1705,11 +1728,11 @@ impl Stats {
         // actually append it here - to preserve legacy ordering of columns
         pieces.extend_from_slice(&minmax_range_sortorder_pieces);
 
-        // min/max/sum/avg length
+        // min/max/sum/avg/stddev/variance/cv length
         if typ == FieldType::TDate || typ == FieldType::TDateTime {
             // returning min/max length for dates doesn't make sense
             // especially since we convert the date stats to rfc3339 format
-            pieces.extend_from_slice(&[empty(), empty(), empty(), empty()]);
+            pieces.extend_from_slice(&[empty(), empty(), empty(), empty(), empty(), empty(), empty()]);
         } else if let Some(mm) = self.minmax.as_ref().and_then(TypedMinMax::len_range) {
             pieces.extend_from_slice(&[mm.0, mm.1]);
             // we have a sum_length
@@ -1718,20 +1741,37 @@ impl Stats {
                     // so we can compute avg_length
                     pieces.push(itoa::Buffer::new().format(stotlen).to_owned());
                     #[allow(clippy::cast_precision_loss)]
-                    pieces.push(util::round_num(stotlen as f64 / record_count as f64, 4));
+                    let avg_len = stotlen as f64 / record_count as f64;
+                    pieces.push(util::round_num(avg_len, round_places));
+
+                    // Add stddev_length/variance_length for strings
+                    if let Some(vl) = self.online_len.as_ref() {
+                        let vlen_stddev = vl.stddev();
+                        let vlen_variance = vl.variance();
+                        pieces.push(util::round_num(vlen_stddev, round_places));
+                        pieces.push(util::round_num(vlen_variance, round_places));
+                        pieces.push(util::round_num(vlen_stddev / avg_len, round_places));
+                    } else {
+                        pieces.push(empty());
+                        pieces.push(empty());
+                        pieces.push(empty());
+                    }
                 } else {
                     // however, we saturated the sum, it means we had an overflow
-                    // so we return OVERFLOW_STRING for sum and avg length
+                    // so we return OVERFLOW_STRING for sum,avg,stddev,variance length
                     pieces.extend_from_slice(&[
+                        OVERFLOW_STRING.to_string(),
+                        OVERFLOW_STRING.to_string(),
+                        OVERFLOW_STRING.to_string(),
                         OVERFLOW_STRING.to_string(),
                         OVERFLOW_STRING.to_string(),
                     ]);
                 }
             } else {
-                pieces.extend_from_slice(&[empty(), empty()]);
+                pieces.extend_from_slice(&[empty(), empty(), empty(), empty(), empty()]);
             }
         } else {
-            pieces.extend_from_slice(&[empty(), empty(), empty(), empty()]);
+            pieces.extend_from_slice(&[empty(), empty(), empty(), empty(), empty(), empty(), empty()]);
         }
 
         // mean, sem, geometric_mean, harmonic_mean, stddev, variance & cv
@@ -1959,6 +1999,7 @@ impl Commute for Stats {
         self.sum_stotlen = self.sum_stotlen.saturating_add(other.sum_stotlen);
         self.minmax.merge(other.minmax);
         self.online.merge(other.online);
+        self.online_len.merge(other.online_len);
         self.nullcount += other.nullcount;
         self.max_precision = std::cmp::max(self.max_precision, other.max_precision);
         self.modes.merge(other.modes);

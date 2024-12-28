@@ -91,6 +91,7 @@ mod test_json;
 mod test_jsonl;
 #[cfg(feature = "luau")]
 mod test_luau;
+mod test_outliers;
 #[cfg(any(feature = "feature_capable", feature = "lite"))]
 mod test_partition;
 #[cfg(feature = "polars")]
