@@ -1189,7 +1189,7 @@ impl Args {
 
         // these are the standard stats columns that are always output
         // the "streaming" stats that are always included in stats output
-        // aka the 25 FINGERPINT_HASH_COLUMNS
+        // aka the 25 FINGERPRINT_HASH_COLUMNS
         fields.extend_from_slice(&[
             "field",
             "type",
