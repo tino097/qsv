@@ -77,6 +77,9 @@ fn index_outdated_stats() {
             "max_length",
             "sum_length",
             "avg_length",
+            "stddev_length",
+            "variance_length",
+            "cv_length",
             "mean",
             "sem",
             "geometric_mean",
@@ -102,6 +105,9 @@ fn index_outdated_stats() {
             "1",
             "3",
             "1",
+            "0",
+            "0",
+            "0",
             "",
             "",
             "",
@@ -127,6 +133,9 @@ fn index_outdated_stats() {
             "1",
             "3",
             "1",
+            "",
+            "",
+            "",
             "2",
             "0.4714",
             "1.8171",
@@ -141,6 +150,9 @@ fn index_outdated_stats() {
         ],
         svec![
             "qsv__rowcount",
+            "",
+            "",
+            "",
             "",
             "",
             "",
@@ -187,10 +199,16 @@ fn index_outdated_stats() {
             "",
             "",
             "",
+            "",
+            "",
+            "",
             "2"
         ],
         svec![
             "qsv__filesize_bytes",
+            "",
+            "",
+            "",
             "",
             "",
             "",
@@ -237,7 +255,10 @@ fn index_outdated_stats() {
             "",
             "",
             "",
-            "09b55353162931d7a4617e04939bee06546049eae0b4b5969021ef02572a2193"
+            "",
+            "",
+            "",
+            "ed38d8c4f2747d82eec243d750fd8448ae4b5ebfb2c85c2323085e3e75b64b6a"
         ],
     ];
 
