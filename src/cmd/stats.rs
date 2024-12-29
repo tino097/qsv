@@ -5,17 +5,18 @@ Compute summary statistics & infers data types for each column in a CSV.
 UTF-8 encoded. If you encounter problems generating stats, use `qsv validate` to confirm the
 input CSV is valid.
 
-Summary statistics includes sum, min/max/range, sort order, min/max/sum/avg length, mean,
-standard error of the mean (SEM), geometric mean, harmonic mean, stddev, variance, coefficient
+Summary statistics includes sum, min/max/range, sort order, min/max/sum/avg/stddev/variance/cv length,
+mean, standard error of the mean (SEM), geometric mean, harmonic mean, stddev, variance, coefficient
 of variation (CV), nullcount, max_precision, sparsity, Median Absolute Deviation (MAD), quartiles,
 interquartile range (IQR), lower/upper fences, skewness, median, cardinality, mode/s & "antimode/s".
 Note that some stats require loading the entire file into memory, so they must be enabled explicitly. 
 
 By default, the following "streaming" statistics are reported for *every* column:
-sum, min/max/range values, sort order, min/max/sum/avg length, mean, sem, geometric_mean, harmonic_mean,
-stddev, variance, cv, nullcount, max_precision & sparsity. The default set of statistics corresponds to
-ones that can be computed efficiently on a stream of data (i.e., constant memory) and works with
-arbitrarily large CSVs.
+  sum, min/max/range values, sort order, min/max/sum/avg/stddev/variance/cv length, mean, sem,
+  geometric_mean, harmonic_mean,stddev, variance, cv, nullcount, max_precision & sparsity.
+
+The default set of statistics corresponds to ones that can be computed efficiently on a stream of data
+(i.e., constant memory) and works with arbitrarily large CSVs.
 
 The following additional "non-streaming" statistics require loading the entire file into memory:
 cardinality, modes/antimodes, median, MAD, quartiles and its related measures (q1, q2, q3, IQR,
@@ -400,7 +401,7 @@ pub struct StatsData {
     pub avg_length:           Option<f64>,
     pub stddev_length:        Option<f64>,
     pub variance_length:      Option<f64>,
-    pub cv_length:           Option<f64>,
+    pub cv_length:            Option<f64>,
     pub mean:                 Option<f64>,
     pub sem:                  Option<f64>,
     pub stddev:               Option<f64>,
@@ -501,6 +502,9 @@ const DAY_DECIMAL_PLACES: u32 = 5;
 
 // maximum number of output columns
 const MAX_STAT_COLUMNS: usize = 42;
+
+// the first N columns are fingerprint hash columns
+const FINGERPRINT_HASH_COLUMNS: usize = 25;
 
 // maximum number of antimodes to display
 const MAX_ANTIMODES: usize = 10;
@@ -793,7 +797,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             // vec we use to compute dataset-level fingerprint hash
             let mut stats_br_vec: Vec<csv::ByteRecord> = Vec::with_capacity(stats_sr_vec.len());
 
-            let stats_headers_sr = args.stat_headers();
+            let stats_headers_sr = args.stats_headers();
             wtr.write_record(&stats_headers_sr)?;
             let fields = headers.iter().zip(stats_sr_vec);
             for (i, (header, stat)) in fields.enumerate() {
@@ -842,13 +846,13 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
             // Compute hash of stats for data fingerprinting
             let stats_hash = {
-                // the first 22 stats columns are used for the fingerprint hash
-                let mut hash_input = Vec::with_capacity(22);
+                // the first FINGERPRINT_HASH_COLUMNS are used for the fingerprint hash
+                let mut hash_input = Vec::with_capacity(FINGERPRINT_HASH_COLUMNS);
 
                 // First, create a stable representation of the stats
                 for record in &stats_br_vec {
-                    // Take first 22 columns only
-                    for field in record.iter().take(22) {
+                    // Take FINGERPRINT_HASH_COLUMNS columns only
+                    for field in record.iter().take(FINGERPRINT_HASH_COLUMNS) {
                         let s = String::from_utf8_lossy(field);
                         // Standardize number format
                         if let Ok(f) = s.parse::<f64>() {
@@ -1175,7 +1179,7 @@ impl Args {
         stats
     }
 
-    pub fn stat_headers(&self) -> csv::StringRecord {
+    pub fn stats_headers(&self) -> csv::StringRecord {
         if self.flag_typesonly {
             return csv::StringRecord::from(vec!["field", "type"]);
         }
@@ -1184,7 +1188,8 @@ impl Args {
         let mut fields = Vec::with_capacity(MAX_STAT_COLUMNS);
 
         // these are the standard stats columns that are always output
-        // the "streaming" stats
+        // the "streaming" stats that are always included in stats output
+        // aka the 25 FINGERPINT_HASH_COLUMNS
         fields.extend_from_slice(&[
             "field",
             "type",
@@ -1732,7 +1737,15 @@ impl Stats {
         if typ == FieldType::TDate || typ == FieldType::TDateTime {
             // returning min/max length for dates doesn't make sense
             // especially since we convert the date stats to rfc3339 format
-            pieces.extend_from_slice(&[empty(), empty(), empty(), empty(), empty(), empty(), empty()]);
+            pieces.extend_from_slice(&[
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+            ]);
         } else if let Some(mm) = self.minmax.as_ref().and_then(TypedMinMax::len_range) {
             pieces.extend_from_slice(&[mm.0, mm.1]);
             // we have a sum_length
@@ -1771,7 +1784,15 @@ impl Stats {
                 pieces.extend_from_slice(&[empty(), empty(), empty(), empty(), empty()]);
             }
         } else {
-            pieces.extend_from_slice(&[empty(), empty(), empty(), empty(), empty(), empty(), empty()]);
+            pieces.extend_from_slice(&[
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+            ]);
         }
 
         // mean, sem, geometric_mean, harmonic_mean, stddev, variance & cv
