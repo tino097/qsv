@@ -329,25 +329,25 @@ stats_tests!(
     stats_multiple_modes,
     "mode",
     &["a", "a", "b", "b", "c", "d", "e", "e"],
-    "a,b,e,3,1"
+    "a|b|e|3|1"
 );
 stats_tests!(
     stats_multiple_modes_num,
     "mode",
     &["5", "5", "33", "33", "42", "17", "99", "99"],
-    "33,5,99,3,1"
+    "33|5|99|3|1"
 );
 stats_tests!(
     stats_multiple_antimodes,
     "antimode",
     &["a", "a", "b", "b", "c", "d", "e", "e"],
-    "c,d,2,1"
+    "c|d|2|1"
 );
 stats_tests!(
     stats_multiple_antimodes_num,
     "antimode",
     &["5", "5", "33", "33", "42", "17", "98", "99", "99"],
-    "17,42,98,3,1"
+    "17|42|98|3|1"
 );
 stats_tests!(
     stats_range,
@@ -527,7 +527,7 @@ stats_tests!(
     stats_antimode_null,
     "antimode",
     &["", "a", "b", "a"],
-    "NULL,b,2,1"
+    "NULL|b|2|1"
 );
 stats_tests!(stats_median, "median", &["1", "2", "3"], "2");
 stats_tests!(stats_median_null, "median", &["", "1", "2", "3"], "2");
