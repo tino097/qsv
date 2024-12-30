@@ -140,9 +140,11 @@ stats options:
                               and the 2 values' first characters are 0/1, t/f & y/n
                               case-insensitive, the data type is inferred as boolean.
     --mode                    Compute the mode/s & antimode/s. Multimodal-aware.
-                              This requires loading all CSV data in memory.
+                              This requires loading CSV data in memory proportionate to the
+                              cardinality of each column.
     --cardinality             Compute the cardinality.
-                              This requires loading all CSV data in memory.
+                              This requires loading CSV data in memory proportionate to the
+                              number of unique values in each column.
     --median                  Compute the median.
                               This requires loading all CSV data in memory.
     --mad                     Compute the median absolute deviation (MAD).
@@ -487,6 +489,7 @@ const STATSDATA_TYPES_ARRAY: [JsonTypes; MAX_STAT_COLUMNS] = [
 static INFER_DATE_FLAGS: OnceLock<SmallVec<[bool; 50]>> = OnceLock::new();
 static RECORD_COUNT: OnceLock<u64> = OnceLock::new();
 static ANTIMODES_LEN: OnceLock<usize> = OnceLock::new();
+static ANTIMODES_SEPARATOR: OnceLock<String> = OnceLock::new();
 
 // standard overflow and underflow strings
 // for sum, sum_length and avg_length
@@ -510,7 +513,7 @@ const FINGERPRINT_HASH_COLUMNS: usize = 25;
 const MAX_ANTIMODES: usize = 10;
 // default length of antimode string before truncating and appending "..."
 const DEFAULT_ANTIMODES_LEN: usize = 100;
-const MAX_ANTIMODES_LEN: usize = 5192;
+const DEFAULT_MODES_SEPARATOR: &str = "|";
 
 // we do this so this is evaluated at compile-time
 pub const fn get_stats_data_types() -> [JsonTypes; MAX_STAT_COLUMNS] {
@@ -1607,6 +1610,12 @@ impl Stats {
                     mc_pieces.push(itoa::Buffer::new().format(cardinality).to_owned());
                 }
                 if self.which.mode {
+                    // get the modes separator
+                    let modes_separator = ANTIMODES_SEPARATOR.get_or_init(|| {
+                        std::env::var("QSV_MODES_SEPARATOR")
+                            .unwrap_or(DEFAULT_MODES_SEPARATOR.to_string())
+                    });
+
                     // mode/s
                     if cardinality == record_count {
                         // all values unique, short-circuit modes calculation as there is none
@@ -1616,7 +1625,7 @@ impl Stats {
                         let modes_list = modes_result
                             .iter()
                             .map(|c| String::from_utf8_lossy(c))
-                            .join(",");
+                            .join(modes_separator);
                         mc_pieces.extend_from_slice(&[
                             modes_list,
                             modes_count.to_string(),
@@ -1642,10 +1651,11 @@ impl Stats {
                                 .map(|val| {
                                     let parsed =
                                         val.parse::<usize>().unwrap_or(DEFAULT_ANTIMODES_LEN);
+                                    // if 0, disable length limiting
                                     if parsed == 0 {
-                                        MAX_ANTIMODES_LEN
+                                        usize::MAX
                                     } else {
-                                        parsed.min(MAX_ANTIMODES_LEN)
+                                        parsed
                                     }
                                 })
                                 .unwrap_or(DEFAULT_ANTIMODES_LEN)
@@ -1662,8 +1672,11 @@ impl Stats {
                         let antimodes_vals = &antimodes_result
                             .iter()
                             .map(|c| String::from_utf8_lossy(c))
-                            .join(",");
-                        if antimodes_vals.starts_with(',') {
+                            .join(modes_separator);
+
+                        // if the antimodes result starts with the separator,
+                        // it indicates that NULL is the first antimode. Add NULL to the list.
+                        if antimodes_vals.starts_with(modes_separator) {
                             antimodes_list.push_str("NULL");
                         }
                         antimodes_list.push_str(antimodes_vals);
