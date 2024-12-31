@@ -129,6 +129,9 @@ Validate arguments:
                                or a URL (http and https schemes supported).
 
 Validate options:
+    --validate-schema          Validate the JSON Schema file before validating the CSV data.
+                               If the schema is invalid, the command will exit with an error.
+                               Only used in JSON Schema validation mode.
     --trim                     Trim leading and trailing whitespace from fields before validating.
     --fail-fast                Stops on first error.
     --valid <suffix>           Valid record output file suffix. [default: valid]
@@ -256,25 +259,26 @@ macro_rules! fail_validation_error {
 #[derive(Deserialize)]
 #[allow(dead_code)]
 struct Args {
-    flag_trim:         bool,
-    flag_fail_fast:    bool,
-    flag_valid:        Option<String>,
-    flag_invalid:      Option<String>,
-    flag_json:         bool,
-    flag_pretty_json:  bool,
-    flag_valid_output: Option<String>,
-    flag_jobs:         Option<usize>,
-    flag_batch:        usize,
-    flag_no_headers:   bool,
-    flag_delimiter:    Option<Delimiter>,
-    flag_progressbar:  bool,
-    flag_quiet:        bool,
-    arg_input:         Option<String>,
-    arg_json_schema:   Option<String>,
-    flag_timeout:      u16,
-    flag_cache_dir:    String,
-    flag_ckan_api:     String,
-    flag_ckan_token:   Option<String>,
+    flag_validate_schema: bool,
+    flag_trim:            bool,
+    flag_fail_fast:       bool,
+    flag_valid:           Option<String>,
+    flag_invalid:         Option<String>,
+    flag_json:            bool,
+    flag_pretty_json:     bool,
+    flag_valid_output:    Option<String>,
+    flag_jobs:            Option<usize>,
+    flag_batch:           usize,
+    flag_no_headers:      bool,
+    flag_delimiter:       Option<Delimiter>,
+    flag_progressbar:     bool,
+    flag_quiet:           bool,
+    arg_input:            Option<String>,
+    arg_json_schema:      Option<String>,
+    flag_timeout:         u16,
+    flag_cache_dir:       String,
+    flag_ckan_api:        String,
+    flag_ckan_token:      Option<String>,
 }
 
 enum JSONtypes {
@@ -791,6 +795,27 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         return Ok(());
     }
 
+    // validate the JSON Schema file
+    if args.flag_validate_schema {
+        // safety: we know the schema is_some() because we checked above
+        let schema_json = load_json(&args.arg_json_schema.clone().unwrap())?;
+        match jsonschema::meta::try_is_valid(&serde_json::from_str(&schema_json)?) {
+            Ok(is_valid) => {
+                if !args.flag_quiet {
+                    if is_valid {
+                        werr!("Valid JSON Schema. Continuing...");
+                    } else {
+                        werr!("Invalid JSON Schema. Exiting...");
+                        return Ok(());
+                    }
+                }
+            },
+            Err(e) => {
+                return fail_clierror!("Invalid JSON Schema: {e}");
+            },
+        }
+    }
+
     // if we're here, we're validating with a JSON Schema
     // JSONSchema validation requires headers
     if args.flag_no_headers {
@@ -860,12 +885,14 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         {
                             Ok(schema) => (json, schema),
                             Err(e) => {
-                                return fail_clierror!("Cannot compile JSONschema. error: {e}");
+                                return fail_clierror!(r#"Cannot compile JSONschema. error: {e}
+Try running `qsv validate --validate-schema` to check the JSON Schema file."#);
                             },
                         }
                     },
                     Err(e) => {
-                        return fail_clierror!("Unable to parse JSONschema. error: {e}");
+                        return fail_clierror!(r#"Unable to parse JSONschema. error: {e}
+Try running `qsv validate --validate-schema` to check the JSON Schema file."#);
                     },
                 }
             },
