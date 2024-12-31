@@ -806,10 +806,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         werr!("Valid JSON Schema. Continuing...");
                     }
                 } else {
-                    if !args.flag_quiet {
-                        werr!("Invalid JSON Schema. Exiting...");
-                    }
-                    return Ok(());
+                    return fail_clierror!("Invalid JSON Schema. Exiting...");
                 }
             },
             Err(e) => {
