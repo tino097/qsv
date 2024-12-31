@@ -1,5 +1,5 @@
 static USAGE: &str = r#"
-Validates CSV data using two modes:
+Validates CSV data using two main modes:
 
 JSON SCHEMA VALIDATION MODE:
 ===========================
@@ -98,11 +98,14 @@ If we validate another CSV file, "mydata2.csv", which we know is valid, there ar
 and the exit code is 0.
 
 If piped from stdin, the filenames will use `stdin.csv` as the base filename. For example:
-`cat mydata.csv | qsv validate reference.schema.json`
+  `cat mydata.csv | qsv validate reference.schema.json`
 
    * stdin.csv.valid
    * stdin.csv.invalid
    * stdin.csv.validation-errors.tsv
+
+`validate` also has a `schema` subcommand to validate JSON Schema files. For example:
+  `qsv validate schema myjsonschema.json`
 
 RFC 4180 VALIDATION MODE:
 ========================
@@ -119,6 +122,7 @@ For examples, see the tests included in this file (denoted by '#[test]') or see
 https://github.com/dathere/qsv/blob/master/tests/test_validate.rs.
 
 Usage:
+    qsv validate schema [<json-schema>]
     qsv validate [options] [<input>] [<json-schema>]
     qsv validate --help
 
@@ -129,9 +133,6 @@ Validate arguments:
                                or a URL (http and https schemes supported).
 
 Validate options:
-    --validate-schema          Validate the JSON Schema file before validating the CSV data.
-                               If the schema is invalid, the command will exit with an error.
-                               Only used in JSON Schema validation mode.
     --trim                     Trim leading and trailing whitespace from fields before validating.
     --fail-fast                Stops on first error.
     --valid <suffix>           Valid record output file suffix. [default: valid]
@@ -259,26 +260,26 @@ macro_rules! fail_validation_error {
 #[derive(Deserialize)]
 #[allow(dead_code)]
 struct Args {
-    flag_validate_schema: bool,
-    flag_trim:            bool,
-    flag_fail_fast:       bool,
-    flag_valid:           Option<String>,
-    flag_invalid:         Option<String>,
-    flag_json:            bool,
-    flag_pretty_json:     bool,
-    flag_valid_output:    Option<String>,
-    flag_jobs:            Option<usize>,
-    flag_batch:           usize,
-    flag_no_headers:      bool,
-    flag_delimiter:       Option<Delimiter>,
-    flag_progressbar:     bool,
-    flag_quiet:           bool,
-    arg_input:            Option<String>,
-    arg_json_schema:      Option<String>,
-    flag_timeout:         u16,
-    flag_cache_dir:       String,
-    flag_ckan_api:        String,
-    flag_ckan_token:      Option<String>,
+    cmd_schema:        bool,
+    flag_trim:         bool,
+    flag_fail_fast:    bool,
+    flag_valid:        Option<String>,
+    flag_invalid:      Option<String>,
+    flag_json:         bool,
+    flag_pretty_json:  bool,
+    flag_valid_output: Option<String>,
+    flag_jobs:         Option<usize>,
+    flag_batch:        usize,
+    flag_no_headers:   bool,
+    flag_delimiter:    Option<Delimiter>,
+    flag_progressbar:  bool,
+    flag_quiet:        bool,
+    arg_input:         Option<String>,
+    arg_json_schema:   Option<String>,
+    flag_timeout:      u16,
+    flag_cache_dir:    String,
+    flag_ckan_api:     String,
+    flag_ckan_token:   Option<String>,
 }
 
 enum JSONtypes {
@@ -574,6 +575,30 @@ fn dyn_enum_validator_factory<'a>(
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
 
+    // validate the JSON Schema file
+    if args.cmd_schema {
+        if let Some(ref schema) = args.arg_json_schema {
+            let schema_json = load_json(&schema)?;
+            match jsonschema::meta::try_is_valid(&serde_json::from_str(&schema_json)?) {
+                Ok(is_valid) => {
+                    if is_valid {
+                        if !args.flag_quiet {
+                            winfo!("Valid JSON Schema.");
+                            return Ok(());
+                        }
+                    } else {
+                        return fail_clierror!("Invalid JSON Schema.");
+                    }
+                },
+                Err(e) => {
+                    return fail_clierror!("Invalid JSON Schema: {e}");
+                },
+            }
+        } else {
+            return fail_clierror!("No JSON Schema file supplied.");
+        }
+    }
+
     TIMEOUT_SECS.store(
         util::timeout_secs(args.flag_timeout)? as u16,
         Ordering::Relaxed,
@@ -793,26 +818,6 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
         // we're done when validating without a schema
         return Ok(());
-    }
-
-    // validate the JSON Schema file
-    if args.flag_validate_schema {
-        // safety: we know the schema is_some() because we checked above
-        let schema_json = load_json(&args.arg_json_schema.clone().unwrap())?;
-        match jsonschema::meta::try_is_valid(&serde_json::from_str(&schema_json)?) {
-            Ok(is_valid) => {
-                if is_valid {
-                    if !args.flag_quiet {
-                        werr!("Valid JSON Schema. Continuing...");
-                    }
-                } else {
-                    return fail_clierror!("Invalid JSON Schema. Exiting...");
-                }
-            },
-            Err(e) => {
-                return fail_clierror!("Invalid JSON Schema: {e}");
-            },
-        }
     }
 
     // if we're here, we're validating with a JSON Schema

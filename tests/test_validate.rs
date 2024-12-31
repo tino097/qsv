@@ -298,11 +298,10 @@ fn validate_adur_public_toilets_dataset_with_json_schema_valid_output() {
     let mut cmd = wrk.command("validate");
     cmd.arg("data.csv")
         .arg("schema.json")
-        .args(["--valid-output", "-"])
-        .arg("--validate-schema");
+        .args(["--valid-output", "-"]);
 
     let out = wrk.output_stderr(&mut cmd);
-    let expected = "Valid JSON Schema. Continuing...\n13\n";
+    let expected = "13\n";
     assert_eq!(out, expected);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
