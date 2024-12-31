@@ -298,7 +298,12 @@ fn validate_adur_public_toilets_dataset_with_json_schema_valid_output() {
     let mut cmd = wrk.command("validate");
     cmd.arg("data.csv")
         .arg("schema.json")
-        .args(["--valid-output", "-"]);
+        .args(["--valid-output", "-"])
+        .arg("--validate-schema");
+
+    let out = wrk.output_stderr(&mut cmd);
+    let expected = "Valid JSON Schema. Continuing...\n13\n";
+    assert_eq!(out, expected);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
@@ -318,10 +323,6 @@ fn validate_adur_public_toilets_dataset_with_json_schema_valid_output() {
         svec!["07/07/2014 00:00", "http://opendatacommunities.org/id/district-council/adur", "Adur", "http://id.esd.org.uk/service/579", "Public toilets", "BEACH TOILETS BASIN ROAD SOUTH SOUTHWICK", "OSGB36", "522083", "105168", "http://www.ordnancesurvey.co.uk/business-and-government/help-and-support/public-sector/guidance/derived-data-exemptions.html", "Female and male", "Unisex", "Yes", "No", "No", "No", "No", "No", "No", "", "", "http://www.adur-worthing.gov.uk/streets-and-travel/public-toilets/", "09.00 - 17.00", "ADC", "surveyor_15@adur-worthing.gov.uk", "01903 221471", "", "60034215", "", "PUBLIC CONVENIENCES CIVIC CENTRE HAM ROAD SHOREHAM-BY-SEA", "", ""]    
     ];
     assert_eq!(got, expected);
-
-    let num_recs = wrk.output_stderr(&mut cmd);
-    let num_recs_expected = "13".to_string();
-    assert_eq!(num_recs.trim_end(), num_recs_expected);
 
     wrk.assert_err(&mut cmd);
 }
