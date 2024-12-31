@@ -801,13 +801,15 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         let schema_json = load_json(&args.arg_json_schema.clone().unwrap())?;
         match jsonschema::meta::try_is_valid(&serde_json::from_str(&schema_json)?) {
             Ok(is_valid) => {
-                if !args.flag_quiet {
-                    if is_valid {
+                if is_valid {
+                    if !args.flag_quiet {
                         werr!("Valid JSON Schema. Continuing...");
-                    } else {
-                        werr!("Invalid JSON Schema. Exiting...");
-                        return Ok(());
                     }
+                } else {
+                    if !args.flag_quiet {
+                        werr!("Invalid JSON Schema. Exiting...");
+                    }
+                    return Ok(());
                 }
             },
             Err(e) => {
