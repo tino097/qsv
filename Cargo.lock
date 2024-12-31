@@ -2639,7 +2639,7 @@ checksum = "a3ca0618f511e7e6fca5b849ab782316e30be51d5b8f573d99c3c76b17699cc1"
 dependencies = [
  "bincode",
  "csv",
- "itertools",
+ "itertools 0.13.0",
  "kiddo",
  "rayon",
  "serde",
@@ -2723,7 +2723,7 @@ name = "grex"
 version = "1.4.5"
 source = "git+https://github.com/pemistahl/grex?rev=cb71c10#cb71c10815e2216f4941f0b52154fb5d1fc0a01c"
 dependencies = [
- "itertools",
+ "itertools 0.13.0",
  "lazy_static",
  "ndarray",
  "petgraph",
@@ -3285,6 +3285,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3434,7 +3443,7 @@ dependencies = [
  "fixed",
  "generator",
  "init_with",
- "itertools",
+ "itertools 0.13.0",
  "log",
  "num-traits",
  "ordered-float 4.6.0",
@@ -4241,7 +4250,7 @@ dependencies = [
  "futures",
  "humantime",
  "hyper",
- "itertools",
+ "itertools 0.13.0",
  "md-5",
  "parking_lot",
  "percent-encoding",
@@ -5348,7 +5357,7 @@ dependencies = [
  "human-panic",
  "indexmap",
  "indicatif",
- "itertools",
+ "itertools 0.14.0",
  "itoa",
  "jaq-interpret",
  "jaq-parse",
@@ -5680,7 +5689,7 @@ dependencies = [
  "compact_str",
  "crossterm 0.28.1",
  "instability",
- "itertools",
+ "itertools 0.13.0",
  "lru",
  "paste",
  "strum",
@@ -5760,7 +5769,7 @@ dependencies = [
  "ahash",
  "arc-swap",
  "combine",
- "itertools",
+ "itertools 0.13.0",
  "itoa",
  "num-bigint",
  "percent-encoding",
@@ -7311,7 +7320,7 @@ version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3644627a5af5fa321c95b9b235a72fd24cd29c648c2c379431e6628655627bf"
 dependencies = [
- "itertools",
+ "itertools 0.13.0",
  "unicode-segmentation",
  "unicode-width 0.1.14",
 ]
