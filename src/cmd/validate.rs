@@ -1,5 +1,5 @@
 static USAGE: &str = r#"
-Validates CSV data using two modes:
+Validates CSV data using two main modes:
 
 JSON SCHEMA VALIDATION MODE:
 ===========================
@@ -98,11 +98,14 @@ If we validate another CSV file, "mydata2.csv", which we know is valid, there ar
 and the exit code is 0.
 
 If piped from stdin, the filenames will use `stdin.csv` as the base filename. For example:
-`cat mydata.csv | qsv validate reference.schema.json`
+  `cat mydata.csv | qsv validate reference.schema.json`
 
    * stdin.csv.valid
    * stdin.csv.invalid
    * stdin.csv.validation-errors.tsv
+
+`validate` also has a `schema` subcommand to validate JSON Schema files. For example:
+  `qsv validate schema myjsonschema.json`
 
 RFC 4180 VALIDATION MODE:
 ========================
@@ -119,6 +122,7 @@ For examples, see the tests included in this file (denoted by '#[test]') or see
 https://github.com/dathere/qsv/blob/master/tests/test_validate.rs.
 
 Usage:
+    qsv validate schema [<json-schema>]
     qsv validate [options] [<input>] [<json-schema>]
     qsv validate --help
 
@@ -256,6 +260,7 @@ macro_rules! fail_validation_error {
 #[derive(Deserialize)]
 #[allow(dead_code)]
 struct Args {
+    cmd_schema:        bool,
     flag_trim:         bool,
     flag_fail_fast:    bool,
     flag_valid:        Option<String>,
@@ -570,6 +575,30 @@ fn dyn_enum_validator_factory<'a>(
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
 
+    // validate the JSON Schema file
+    if args.cmd_schema {
+        if let Some(ref schema) = args.arg_json_schema {
+            let schema_json = load_json(&schema)?;
+            match jsonschema::meta::try_is_valid(&serde_json::from_str(&schema_json)?) {
+                Ok(is_valid) => {
+                    if is_valid {
+                        if !args.flag_quiet {
+                            winfo!("Valid JSON Schema.");
+                            return Ok(());
+                        }
+                    } else {
+                        return fail_clierror!("Invalid JSON Schema.");
+                    }
+                },
+                Err(e) => {
+                    return fail_clierror!("Invalid JSON Schema: {e}");
+                },
+            }
+        } else {
+            return fail_clierror!("No JSON Schema file supplied.");
+        }
+    }
+
     TIMEOUT_SECS.store(
         util::timeout_secs(args.flag_timeout)? as u16,
         Ordering::Relaxed,
@@ -860,12 +889,14 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         {
                             Ok(schema) => (json, schema),
                             Err(e) => {
-                                return fail_clierror!("Cannot compile JSONschema. error: {e}");
+                                return fail_clierror!(r#"Cannot compile JSONschema. error: {e}
+Try running `qsv validate --validate-schema` to check the JSON Schema file."#);
                             },
                         }
                     },
                     Err(e) => {
-                        return fail_clierror!("Unable to parse JSONschema. error: {e}");
+                        return fail_clierror!(r#"Unable to parse JSONschema. error: {e}
+Try running `qsv validate --validate-schema` to check the JSON Schema file."#);
                     },
                 }
             },
