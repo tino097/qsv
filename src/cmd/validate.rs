@@ -578,7 +578,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     // validate the JSON Schema file
     if args.cmd_schema {
         if let Some(ref schema) = args.arg_json_schema {
-            let schema_json = load_json(&schema)?;
+            let schema_json = load_json(schema)?;
             match jsonschema::meta::try_is_valid(&serde_json::from_str(&schema_json)?) {
                 Ok(is_valid) => {
                     if is_valid {
