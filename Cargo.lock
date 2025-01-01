@@ -1118,12 +1118,14 @@ source = "git+https://github.com/jaemk/cached?rev=bbf457e#bbf457e8f9f386d2da105f
 [[package]]
 name = "calamine"
 version = "0.26.1"
-source = "git+https://github.com/jqnatividad/calamine?branch=bump-to-quick-xml-0.37#5ddf2bd19178804c711ed69165e521a9d3a31531"
+source = "git+https://github.com/jqnatividad/calamine?branch=qsv-2-optimized#8f175021432915e0f82c07d116d7bd784565e992"
 dependencies = [
+ "atoi_simd",
  "byteorder",
  "chrono",
  "codepage",
  "encoding_rs",
+ "fast-float2",
  "log",
  "quick-xml 0.37.2",
  "serde",
