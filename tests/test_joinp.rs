@@ -1813,3 +1813,163 @@ joinp_test_comments!(
         assert_eq!(got, expected);
     }
 );
+
+#[test]
+fn joinp_ignore_leading_zero() {
+    let wrk = Workdir::new("joinp_ignore_leading_zero");
+
+    wrk.create(
+        "left.csv",
+        vec![
+            svec!["id", "value"],
+            svec!["001", "a"],
+            svec!["02", "b"],
+            svec!["3", "c"],
+        ],
+    );
+
+    wrk.create(
+        "right.csv",
+        vec![
+            svec!["id", "desc"],
+            svec!["1", "one"],
+            svec!["02", "two"],
+            svec!["003", "three"],
+        ],
+    );
+
+    let mut cmd = wrk.command("joinp");
+    cmd.args(&["id", "left.csv", "id", "right.csv"]).arg("-z");
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["id", "value", "desc"],
+        svec!["1", "a", "one"],
+        svec!["2", "b", "two"],
+        svec!["3", "c", "three"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn joinp_ignore_leading_zero_with_non_numeric() {
+    let wrk = Workdir::new("joinp_ignore_leading_zero_with_non_numeric");
+
+    wrk.create(
+        "left.csv",
+        vec![
+            svec!["code", "value"],
+            svec!["001A", "a"],
+            svec!["02B", "b"],
+            svec!["ABC", "c"],
+        ],
+    );
+
+    wrk.create(
+        "right.csv",
+        vec![
+            svec!["code", "desc"],
+            svec!["1A", "one"],
+            svec!["0002B", "two"],
+            svec!["ABC", "three"],
+        ],
+    );
+
+    let mut cmd = wrk.command("joinp");
+    cmd.args(&["code", "left.csv", "code", "right.csv"])
+        .arg("--ignore-leading-zeros");
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["code", "value", "desc"],
+        svec!["1A", "a", "one"],
+        svec!["2B", "b", "two"],
+        svec!["ABC", "c", "three"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn joinp_ignore_leading_zero_multiple_columns() {
+    let wrk = Workdir::new("joinp_ignore_leading_zero_multiple_columns");
+
+    wrk.create(
+        "left.csv",
+        vec![
+            svec!["id", "code", "value"],
+            svec!["001", "001A", "a"],
+            svec!["02", "02B", "b"],
+            svec!["3", "ABC", "c"],
+        ],
+    );
+
+    wrk.create(
+        "right.csv",
+        vec![
+            svec!["id", "code", "desc"],
+            svec!["1", "1A", "one"],
+            svec!["002", "0002B", "two"],
+            svec!["03", "ABC", "three"],
+        ],
+    );
+
+    let mut cmd = wrk.command("joinp");
+    cmd.args(&["id,code", "left.csv", "id,code", "right.csv"])
+        .arg("--ignore-leading-zeros");
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["id", "code", "value", "desc"],
+        svec!["1", "1A", "a", "one"],
+        svec!["2", "2B", "b", "two"],
+        svec!["3", "ABC", "c", "three"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn joinp_ignore_case_and_leading_zeros() {
+    let wrk = Workdir::new("joinp_ignore_case_and_leading_zeros");
+
+    wrk.create(
+        "left.csv",
+        vec![
+            svec!["id", "code", "value"],
+            svec!["001", "001abc", "a"],
+            svec!["02", "02DEF", "b"],
+            svec!["3", "XYZ", "c"],
+        ],
+    );
+
+    wrk.create(
+        "right.csv",
+        vec![
+            svec!["id", "code", "desc"],
+            svec!["1", "00001ABC", "one"],
+            svec!["002", "0002def", "two"],
+            svec!["03", "xyz", "three"],
+        ],
+    );
+
+    let mut cmd = wrk.command("joinp");
+    cmd.args(&["id,code", "left.csv", "id,code", "right.csv"])
+        .arg("--ignore-leading-zeros")
+        .arg("--ignore-case");
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["id", "code", "value", "id_right", "code_right", "desc"],
+        svec!["1", "1abc", "a", "1", "1abc", "one"],
+        svec!["2", "2def", "b", "2", "2def", "two"],
+        svec!["3", "xyz", "c", "3", "xyz", "three"],
+    ];
+    assert_eq!(got, expected);
+}
