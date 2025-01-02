@@ -81,6 +81,7 @@ struct Args {
     flag_memcheck:       bool,
 }
 
+#[derive(Debug)]
 enum ComparisonMode {
     Numeric,
     IgnoreCase,
@@ -148,7 +149,11 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 },
                 cmp::Ordering::Greater => {
                     return fail_clierror!(
-                        "Aborting! Input not sorted! {record:?} is greater than {next_record:?}"
+                        r#"Aborting! Input not sorted! Current record is greater than Next record.
+  Compare mode: {compare_mode:?};  Select columns index/es (0-based): {sel:?}
+  Current: {record:?}
+     Next: {next_record:?}.
+"#
                     );
                 },
             }
