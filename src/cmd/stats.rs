@@ -513,7 +513,7 @@ const FINGERPRINT_HASH_COLUMNS: usize = 25;
 const MAX_ANTIMODES: usize = 10;
 // default length of antimode string before truncating and appending "..."
 const DEFAULT_ANTIMODES_LEN: usize = 100;
-const DEFAULT_MODES_SEPARATOR: &str = "|";
+pub const DEFAULT_MODES_SEPARATOR: &str = "|";
 
 // we do this so this is evaluated at compile-time
 pub const fn get_stats_data_types() -> [JsonTypes; MAX_STAT_COLUMNS] {
@@ -1613,7 +1613,7 @@ impl Stats {
                     // get the modes separator
                     let modes_separator = ANTIMODES_SEPARATOR.get_or_init(|| {
                         std::env::var("QSV_MODES_SEPARATOR")
-                            .unwrap_or(DEFAULT_MODES_SEPARATOR.to_string())
+                            .unwrap_or_else(|_| DEFAULT_MODES_SEPARATOR.to_string())
                     });
 
                     // mode/s
