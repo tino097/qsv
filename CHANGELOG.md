@@ -6,6 +6,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2025-01-02
+
+## What's Changed
+* `ci`: attempt using files-folder instead of files by @rzmk in https://github.com/dathere/qsv/pull/2320
+* Update deb package by @tino097 in https://github.com/dathere/qsv/pull/2226
+* Add license to MSI installer by @rzmk in https://github.com/dathere/qsv/pull/2321
+* `contrib(completions)`: add joinp `--ignore-case` and slice `--invert` by @rzmk in https://github.com/dathere/qsv/pull/2322
+* `ci`: add qsv_glibc_2.31-headless to action by @rzmk in https://github.com/dathere/qsv/pull/2330
+* build(deps): bump tokio from 1.41.1 to 1.42.0 by @dependabot in https://github.com/dathere/qsv/pull/2333
+* build(deps): bump redis from 0.27.5 to 0.27.6 by @dependabot in https://github.com/dathere/qsv/pull/2331
+* build(deps): bump sysinfo from 0.32.1 to 0.33.0 by @dependabot in https://github.com/dathere/qsv/pull/2334
+* feat: `tojsonl` add `--quiet` option by @jqnatividad in https://github.com/dathere/qsv/pull/2336
+* `contrib(completions)`: add `--quiet` to `tojsonl` by @rzmk in https://github.com/dathere/qsv/pull/2337
+* `joinp`: add `--maintain-order` option by @jqnatividad in https://github.com/dathere/qsv/pull/2338
+* bump polars from 0.44.2 to 0.45 by @jqnatividad in https://github.com/dathere/qsv/pull/2340
+* `stats`: add geometric mean and harmonic mean by @jqnatividad in https://github.com/dathere/qsv/pull/2342
+* build(deps): bump polars from 0.45.0 to 0.45.1 by @dependabot in https://github.com/dathere/qsv/pull/2344
+* build(deps): bump chrono from 0.4.38 to 0.4.39 by @dependabot in https://github.com/dathere/qsv/pull/2345
+* build(deps): bump governor from 0.7.0 to 0.8.0 by @dependabot in https://github.com/dathere/qsv/pull/2347
+* build(deps): bump flexi_logger from 0.29.6 to 0.29.7 by @dependabot in https://github.com/dathere/qsv/pull/2348
+* build(deps): bump serde from 1.0.215 to 1.0.216 by @dependabot in https://github.com/dathere/qsv/pull/2349
+* build(deps): bump actix-governor from 0.7.0 to 0.8.0 by @dependabot in https://github.com/dathere/qsv/pull/2351
+* bump pyo3 from 0.22 to 0.23 now that Polars supports it by @jqnatividad in https://github.com/dathere/qsv/pull/2352
+* Setting QSV_FREEMEMORY_HEADROOM_PCT to 0 disables memory availability check by @jqnatividad in https://github.com/dathere/qsv/pull/2353
+* build(deps): bump crossbeam-channel from 0.5.13 to 0.5.14 by @dependabot in https://github.com/dathere/qsv/pull/2354
+* build(deps): bump jsonschema from 0.26.1 to 0.26.2 by @dependabot in https://github.com/dathere/qsv/pull/2355
+* `template`: add `--globals-json` option by @jqnatividad in https://github.com/dathere/qsv/pull/2356
+* `fetchpost`: add `--globals-json` option by @jqnatividad in https://github.com/dathere/qsv/pull/2357
+* build(deps): bump xxhash-rust from 0.8.12 to 0.8.13 by @dependabot in https://github.com/dathere/qsv/pull/2359
+* build(deps): bump bytemuck from 1.20.0 to 1.21.0 by @dependabot in https://github.com/dathere/qsv/pull/2361
+* feat: addl `luau` helper functions by @jqnatividad in https://github.com/dathere/qsv/pull/2362
+* build(deps): bump serde_json from 1.0.133 to 1.0.134 by @dependabot in https://github.com/dathere/qsv/pull/2365
+* feat: add `pivotp` polars polars-powered command by @jqnatividad in https://github.com/dathere/qsv/pull/2364
+* feat: "smart" pivotp by @jqnatividad in https://github.com/dathere/qsv/pull/2367
+* feat: an even smarter `pivotp` by @jqnatividad in https://github.com/dathere/qsv/pull/2368
+* `joinp`: refactor `--cache=schema` option by @jqnatividad in https://github.com/dathere/qsv/pull/2370
+* build(deps): bump jsonschema from 0.26.2 to 0.27.0 by @dependabot in https://github.com/dathere/qsv/pull/2371
+* build(deps): bump xxhash-rust from 0.8.13 to 0.8.14 by @dependabot in https://github.com/dathere/qsv/pull/2372
+* `feat`: add `luau` qsv_writejson helper by @jqnatividad in https://github.com/dathere/qsv/pull/2375
+* feat: `joinp` add `--right-anti` and `--right-semi` options by @jqnatividad in https://github.com/dathere/qsv/pull/2378
+* feat: `join` add `--right-anti` and `--right-semi` options by @jqnatividad in https://github.com/dathere/qsv/pull/2380
+* build(deps): bump sysinfo from 0.33.0 to 0.33.1 by @dependabot in https://github.com/dathere/qsv/pull/2383
+* build(deps): bump serde from 1.0.216 to 1.0.217 by @dependabot in https://github.com/dathere/qsv/pull/2384
+* build(deps): bump reqwest from 0.12.9 to 0.12.11 by @dependabot in https://github.com/dathere/qsv/pull/2385
+* build(deps): bump jsonschema from 0.27.1 to 0.28.0 by @dependabot in https://github.com/dathere/qsv/pull/2389
+* build(deps): bump xxhash-rust from 0.8.14 to 0.8.15 by @dependabot in https://github.com/dathere/qsv/pull/2392
+* feat: `validate` add `--validate-schema` option to check if the JSON Schema itself is valid by @jqnatividad in https://github.com/dathere/qsv/pull/2393
+* build(deps): bump itertools from 0.13.0 to 0.14.0 by @dependabot in https://github.com/dathere/qsv/pull/2394
+* build(deps): bump jsonschema from 0.28.0 to 0.28.1 by @dependabot in https://github.com/dathere/qsv/pull/2396
+* build(deps): bump reqwest from 0.12.11 to 0.12.12 by @dependabot in https://github.com/dathere/qsv/pull/2395
+* `stats`: add string length stats to set stage for upcoming `outliers` "smart"  command to quickly identify outliers using stats/frequency info by @jqnatividad in https://github.com/dathere/qsv/pull/2390
+
+
+**Full Changelog**: https://github.com/dathere/qsv/compare/1.0.0...2.0.0
+
 ## [1.0.0] - 2024-12-02
 
 ## qsv v1.0.0 is here! 🎉
