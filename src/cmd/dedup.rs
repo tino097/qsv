@@ -56,7 +56,6 @@ use std::cmp;
 use csv::ByteRecord;
 use rayon::slice::ParallelSliceMut;
 use serde::Deserialize;
-use simdutf8::basic::from_utf8;
 
 use crate::{
     cmd::sort::{iter_cmp, iter_cmp_num},
@@ -152,7 +151,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         r#"Aborting! Input not sorted! Current record is greater than Next record.
   Compare mode: {compare_mode:?};  Select columns index/es (0-based): {sel:?}
   Current: {record:?}
-     Next: {next_record:?}.
+     Next: {next_record:?}
 "#
                     );
                 },
@@ -277,6 +276,6 @@ where
     X: Iterator<Item = &'a [u8]>,
 {
     xs.next()
-        .and_then(|bytes| from_utf8(bytes).ok())
+        .and_then(|bytes| simdutf8::basic::from_utf8(bytes).ok())
         .map(str::to_lowercase)
 }
