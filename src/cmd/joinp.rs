@@ -28,6 +28,10 @@ joinp arguments:
 
 joinp options:
     -i, --ignore-case      When set, joins are done case insensitively.
+-z, --ignore-leading-zeros  When set, joins are done ignoring leading zeros.
+                           Note that this is only applied to the join keys for
+                           both numeric and string columns. The output columns
+                           will not have leading zeros.
     --left                 Do a 'left outer' join. This returns all rows in
                            first CSV data set, including rows with no
                            corresponding row in the second data set. When no
@@ -220,7 +224,7 @@ use std::{
     str,
 };
 
-use polars::{datatypes::AnyValue, prelude::*, sql::SQLContext};
+use polars::{datatypes::AnyValue, prelude as pl, prelude::*, sql::SQLContext};
 use serde::Deserialize;
 use tempfile::tempdir;
 
@@ -231,47 +235,48 @@ use crate::{
 
 #[derive(Deserialize)]
 struct Args {
-    arg_columns1:          String,
-    arg_input1:            String,
-    arg_columns2:          String,
-    arg_input2:            String,
-    flag_left:             bool,
-    flag_left_anti:        bool,
-    flag_left_semi:        bool,
-    flag_right:            bool,
-    flag_right_anti:       bool,
-    flag_right_semi:       bool,
-    flag_full:             bool,
-    flag_cross:            bool,
-    flag_coalesce:         bool,
-    flag_filter_left:      Option<String>,
-    flag_filter_right:     Option<String>,
-    flag_validate:         Option<String>,
-    flag_maintain_order:   Option<String>,
-    flag_nulls:            bool,
-    flag_streaming:        bool,
-    flag_try_parsedates:   bool,
-    flag_decimal_comma:    bool,
-    flag_infer_len:        usize,
-    flag_cache_schema:     i8,
-    flag_low_memory:       bool,
-    flag_no_optimizations: bool,
-    flag_ignore_errors:    bool,
-    flag_asof:             bool,
-    flag_left_by:          Option<String>,
-    flag_right_by:         Option<String>,
-    flag_strategy:         Option<String>,
-    flag_tolerance:        Option<String>,
-    flag_sql_filter:       Option<String>,
-    flag_datetime_format:  Option<String>,
-    flag_date_format:      Option<String>,
-    flag_time_format:      Option<String>,
-    flag_float_precision:  Option<usize>,
-    flag_null_value:       String,
-    flag_output:           Option<String>,
-    flag_delimiter:        Option<Delimiter>,
-    flag_quiet:            bool,
-    flag_ignore_case:      bool,
+    arg_columns1:              String,
+    arg_input1:                String,
+    arg_columns2:              String,
+    arg_input2:                String,
+    flag_left:                 bool,
+    flag_left_anti:            bool,
+    flag_left_semi:            bool,
+    flag_right:                bool,
+    flag_right_anti:           bool,
+    flag_right_semi:           bool,
+    flag_full:                 bool,
+    flag_cross:                bool,
+    flag_coalesce:             bool,
+    flag_filter_left:          Option<String>,
+    flag_filter_right:         Option<String>,
+    flag_validate:             Option<String>,
+    flag_maintain_order:       Option<String>,
+    flag_nulls:                bool,
+    flag_streaming:            bool,
+    flag_try_parsedates:       bool,
+    flag_decimal_comma:        bool,
+    flag_infer_len:            usize,
+    flag_cache_schema:         i8,
+    flag_low_memory:           bool,
+    flag_no_optimizations:     bool,
+    flag_ignore_errors:        bool,
+    flag_asof:                 bool,
+    flag_left_by:              Option<String>,
+    flag_right_by:             Option<String>,
+    flag_strategy:             Option<String>,
+    flag_tolerance:            Option<String>,
+    flag_sql_filter:           Option<String>,
+    flag_datetime_format:      Option<String>,
+    flag_date_format:          Option<String>,
+    flag_time_format:          Option<String>,
+    flag_float_precision:      Option<usize>,
+    flag_null_value:           String,
+    flag_output:               Option<String>,
+    flag_delimiter:            Option<Delimiter>,
+    flag_quiet:                bool,
+    flag_ignore_case:          bool,
+    flag_ignore_leading_zeros: bool,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -961,6 +966,98 @@ impl Args {
         if let Some(filter_right) = &self.flag_filter_right {
             let filter_right_expr = polars::sql::sql_expr(filter_right)?;
             right_lf = right_lf.filter(filter_right_expr);
+        }
+
+        if self.flag_ignore_leading_zeros {
+            // Transform the join keys in the left and right dataframe to handle leading zeros
+            // For each join key column:
+            //   1. Cast to string type
+            //   2. If ignore_case is true, convert to lowercase
+            //   3. Trim leading zeros, regardless of the original type
+            // This allows joins to match on values like "001" and "1", "0001ABZ" and "1ABZ".
+            // Note that the output columns will not have leading zeros for the join keys.
+            //
+            // We had to add ignore_case handling to ignore_leading_zeros in the join keys because
+            // the existing code for ignore_case was not working for leading zeros if they are both
+            // used at the same time.
+            // The ignore_case code was creating temporary join key columns while
+            // ignore_leading_zeros was using the existing join key columns.
+            let ignore_case = self.flag_ignore_case;
+            left_lf = left_lf.with_columns(
+                self.arg_columns1
+                    .split(',')
+                    .map(|col| {
+                        let col_name = col.to_string();
+                        pl::col(&col_name).cast(pl::DataType::String).map(
+                            move |s| {
+                                Ok(Some(
+                                    pl::Series::new(
+                                        col_name.clone().into(),
+                                        s.str()?
+                                            .into_iter()
+                                            .map(|x| {
+                                                x.map(|val| {
+                                                    let v = if ignore_case {
+                                                        val.to_lowercase()
+                                                    } else {
+                                                        val.to_string()
+                                                    };
+                                                    if v.starts_with('0') {
+                                                        v.trim_start_matches('0').to_string()
+                                                    } else {
+                                                        v.to_string()
+                                                    }
+                                                })
+                                                .unwrap_or_default()
+                                            })
+                                            .collect::<Vec<String>>(),
+                                    )
+                                    .into(),
+                                ))
+                            },
+                            pl::GetOutput::from_type(pl::DataType::String),
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+            );
+
+            right_lf = right_lf.with_columns(
+                self.arg_columns2
+                    .split(',')
+                    .map(|col| {
+                        let col_name = col.to_string();
+                        pl::col(&col_name).cast(pl::DataType::String).map(
+                            move |s| {
+                                Ok(Some(
+                                    pl::Series::new(
+                                        col_name.clone().into(),
+                                        s.str()?
+                                            .into_iter()
+                                            .map(|x| {
+                                                x.map(|val| {
+                                                    let v = if ignore_case {
+                                                        val.to_lowercase()
+                                                    } else {
+                                                        val.to_string()
+                                                    };
+                                                    if v.starts_with('0') {
+                                                        v.trim_start_matches('0').to_string()
+                                                    } else {
+                                                        v.to_string()
+                                                    }
+                                                })
+                                                .unwrap_or_default()
+                                            })
+                                            .collect::<Vec<String>>(),
+                                    )
+                                    .into(),
+                                ))
+                            },
+                            pl::GetOutput::from_type(pl::DataType::String),
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+            );
         }
 
         Ok(JoinStruct {
