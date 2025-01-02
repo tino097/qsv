@@ -64,6 +64,7 @@ impl SelectColumns {
         Ok(Selection(map))
     }
 
+    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         self.selectors.is_empty()
     }
