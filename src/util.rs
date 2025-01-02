@@ -61,6 +61,7 @@ pub enum StatsMode {
     FrequencyForceStats,
     #[cfg(feature = "polars")]
     PolarsSchema,
+    Outliers,
     None,
 }
 
@@ -2123,6 +2124,11 @@ pub fn get_stats_records(
                 // we need data types, ranges & cardinality
                 format!("stats\t{input}\t--cardinality\t--stats-jsonl\t--output\t{tempfile_path}")
             },
+            StatsMode::Outliers => {
+                // StatsMode::Outliers
+                // we need data types, ranges, cardinality, quartiles, mad and modes/antimodes
+                format!("stats\t{input}\t--cardinality\t--quartiles\t--mad\t--mode\t--stats-jsonl\t--output\t{tempfile_path}")
+            },
             StatsMode::None => unreachable!(), // we returned early on None earlier
         };
         if args.flag_prefer_dmy {
@@ -2141,12 +2147,20 @@ pub fn get_stats_records(
         if let Some(jobs) = stats_args.flag_jobs {
             stats_args_str = format!("{stats_args_str}\t--jobs\t{jobs}");
         }
+        if stats_args.flag_nulls {
+            stats_args_str = format!("{stats_args_str}\t--nulls");
+        }
 
         let stats_args_vec: Vec<&str> = stats_args_str.split('\t').collect();
 
         let qsv_bin = std::env::current_exe().unwrap();
         let mut stats_cmd = std::process::Command::new(qsv_bin);
-        stats_cmd.args(stats_args_vec);
+        if mode == StatsMode::Outliers {
+            // set the max length for antimodes
+            stats_cmd.env("QSV_ANTIMODES_LEN", "0").args(stats_args_vec);
+        } else {
+            stats_cmd.args(stats_args_vec);
+        }
         let status = stats_cmd.output()?.status;
         if !status.success() {
             let status_code = status.code();

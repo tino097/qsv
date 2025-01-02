@@ -5,17 +5,18 @@ Compute summary statistics & infers data types for each column in a CSV.
 UTF-8 encoded. If you encounter problems generating stats, use `qsv validate` to confirm the
 input CSV is valid.
 
-Summary statistics includes sum, min/max/range, sort order, min/max/sum/avg length, mean,
-standard error of the mean (SEM), geometric mean, harmonic mean, stddev, variance, coefficient
+Summary statistics includes sum, min/max/range, sort order, min/max/sum/avg/stddev/variance/cv length,
+mean, standard error of the mean (SEM), geometric mean, harmonic mean, stddev, variance, coefficient
 of variation (CV), nullcount, max_precision, sparsity, Median Absolute Deviation (MAD), quartiles,
 interquartile range (IQR), lower/upper fences, skewness, median, cardinality, mode/s & "antimode/s".
 Note that some stats require loading the entire file into memory, so they must be enabled explicitly. 
 
 By default, the following "streaming" statistics are reported for *every* column:
-sum, min/max/range values, sort order, min/max/sum/avg length, mean, sem, geometric_mean, harmonic_mean,
-stddev, variance, cv, nullcount, max_precision & sparsity. The default set of statistics corresponds to
-ones that can be computed efficiently on a stream of data (i.e., constant memory) and works with
-arbitrarily large CSVs.
+  sum, min/max/range values, sort order, min/max/sum/avg/stddev/variance/cv length, mean, sem,
+  geometric_mean, harmonic_mean,stddev, variance, cv, nullcount, max_precision & sparsity.
+
+The default set of statistics corresponds to ones that can be computed efficiently on a stream of data
+(i.e., constant memory) and works with arbitrarily large CSVs.
 
 The following additional "non-streaming" statistics require loading the entire file into memory:
 cardinality, modes/antimodes, median, MAD, quartiles and its related measures (q1, q2, q3, IQR,
@@ -139,9 +140,11 @@ stats options:
                               and the 2 values' first characters are 0/1, t/f & y/n
                               case-insensitive, the data type is inferred as boolean.
     --mode                    Compute the mode/s & antimode/s. Multimodal-aware.
-                              This requires loading all CSV data in memory.
+                              This requires loading CSV data in memory proportionate to the
+                              cardinality of each column.
     --cardinality             Compute the cardinality.
-                              This requires loading all CSV data in memory.
+                              This requires loading CSV data in memory proportionate to the
+                              number of unique values in each column.
     --median                  Compute the median.
                               This requires loading all CSV data in memory.
     --mad                     Compute the median absolute deviation (MAD).
@@ -381,7 +384,7 @@ impl StatsArgs {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Default, Debug)]
 pub struct StatsData {
     pub field:                String,
     // type is a reserved keyword in Rust
@@ -398,6 +401,9 @@ pub struct StatsData {
     pub max_length:           Option<usize>,
     pub sum_length:           Option<usize>,
     pub avg_length:           Option<f64>,
+    pub stddev_length:        Option<f64>,
+    pub variance_length:      Option<f64>,
+    pub cv_length:            Option<f64>,
     pub mean:                 Option<f64>,
     pub sem:                  Option<f64>,
     pub stddev:               Option<f64>,
@@ -448,6 +454,9 @@ const STATSDATA_TYPES_ARRAY: [JsonTypes; MAX_STAT_COLUMNS] = [
     JsonTypes::Int,    //max_length
     JsonTypes::Int,    //sum_length
     JsonTypes::Float,  //avg_length
+    JsonTypes::Float,  //stddev_length
+    JsonTypes::Float,  //variance_length
+    JsonTypes::Float,  //cv_length
     JsonTypes::Float,  //mean
     JsonTypes::Float,  //sem
     JsonTypes::Float,  //geometric_mean
@@ -480,6 +489,7 @@ const STATSDATA_TYPES_ARRAY: [JsonTypes; MAX_STAT_COLUMNS] = [
 static INFER_DATE_FLAGS: OnceLock<SmallVec<[bool; 50]>> = OnceLock::new();
 static RECORD_COUNT: OnceLock<u64> = OnceLock::new();
 static ANTIMODES_LEN: OnceLock<usize> = OnceLock::new();
+static ANTIMODES_SEPARATOR: OnceLock<String> = OnceLock::new();
 
 // standard overflow and underflow strings
 // for sum, sum_length and avg_length
@@ -494,13 +504,16 @@ const MS_IN_DAY_INT: i64 = 86_400_000;
 const DAY_DECIMAL_PLACES: u32 = 5;
 
 // maximum number of output columns
-const MAX_STAT_COLUMNS: usize = 39;
+const MAX_STAT_COLUMNS: usize = 42;
+
+// the first N columns are fingerprint hash columns
+const FINGERPRINT_HASH_COLUMNS: usize = 25;
 
 // maximum number of antimodes to display
 const MAX_ANTIMODES: usize = 10;
 // default length of antimode string before truncating and appending "..."
 const DEFAULT_ANTIMODES_LEN: usize = 100;
-const MAX_ANTIMODES_LEN: usize = 5192;
+pub const DEFAULT_MODES_SEPARATOR: &str = "|";
 
 // we do this so this is evaluated at compile-time
 pub const fn get_stats_data_types() -> [JsonTypes; MAX_STAT_COLUMNS] {
@@ -787,7 +800,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             // vec we use to compute dataset-level fingerprint hash
             let mut stats_br_vec: Vec<csv::ByteRecord> = Vec::with_capacity(stats_sr_vec.len());
 
-            let stats_headers_sr = args.stat_headers();
+            let stats_headers_sr = args.stats_headers();
             wtr.write_record(&stats_headers_sr)?;
             let fields = headers.iter().zip(stats_sr_vec);
             for (i, (header, stat)) in fields.enumerate() {
@@ -836,13 +849,13 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
             // Compute hash of stats for data fingerprinting
             let stats_hash = {
-                // the first 22 stats columns are used for the fingerprint hash
-                let mut hash_input = Vec::with_capacity(22);
+                // the first FINGERPRINT_HASH_COLUMNS are used for the fingerprint hash
+                let mut hash_input = Vec::with_capacity(FINGERPRINT_HASH_COLUMNS);
 
                 // First, create a stable representation of the stats
                 for record in &stats_br_vec {
-                    // Take first 22 columns only
-                    for field in record.iter().take(22) {
+                    // Take FINGERPRINT_HASH_COLUMNS columns only
+                    for field in record.iter().take(FINGERPRINT_HASH_COLUMNS) {
                         let s = String::from_utf8_lossy(field);
                         // Standardize number format
                         if let Ok(f) = s.parse::<f64>() {
@@ -1169,7 +1182,7 @@ impl Args {
         stats
     }
 
-    pub fn stat_headers(&self) -> csv::StringRecord {
+    pub fn stats_headers(&self) -> csv::StringRecord {
         if self.flag_typesonly {
             return csv::StringRecord::from(vec!["field", "type"]);
         }
@@ -1178,7 +1191,8 @@ impl Args {
         let mut fields = Vec::with_capacity(MAX_STAT_COLUMNS);
 
         // these are the standard stats columns that are always output
-        // the "streaming" stats
+        // the "streaming" stats that are always included in stats output
+        // aka the 25 FINGERPRINT_HASH_COLUMNS
         fields.extend_from_slice(&[
             "field",
             "type",
@@ -1192,6 +1206,9 @@ impl Args {
             "max_length",
             "sum_length",
             "avg_length",
+            "stddev_length",
+            "variance_length",
+            "cv_length",
             "mean",
             "sem",
             "geometric_mean",
@@ -1336,6 +1353,7 @@ pub struct Stats {
     sum_stotlen:   u64,
     minmax:        Option<TypedMinMax>,
     online:        Option<OnlineStats>,
+    online_len:    Option<OnlineStats>,
     nullcount:     u64,
     max_precision: u16,
     modes:         Option<Unsorted<Vec<u8>>>,
@@ -1361,8 +1379,16 @@ fn timestamp_ms_to_rfc3339(timestamp: i64, typ: FieldType) -> String {
 
 impl Stats {
     fn new(which: WhichStats) -> Stats {
-        let (mut sum, mut minmax, mut online, mut modes, mut median, mut quartiles, mut mad) =
-            (None, None, None, None, None, None, None);
+        let (
+            mut sum,
+            mut minmax,
+            mut online,
+            mut online_len,
+            mut modes,
+            mut median,
+            mut quartiles,
+            mut mad,
+        ) = (None, None, None, None, None, None, None, None);
         if which.sum {
             sum = Some(TypedSum::default());
         }
@@ -1371,6 +1397,7 @@ impl Stats {
         }
         if which.dist {
             online = Some(stats::OnlineStats::default());
+            online_len = Some(stats::OnlineStats::default());
         }
         if which.mode || which.cardinality {
             modes = Some(stats::Unsorted::default());
@@ -1390,6 +1417,7 @@ impl Stats {
             sum_stotlen: 0,
             minmax,
             online,
+            online_len,
             nullcount: 0,
             max_precision: 0,
             modes,
@@ -1433,6 +1461,9 @@ impl Stats {
         match t {
             TString => {
                 self.is_ascii &= sample.is_ascii();
+                if let Some(v) = self.online_len.as_mut() {
+                    v.add(&sample.len());
+                }
             },
             TFloat | TInteger => {
                 if sample_type == TNull {
@@ -1579,6 +1610,12 @@ impl Stats {
                     mc_pieces.push(itoa::Buffer::new().format(cardinality).to_owned());
                 }
                 if self.which.mode {
+                    // get the modes separator
+                    let modes_separator = ANTIMODES_SEPARATOR.get_or_init(|| {
+                        std::env::var("QSV_MODES_SEPARATOR")
+                            .unwrap_or_else(|_| DEFAULT_MODES_SEPARATOR.to_string())
+                    });
+
                     // mode/s
                     if cardinality == record_count {
                         // all values unique, short-circuit modes calculation as there is none
@@ -1588,7 +1625,7 @@ impl Stats {
                         let modes_list = modes_result
                             .iter()
                             .map(|c| String::from_utf8_lossy(c))
-                            .join(",");
+                            .join(modes_separator);
                         mc_pieces.extend_from_slice(&[
                             modes_list,
                             modes_count.to_string(),
@@ -1614,10 +1651,11 @@ impl Stats {
                                 .map(|val| {
                                     let parsed =
                                         val.parse::<usize>().unwrap_or(DEFAULT_ANTIMODES_LEN);
+                                    // if 0, disable length limiting
                                     if parsed == 0 {
-                                        MAX_ANTIMODES_LEN
+                                        usize::MAX
                                     } else {
-                                        parsed.min(MAX_ANTIMODES_LEN)
+                                        parsed
                                     }
                                 })
                                 .unwrap_or(DEFAULT_ANTIMODES_LEN)
@@ -1634,8 +1672,11 @@ impl Stats {
                         let antimodes_vals = &antimodes_result
                             .iter()
                             .map(|c| String::from_utf8_lossy(c))
-                            .join(",");
-                        if antimodes_vals.starts_with(',') {
+                            .join(modes_separator);
+
+                        // if the antimodes result starts with the separator,
+                        // it indicates that NULL is the first antimode. Add NULL to the list.
+                        if antimodes_vals.starts_with(modes_separator) {
                             antimodes_list.push_str("NULL");
                         }
                         antimodes_list.push_str(antimodes_vals);
@@ -1705,11 +1746,19 @@ impl Stats {
         // actually append it here - to preserve legacy ordering of columns
         pieces.extend_from_slice(&minmax_range_sortorder_pieces);
 
-        // min/max/sum/avg length
+        // min/max/sum/avg/stddev/variance/cv length
         if typ == FieldType::TDate || typ == FieldType::TDateTime {
             // returning min/max length for dates doesn't make sense
             // especially since we convert the date stats to rfc3339 format
-            pieces.extend_from_slice(&[empty(), empty(), empty(), empty()]);
+            pieces.extend_from_slice(&[
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+            ]);
         } else if let Some(mm) = self.minmax.as_ref().and_then(TypedMinMax::len_range) {
             pieces.extend_from_slice(&[mm.0, mm.1]);
             // we have a sum_length
@@ -1718,20 +1767,45 @@ impl Stats {
                     // so we can compute avg_length
                     pieces.push(itoa::Buffer::new().format(stotlen).to_owned());
                     #[allow(clippy::cast_precision_loss)]
-                    pieces.push(util::round_num(stotlen as f64 / record_count as f64, 4));
+                    let avg_len = stotlen as f64 / record_count as f64;
+                    pieces.push(util::round_num(avg_len, round_places));
+
+                    // Add stddev_length/variance_length for strings
+                    if let Some(vl) = self.online_len.as_ref() {
+                        let vlen_stddev = vl.stddev();
+                        let vlen_variance = vl.variance();
+                        pieces.push(util::round_num(vlen_stddev, round_places));
+                        pieces.push(util::round_num(vlen_variance, round_places));
+                        pieces.push(util::round_num(vlen_stddev / avg_len, round_places));
+                    } else {
+                        pieces.push(empty());
+                        pieces.push(empty());
+                        pieces.push(empty());
+                    }
                 } else {
                     // however, we saturated the sum, it means we had an overflow
-                    // so we return OVERFLOW_STRING for sum and avg length
+                    // so we return OVERFLOW_STRING for sum,avg,stddev,variance length
                     pieces.extend_from_slice(&[
+                        OVERFLOW_STRING.to_string(),
+                        OVERFLOW_STRING.to_string(),
+                        OVERFLOW_STRING.to_string(),
                         OVERFLOW_STRING.to_string(),
                         OVERFLOW_STRING.to_string(),
                     ]);
                 }
             } else {
-                pieces.extend_from_slice(&[empty(), empty()]);
+                pieces.extend_from_slice(&[empty(), empty(), empty(), empty(), empty()]);
             }
         } else {
-            pieces.extend_from_slice(&[empty(), empty(), empty(), empty()]);
+            pieces.extend_from_slice(&[
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+            ]);
         }
 
         // mean, sem, geometric_mean, harmonic_mean, stddev, variance & cv
@@ -1959,6 +2033,7 @@ impl Commute for Stats {
         self.sum_stotlen = self.sum_stotlen.saturating_add(other.sum_stotlen);
         self.minmax.merge(other.minmax);
         self.online.merge(other.online);
+        self.online_len.merge(other.online_len);
         self.nullcount += other.nullcount;
         self.max_precision = std::cmp::max(self.max_precision, other.max_precision);
         self.modes.merge(other.modes);

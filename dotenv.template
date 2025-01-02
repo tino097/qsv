@@ -41,7 +41,7 @@ QSV_NO_HEADERS = False
 # QSV_TOGGLE_HEADERS = False
 
 # set to the maximum number of characters when listing "antimodes" in `stats`. Otherwise, the default is 100.
-# max length is 5192 characters
+# set to 0 to disable length limiting
 # QSV_ANTIMODES_LEN = 100
 
 # if set, specifies the minimum file size (in bytes) of a CSV file before an 
