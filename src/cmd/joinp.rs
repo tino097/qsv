@@ -1005,7 +1005,7 @@ impl Args {
                                                     if v.starts_with('0') {
                                                         v.trim_start_matches('0').to_string()
                                                     } else {
-                                                        v.to_string()
+                                                        v
                                                     }
                                                 })
                                                 .unwrap_or_default()
@@ -1043,7 +1043,7 @@ impl Args {
                                                     if v.starts_with('0') {
                                                         v.trim_start_matches('0').to_string()
                                                     } else {
-                                                        v.to_string()
+                                                        v
                                                     }
                                                 })
                                                 .unwrap_or_default()
