@@ -94,7 +94,9 @@ csv = "1.3"
 csv-core = "0.1"
 csv-diff = "0.1.0"
 csv-index = "0.1"
-csvlens = { version = "0.11", optional = true }
+csvlens = { version = "0.11", optional = true, default-features = false, features = [
+    "clipboard",
+] }
 csvs_convert = { version = "0.9.0", default-features = false, features = [
     "converters",
 ], optional = true }
@@ -302,10 +304,10 @@ csv-index = { git = "https://github.com/dathere/rust-csv", branch = "qsv-optimiz
 cached = { git = "https://github.com/jaemk/cached", rev = "bbf457e" }
 
 # use our calamine fork with unreleased fixes, an upgraded quick-xml, and accelerated int/float parsing
-calamine = { git = "https://github.com/jqnatividad/calamine", branch = "qsv-2-optimized"}
+calamine = { git = "https://github.com/jqnatividad/calamine", branch = "qsv-2-optimized" }
 
-# use csvlens with unreleased fixes
-csvlens = { git = "https://github.com/YS-L/csvlens", rev = "f9f062b" }
+# use our fork of csvlens with unreleased fixes, bumped dependencies, and new clap-less API
+csvlens = { git = "https://github.com/jqnatividad/csvlens", branch = "116-clap-optional-dependency-cli-feature" }
 
 # needed as dynfmt doesn't work in release mode without this
 # see https://github.com/jan-auer/dynfmt/pull/9
@@ -318,7 +320,7 @@ grex = { git = "https://github.com/pemistahl/grex", rev = "cb71c10" }
 local-encoding = { git = "https://github.com/slonopotamus/local-encoding-rs", branch = "travis-madness" }
 
 # use unreleased MiniJinja with features we need for DP+ DRUF workflow
-minijinja = { git = "https://github.com/mitsuhiko/minijinja", rev = "d1ce496" }
+minijinja         = { git = "https://github.com/mitsuhiko/minijinja", rev = "d1ce496" }
 minijinja-contrib = { git = "https://github.com/mitsuhiko/minijinja", rev = "d1ce496" }
 
 # use our patched fork of sled to get rid of unmaintained instant
