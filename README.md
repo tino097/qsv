@@ -219,7 +219,7 @@ To install different [variants](#variants) and enable optional features, use car
 
 ```bash
 # to install qsv with all features enabled
-cargo install qsv --locked --bin qsv --features feature_capable,apply,luau,fetch,foreach,python,to,self_update,polars
+cargo install qsv --locked --bin qsv --features feature_capable,apply,fetch,foreach,geocode,luau,polars,python,self_update,to,ui
 # or shorthand
 cargo install qsv --locked --bin qsv -F all_features
 
@@ -251,7 +251,7 @@ To compile different [variants](#variants) and enable optional [features](#featu
 
 ```bash
 # to compile qsv with all features enabled
-cargo build --release --locked --bin qsv --features feature_capable,apply,fetch,foreach,geocode,luau,polars,python,self_update,ui
+cargo build --release --locked --bin qsv --features feature_capable,apply,fetch,foreach,geocode,luau,polars,python,self_update,to,ui
 # shorthand
 cargo build --release --locked --bin qsv -F all_features
 
