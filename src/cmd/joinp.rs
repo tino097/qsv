@@ -105,23 +105,21 @@ joinp options:
                            will be normalized. Note that this will be automatically 
                            enabled when using asof joins.
     --infer-len <arg>      The number of rows to scan when inferring the schema of the CSV.
+                           Only used when --cache-schema is 0 or 1 and no cached schema exists.
                            Set to 0 to do a full table scan (warning: very slow).
                            [default: 10000]
     --cache-schema <arg>   Create and cache Polars schema JSON files.
                            ‎ -2: treat all columns as String. A Polars schema file is created & cached.
                            ‎ -1: treat all columns as String. No Polars schema file is created.
-                             0: do not cache Polars schema.
-                             1: cache Polars schema
-                                If set to 1 and the schema file/s do not exist, it will check if a
-                                stats cache is available. If so, it will use it to derive a Polars
-                                schema and save it. If there's no stats cache, it will infer the
-                                schema using --infer-len and save the inferred schemas. 
-                                Each schema file will have the same file stem as the corresponding
-                                input file, with the extension ".pschema.json"
-                                (data.csv's Polars schema file will be data.pschema.json)
-                                If the file/s exists, it will load the schema instead of inferring it
-                                (ignoring --infer-len) and attempt to use it for each corresponding
-                                Polars "table" with the same file stem.
+                             0: do not cache Polars schema. Uses --infer-len to infer schema.
+                             1: cache Polars schema with the following behavior:
+                                - If schema file exists and is newer than input: use cached schema
+                                - If schema file missing/outdated and stats cache exists: 
+                                  derive schema from stats and cache it
+                                - If no schema or stats cache: infer schema using --infer-len 
+                                  and cache the result
+                                Schema files use the same name as input with .pschema.json extension
+                                (e.g., data.csv -> data.pschema.json)
                            [default: 0]
     --low-memory           Use low memory mode when parsing CSVs. This will use less memory
                            but will be slower. It will also process the join in streaming mode.
