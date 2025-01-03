@@ -785,11 +785,11 @@ impl Args {
         ) -> CliResult<(LazyFrame, bool)> {
             let schema_file = input_path.canonicalize()?.with_extension("pschema.json");
             let mut create_schema = false;
-            let mut cache_schema = args.flag_cache_schema;
-
-            if args.flag_infer_len == 0 {
-                cache_schema = 0;
-            }
+            let cache_schema = if args.flag_infer_len == 0 {
+                0
+            } else {
+                args.flag_cache_schema
+            };
 
             let mut reader =
                 create_lazy_reader(input_path.to_str().unwrap(), comment_char, args, delim);
