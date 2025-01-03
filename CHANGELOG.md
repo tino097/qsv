@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.0] - 2025-01-02
+## [2.0.0] - 2025-01-03
 
 ## What's Changed
 * `ci`: attempt using files-folder instead of files by @rzmk in https://github.com/dathere/qsv/pull/2320
@@ -57,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * build(deps): bump jsonschema from 0.28.0 to 0.28.1 by @dependabot in https://github.com/dathere/qsv/pull/2396
 * build(deps): bump reqwest from 0.12.11 to 0.12.12 by @dependabot in https://github.com/dathere/qsv/pull/2395
 * `stats`: add string length stats to set stage for upcoming `outliers` "smart"  command to quickly identify outliers using stats/frequency info by @jqnatividad in https://github.com/dathere/qsv/pull/2390
+* feat: add `joinp --ignore-leading-zeros` option by @jqnatividad in https://github.com/dathere/qsv/pull/2400
+* feat: `lens` optimized csvlens library usage, dropping clap dependency by @jqnatividad in https://github.com/dathere/qsv/pull/2403
+* build(deps): bump rfd from 0.15.1 to 0.15.2 by @dependabot in https://github.com/dathere/qsv/pull/2404
 
 
 **Full Changelog**: https://github.com/dathere/qsv/compare/1.0.0...2.0.0
