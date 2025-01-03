@@ -214,7 +214,7 @@ redis = { version = "0.27", features = [
     "tcp_nodelay",
 ], default-features = false, optional = true }
 regex = "1"
-reqwest = { version = "=0.12.12", features = [
+reqwest = { version = "0.12", features = [
     "blocking",
     "brotli",
     "cookies",
@@ -320,8 +320,8 @@ grex = { git = "https://github.com/pemistahl/grex", rev = "cb71c10" }
 local-encoding = { git = "https://github.com/slonopotamus/local-encoding-rs", branch = "travis-madness" }
 
 # use unreleased MiniJinja with features we need for DP+ DRUF workflow
-minijinja         = { git = "https://github.com/mitsuhiko/minijinja", rev = "d1ce496" }
-minijinja-contrib = { git = "https://github.com/mitsuhiko/minijinja", rev = "d1ce496" }
+minijinja         = { git = "https://github.com/mitsuhiko/minijinja", rev = "257eb2a" }
+minijinja-contrib = { git = "https://github.com/mitsuhiko/minijinja", rev = "257eb2a" }
 
 # use our patched fork of sled to get rid of unmaintained instant
 sled = { git = "https://github.com/dathere/sled", branch = "v0.34.7-bumped-parking_lot_to_0.12" }
@@ -340,11 +340,11 @@ strum_macros = { git = "https://github.com/dathere/strum", branch = "bump-phf-to
 # BUILD NOTE: Be sure to set QSV_POLARS_REV below to the latest commit short hash or tag 
 # of polars/py-polars before building qsv. This allows us to show the polars rev/tag in --version.
 # if we are using a release version of Rust Polars, leave QSV_POLARS_REV empty
-# QSV_POLARS_REV=9d7a7d3
+# QSV_POLARS_REV=58c1745
 # polars = { git = "https://github.com/pola-rs/polars", tag = "py-1.18.0" }
-polars = { git = "https://github.com/pola-rs/polars", rev = "9d7a7d3" }
+polars = { git = "https://github.com/pola-rs/polars", rev = "58c1745" }
 # polars-ops = { git = "https://github.com/pola-rs/polars", tag = "py-1.18.0" }
-polars-ops = { git = "https://github.com/pola-rs/polars", rev = "9d7a7d3" }
+polars-ops = { git = "https://github.com/pola-rs/polars", rev = "58c1745" }
 
 [features]
 default = ["mimalloc"]
