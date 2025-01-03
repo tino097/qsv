@@ -105,10 +105,12 @@ joinp options:
                            will be normalized. Note that this will be automatically 
                            enabled when using asof joins.
     --infer-len <arg>      The number of rows to scan when inferring the schema of the CSV.
-                           Only used when --cache-schema is 0 or 1 and no cached schema exists.
                            Set to 0 to do a full table scan (warning: very slow).
+                           Only used when --cache-schema is 0 or 1 and no cached schema exists or
+                           when --infer-len is 0.
                            [default: 10000]
     --cache-schema <arg>   Create and cache Polars schema JSON files.
+                           Ignored when --infer-len is 0.
                            ‎ -2: treat all columns as String. A Polars schema file is created & cached.
                            ‎ -1: treat all columns as String. No Polars schema file is created.
                              0: do not cache Polars schema. Uses --infer-len to infer schema.
@@ -783,7 +785,11 @@ impl Args {
         ) -> CliResult<(LazyFrame, bool)> {
             let schema_file = input_path.canonicalize()?.with_extension("pschema.json");
             let mut create_schema = false;
-            let cache_schema = args.flag_cache_schema;
+            let mut cache_schema = args.flag_cache_schema;
+
+            if args.flag_infer_len == 0 {
+                cache_schema = 0;
+            }
 
             let mut reader =
                 create_lazy_reader(input_path.to_str().unwrap(), comment_char, args, delim);
