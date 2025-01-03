@@ -26,7 +26,7 @@ Common options:
 
 use std::path::PathBuf;
 
-use csvlens::run_csvlens;
+use csvlens::{run_csvlens_with_options, CsvlensOptions};
 use serde::Deserialize;
 use tempfile;
 
@@ -49,8 +49,6 @@ struct Args {
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
 
-    let mut lens_args = Vec::new();
-
     // Process input file
     // support stdin and auto-decompress snappy file
     // stdin/decompressed file is written to a temporary file in tmpdir
@@ -65,55 +63,30 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         "",
     )?;
     let input = work_input[0].to_string_lossy().to_string();
-    lens_args.push(input.clone());
 
     // we do config here to get the delimiter, just in case
     // QSV_SNIFF_DELIMITER or QSV_DELIMITER is set
-    let config: Config = Config::new(Some(input).as_ref());
+    let config: Config = Config::new(Some(input.clone()).as_ref());
 
-    if let Some(delimiter) = &args.flag_delimiter {
-        lens_args.extend_from_slice(&["--delimiter".to_string(), delimiter.to_string()]);
-    } else {
-        lens_args.extend_from_slice(&[
-            "--delimiter".to_string(),
-            (config.get_delimiter() as char).to_string(),
-        ]);
-    }
+    let options = CsvlensOptions {
+        filename:      Some(input),
+        delimiter:     if let Some(delimiter) = args.flag_delimiter {
+            Some(delimiter)
+        } else {
+            Some((config.get_delimiter() as char).to_string())
+        },
+        tab_separated: args.flag_tab_separated,
+        no_headers:    args.flag_no_headers,
+        columns:       args.flag_columns,
+        filter:        args.flag_filter,
+        find:          args.flag_find,
+        ignore_case:   args.flag_ignore_case,
+        echo_column:   args.flag_echo_column,
+        debug:         args.flag_debug,
+    };
 
-    if args.flag_tab_separated {
-        lens_args.push("--tab-separated".to_string());
-    }
-
-    if args.flag_no_headers {
-        lens_args.push("--no-headers".to_string());
-    }
-
-    if let Some(columns) = &args.flag_columns {
-        lens_args.extend_from_slice(&["--columns".to_string(), columns.to_string()]);
-    }
-
-    if let Some(filter) = &args.flag_filter {
-        lens_args.extend_from_slice(&["--filter".to_string(), filter.to_string()]);
-    }
-
-    if let Some(find) = &args.flag_find {
-        lens_args.extend_from_slice(&["--find".to_string(), find.to_string()]);
-    }
-
-    if args.flag_ignore_case {
-        lens_args.push("--ignore-case".to_string());
-    }
-
-    if let Some(echo_column) = &args.flag_echo_column {
-        lens_args.extend_from_slice(&["--echo-column".to_string(), echo_column.to_string()]);
-    }
-
-    if args.flag_debug {
-        lens_args.push("--debug".to_string());
-    }
-
-    let out =
-        run_csvlens(&lens_args).map_err(|e| CliError::Other(format!("csvlens error: {e}")))?;
+    let out = run_csvlens_with_options(options)
+        .map_err(|e| CliError::Other(format!("csvlens error: {e}")))?;
 
     if let Some(selected_cell) = out {
         println!("{selected_cell}");
