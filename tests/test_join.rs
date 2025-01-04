@@ -368,3 +368,224 @@ join_test!(
         assert_eq!(got, expected);
     }
 );
+
+#[test]
+fn join_keys_output_inner() {
+    let wrk = Workdir::new("join_keys_inner");
+    wrk.create(
+        "letters.csv",
+        vec![
+            svec!["letter", "value"],
+            svec!["a", "1"],
+            svec!["b", "2"],
+            svec!["c", "3"],
+        ],
+    );
+    wrk.create(
+        "numbers.csv",
+        vec![
+            svec!["letter", "num"],
+            svec!["b", "foo"],
+            svec!["c", "bar"],
+            svec!["d", "baz"],
+        ],
+    );
+
+    let mut cmd = wrk.command("join");
+    cmd.args(["letter", "letters.csv", "letter", "numbers.csv"])
+        .arg("--keys-output")
+        .arg("keys.csv");
+
+    wrk.run(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk
+        .read_to_string("keys.csv")
+        .unwrap()
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|line| line.split(',').map(String::from).collect())
+        .collect();
+    let expected = vec![svec!["b"], svec!["c"]];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn join_keys_output_left_anti() {
+    let wrk = Workdir::new("join_keys_left_anti");
+    wrk.create(
+        "letters.csv",
+        vec![
+            svec!["letter", "value"],
+            svec!["a", "1"],
+            svec!["b", "2"],
+            svec!["c", "3"],
+        ],
+    );
+    wrk.create(
+        "numbers.csv",
+        vec![
+            svec!["letter", "num"],
+            svec!["b", "foo"],
+            svec!["c", "bar"],
+            svec!["d", "baz"],
+        ],
+    );
+
+    let mut cmd = wrk.command("join");
+    cmd.args(["letter", "letters.csv", "letter", "numbers.csv"])
+        .arg("--left-anti")
+        .arg("--keys-output")
+        .arg("keys.csv");
+
+    wrk.run(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk
+        .read_to_string("keys.csv")
+        .unwrap()
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|line| line.split(',').map(String::from).collect())
+        .collect();
+    let expected = vec![svec!["a"]]; // Only 'a' has no match in numbers.csv
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn join_keys_output_left_semi() {
+    let wrk = Workdir::new("join_keys_left_semi");
+    wrk.create(
+        "letters.csv",
+        vec![
+            svec!["letter", "value"],
+            svec!["a", "1"],
+            svec!["b", "2"],
+            svec!["c", "3"],
+        ],
+    );
+    wrk.create(
+        "numbers.csv",
+        vec![
+            svec!["letter", "num"],
+            svec!["b", "foo"],
+            svec!["c", "bar"],
+            svec!["d", "baz"],
+        ],
+    );
+
+    let mut cmd = wrk.command("join");
+    cmd.args(["letter", "letters.csv", "letter", "numbers.csv"])
+        .arg("--left-semi")
+        .arg("--keys-output")
+        .arg("keys.csv");
+
+    wrk.run(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk
+        .read_to_string("keys.csv")
+        .unwrap()
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|line| line.split(',').map(String::from).collect())
+        .collect();
+    let expected = vec![svec!["b"], svec!["c"]]; // 'b' and 'c' have matches
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn join_keys_output_full() {
+    let wrk = Workdir::new("join_keys_full");
+    wrk.create(
+        "letters.csv",
+        vec![
+            svec!["letter", "value"],
+            svec!["a", "1"],
+            svec!["b", "2"],
+            svec!["c", "3"],
+        ],
+    );
+    wrk.create(
+        "numbers.csv",
+        vec![
+            svec!["letter", "num"],
+            svec!["b", "foo"],
+            svec!["c", "bar"],
+            svec!["d", "baz"],
+        ],
+    );
+
+    let mut cmd = wrk.command("join");
+    cmd.args(["letter", "letters.csv", "letter", "numbers.csv"])
+        .arg("--full")
+        .arg("--keys-output")
+        .arg("keys.csv");
+
+    wrk.run(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk
+        .read_to_string("keys.csv")
+        .unwrap()
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|line| line.split(',').map(String::from).collect())
+        .collect();
+    let expected = vec![svec!["b"], svec!["c"]]; // Only matched keys are written
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn join_keys_output_multiple_columns() {
+    let wrk = Workdir::new("join_keys_multiple");
+    wrk.create(
+        "data1.csv",
+        vec![
+            svec!["city", "state", "val"],
+            svec!["Boston", "MA", "1"],
+            svec!["New York", "NY", "2"],
+            svec!["Chicago", "IL", "3"],
+        ],
+    );
+    wrk.create(
+        "data2.csv",
+        vec![
+            svec!["city", "state", "pop"],
+            svec!["Boston", "MA", "100"],
+            svec!["Chicago", "IL", "300"],
+            svec!["Miami", "FL", "400"],
+        ],
+    );
+
+    let mut cmd = wrk.command("join");
+    cmd.args(["city,state", "data1.csv", "city,state", "data2.csv"])
+        .arg("--keys-output")
+        .arg("keys.csv");
+
+    wrk.run(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk
+        .read_to_string("keys.csv")
+        .unwrap()
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|line| line.split(',').map(String::from).collect())
+        .collect();
+    let expected = vec![svec!["Boston", "MA"], svec!["Chicago", "IL"]];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn join_keys_output_cross() {
+    let wrk = Workdir::new("join_keys_cross");
+    wrk.create("letters.csv", vec![svec!["letter"], svec!["a"], svec!["b"]]);
+    wrk.create("numbers.csv", vec![svec!["num"], svec!["1"], svec!["2"]]);
+
+    let mut cmd = wrk.command("join");
+    cmd.args(["letter", "letters.csv", "num", "numbers.csv"])
+        .arg("--cross")
+        .arg("--keys-output")
+        .arg("keys.csv");
+
+    wrk.run(&mut cmd);
+
+    // Cross join should not produce any keys output
+    assert!(!wrk.path("keys.csv").exists());
+}
