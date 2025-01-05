@@ -104,9 +104,7 @@ data-encoding = { version = "2.6", optional = true }
 dotenvy = "0.15"
 dynfmt = { version = "0.1", default-features = false, features = ["curly"] }
 eudex = { version = "0.1", optional = true }
-ext-sort = { version = "0.1", features = [
-    "memory-limit",
-], default-features = false }
+ext-sort = { version = "0.1", default-features = false }
 fast-float2 = "0.2"
 flate2 = { version = "1", optional = true }
 file-format = { version = "0.26", features = ["reader"] }
