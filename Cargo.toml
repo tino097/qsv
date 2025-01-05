@@ -331,9 +331,6 @@ sled = { git = "https://github.com/dathere/sled", branch = "v0.34.7-bumped-parki
 strum        = { git = "https://github.com/dathere/strum", branch = "bump-phf-to-0.11" }
 strum_macros = { git = "https://github.com/dathere/strum", branch = "bump-phf-to-0.11" }
 
-# use our fork of tabwriter with bumped unicode-width dependencies
-tabwriter = { git = "https://github.com/jqnatividad/tabwriter", branch = "bump_unicode-width_from-0.1-to-0.2" }
-
 # use textwrap upstream with unreleased fixes and dependencies, used by minijinja-contrib
 textwrap = { git = "https://github.com/mgeisler/textwrap", rev = "0e581b8"}
 
