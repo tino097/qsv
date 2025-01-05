@@ -25,7 +25,7 @@ External sort option:
                            If less than 50, this is a percentage of total memory.
                            If more than 50, this is the memory in MB to allocate, capped
                            at 90 percent of total memory.
-                           [default: 10]
+                           [default: 20]
     --tmp-dir <arg>        The directory to use for externally sorting file segments.
                            [default: ./]
     -j, --jobs <arg>       The number of jobs to run in parallel.
@@ -50,7 +50,7 @@ use std::{
     path,
 };
 
-use ext_sort::{buffer::mem::MemoryLimitedBufferBuilder, ExternalSorter, ExternalSorterBuilder};
+use ext_sort::{ExternalSorter, ExternalSorterBuilder, LimitedBufferBuilder};
 use serde::Deserialize;
 
 use crate::{
@@ -95,10 +95,13 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let mem_limited_buffer_bytes = calculate_memory_limit(args.flag_memory_limit);
     log::info!("{mem_limited_buffer_bytes} bytes used for in memory mergesort buffer...");
 
-    let sorter: ExternalSorter<String, io::Error, MemoryLimitedBufferBuilder> =
+    let sorter: ExternalSorter<String, io::Error, LimitedBufferBuilder> =
         match ExternalSorterBuilder::new()
             .with_tmp_dir(path::Path::new(&tmp_dir))
-            .with_buffer(MemoryLimitedBufferBuilder::new(mem_limited_buffer_bytes))
+            .with_buffer(LimitedBufferBuilder::new(
+                mem_limited_buffer_bytes as usize,
+                true,
+            ))
             .with_rw_buf_size(RW_BUFFER_CAPACITY)
             .with_threads_number(util::njobs(args.flag_jobs))
             .build()
@@ -119,7 +122,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 fn sort_csv(
     args: &Args,
     tmp_dir: &str,
-    sorter: &ExternalSorter<String, io::Error, MemoryLimitedBufferBuilder>,
+    sorter: &ExternalSorter<String, io::Error, LimitedBufferBuilder>,
 ) -> Result<(), crate::clitypes::CliError> {
     let rconfig = Config::new(args.arg_input.as_ref())
         .delimiter(args.flag_delimiter)
@@ -247,7 +250,7 @@ fn sort_csv(
 
 fn sort_lines(
     args: &Args,
-    sorter: &ExternalSorter<String, io::Error, MemoryLimitedBufferBuilder>,
+    sorter: &ExternalSorter<String, io::Error, LimitedBufferBuilder>,
 ) -> Result<(), crate::clitypes::CliError> {
     let mut input_rdr: Box<dyn BufRead> = match &args.arg_input {
         Some(input_path) => {
