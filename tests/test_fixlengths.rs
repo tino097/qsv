@@ -212,3 +212,155 @@ fn prop_fixlengths_explicit_len() {
     }
     qcheck(p as fn(Vec<CsvRecord>, usize) -> TestResult);
 }
+
+#[test]
+fn fixlengths_remove_empty_basic() {
+    let rows = vec![
+        svec!["a", "", "c", "", "e"],
+        svec!["f", "", "h", "", "j"],
+        svec!["k", "", "m", "", "o"],
+    ];
+
+    let wrk = Workdir::new("fixlengths_remove_empty_basic").flexible(true);
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("fixlengths");
+    cmd.arg("in.csv").args(["-r"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert_eq!(
+        got,
+        vec![
+            svec!["a", "c", "e"],
+            svec!["f", "h", "j"],
+            svec!["k", "m", "o"],
+        ]
+    );
+}
+
+#[test]
+fn fixlengths_remove_empty_with_length() {
+    let rows = vec![
+        svec!["a", "", "c", "", "e"],
+        svec!["f", "", "h", "", "j"],
+        svec!["k", "", "m", "", "o"],
+    ];
+
+    let wrk = Workdir::new("fixlengths_remove_empty_with_length").flexible(true);
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("fixlengths");
+    cmd.arg("in.csv").args(["-r"]).args(["-l", "4"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert_eq!(
+        got,
+        vec![
+            svec!["a", "c", "e", ""],
+            svec!["f", "h", "j", ""],
+            svec!["k", "m", "o", ""],
+        ]
+    );
+}
+
+#[test]
+fn fixlengths_remove_empty_with_insert() {
+    let rows = vec![
+        svec!["a", "", "c", "", "e"],
+        svec!["f", "", "h", "", "j"],
+        svec!["k", "", "m", "", "o"],
+    ];
+
+    let wrk = Workdir::new("fixlengths_remove_empty_with_insert").flexible(true);
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("fixlengths");
+    cmd.arg("in.csv").args(["-r"]).args(["-i", "2"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert_eq!(
+        got,
+        vec![
+            svec!["a", "c", "e"],
+            svec!["f", "h", "j"],
+            svec!["k", "m", "o"],
+        ]
+    );
+}
+
+#[test]
+fn fixlengths_remove_empty_with_length_and_insert() {
+    let rows = vec![
+        svec!["a", "", "c", "", "e"],
+        svec!["f", "", "h", "", "j"],
+        svec!["k", "", "m", "", "o"],
+    ];
+
+    let wrk = Workdir::new("fixlengths_remove_empty_with_length_and_insert").flexible(true);
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("fixlengths");
+    cmd.arg("in.csv")
+        .args(["-r"])
+        .args(["-l", "5"])
+        .args(["-i", "2"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert_eq!(
+        got,
+        vec![
+            svec!["a", "", "", "c", "e"],
+            svec!["f", "", "", "h", "j"],
+            svec!["k", "", "", "m", "o"],
+        ]
+    );
+}
+
+#[test]
+fn fixlengths_remove_empty_all_empty_columns() {
+    let rows = vec![
+        svec!["a", "", "", "", "e"],
+        svec!["f", "", "", "", "j"],
+        svec!["k", "", "", "", "o"],
+    ];
+
+    let wrk = Workdir::new("fixlengths_remove_empty_all_empty_columns").flexible(true);
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("fixlengths");
+    cmd.arg("in.csv").args(["-r"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert_eq!(
+        got,
+        vec![svec!["a", "e"], svec!["f", "j"], svec!["k", "o"],]
+    );
+}
+
+#[test]
+fn fixlengths_remove_empty_with_negative_insert() {
+    let rows = vec![
+        svec!["a", "", "c", "", "e"],
+        svec!["f", "", "h", "", "j"],
+        svec!["k", "", "m", "", "o"],
+    ];
+
+    let wrk = Workdir::new("fixlengths_remove_empty_with_negative_insert").flexible(true);
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("fixlengths");
+    cmd.arg("in.csv")
+        .args(["-r"])
+        .args(["-l", "5"])
+        .args(["-i", "-2"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert_eq!(
+        got,
+        vec![
+            svec!["a", "c", "", "", "e"],
+            svec!["f", "h", "", "", "j"],
+            svec!["k", "m", "", "", "o"],
+        ]
+    );
+}
