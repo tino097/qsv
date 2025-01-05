@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.0] - 2025-01-03
+## [2.0.0] - 2025-01-05
 
 ## What's Changed
 * `ci`: attempt using files-folder instead of files by @rzmk in https://github.com/dathere/qsv/pull/2320
@@ -60,6 +60,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * feat: add `joinp --ignore-leading-zeros` option by @jqnatividad in https://github.com/dathere/qsv/pull/2400
 * feat: `lens` optimized csvlens library usage, dropping clap dependency by @jqnatividad in https://github.com/dathere/qsv/pull/2403
 * build(deps): bump rfd from 0.15.1 to 0.15.2 by @dependabot in https://github.com/dathere/qsv/pull/2404
+* `join`: add `--keys-output` option by @jqnatividad in https://github.com/dathere/qsv/pull/2408
+* `joinp`: add non-equi join support! 🎉  💯  🥳  by @jqnatividad in https://github.com/dathere/qsv/pull/2409
+* `fixlengths`: add `--remove-empty` option; refactored for performance by @jqnatividad in https://github.com/dathere/qsv/pull/2411
 
 
 **Full Changelog**: https://github.com/dathere/qsv/compare/1.0.0...2.0.0
