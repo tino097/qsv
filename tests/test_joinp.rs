@@ -1973,3 +1973,244 @@ fn joinp_ignore_case_and_leading_zeros() {
     ];
     assert_eq!(got, expected);
 }
+
+#[test]
+fn joinp_non_equi_greater_than() {
+    let wrk = Workdir::new("joinp_non_equi_greater_than");
+
+    // Create test data with numeric values to compare
+    let prices = vec![
+        svec!["item", "price"],
+        svec!["apple", "1.00"],
+        svec!["banana", "2.00"],
+        svec!["orange", "3.00"],
+    ];
+    let budgets = vec![
+        svec!["customer", "budget"],
+        svec!["Alice", "2.50"],
+        svec!["Bob", "1.50"],
+        svec!["Carol", "3.50"],
+    ];
+
+    wrk.create("prices.csv", prices);
+    wrk.create("budgets.csv", budgets);
+
+    let mut cmd = wrk.command("joinp");
+    cmd.arg("--non-equi")
+        .arg("budget_right > price_left")
+        .args(&["prices.csv", "budgets.csv"])
+        .args(["--float-precision", "2"]);
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["item_left", "price_left", "customer_right", "budget_right"],
+        svec!["apple", "1.00", "Bob", "1.50"],
+        svec!["apple", "1.00", "Alice", "2.50"],
+        svec!["apple", "1.00", "Carol", "3.50"],
+        svec!["banana", "2.00", "Alice", "2.50"],
+        svec!["banana", "2.00", "Carol", "3.50"],
+        svec!["orange", "3.00", "Carol", "3.50"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn joinp_non_equi_less_than() {
+    let wrk = Workdir::new("joinp_non_equi_less_than");
+
+    let dates = vec![
+        svec!["event", "date"],
+        svec!["meeting", "2024-01-01"],
+        svec!["party", "2024-06-15"],
+        svec!["conference", "2024-12-31"],
+    ];
+    let deadlines = vec![
+        svec!["task", "deadline"],
+        svec!["report", "2024-03-01"],
+        svec!["presentation", "2024-07-01"],
+        svec!["review", "2024-12-15"],
+    ];
+
+    wrk.create("events.csv", dates);
+    wrk.create("deadlines.csv", deadlines);
+
+    let mut cmd = wrk.command("joinp");
+    cmd.arg("--non-equi")
+        .arg("date_left < deadline_right")
+        .args(&["events.csv", "deadlines.csv"]);
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["event_left", "date_left", "task_right", "deadline_right"],
+        svec!["meeting", "2024-01-01", "report", "2024-03-01"],
+        svec!["meeting", "2024-01-01", "presentation", "2024-07-01"],
+        svec!["meeting", "2024-01-01", "review", "2024-12-15"],
+        svec!["party", "2024-06-15", "presentation", "2024-07-01"],
+        svec!["party", "2024-06-15", "review", "2024-12-15"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn joinp_non_equi_less_than_date_arithmetic() {
+    let wrk = Workdir::new("joinp_non_equi_less_than_date_arithmetic");
+
+    let dates = vec![
+        svec!["event", "date"],
+        svec!["meeting", "2024-01-01"],
+        svec!["party", "2024-06-15"],
+        svec!["conference", "2024-12-31"],
+    ];
+    let deadlines = vec![
+        svec!["task", "deadline"],
+        svec!["report", "2024-03-01"],
+        svec!["presentation", "2024-07-01"],
+        svec!["review", "2024-12-15"],
+    ];
+
+    wrk.create("events.csv", dates);
+    wrk.create("deadlines.csv", deadlines);
+
+    let mut cmd = wrk.command("joinp");
+    cmd.arg("--non-equi")
+        .arg("date_left  + interval '4 months' < deadline_right")
+        .args(&["events.csv", "deadlines.csv"])
+        .arg("--try-parsedates");
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["event_left", "date_left", "task_right", "deadline_right"],
+        // svec!["meeting", "2024-01-01", "report", "2024-03-01"], this is less than 4 months
+        svec!["meeting", "2024-01-01", "presentation", "2024-07-01"],
+        svec!["meeting", "2024-01-01", "review", "2024-12-15"],
+        // svec!["party", "2024-06-15", "presentation", "2024-07-01"], this is less than 4 months
+        svec!["party", "2024-06-15", "review", "2024-12-15"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn joinp_non_equi_not_equal() {
+    let wrk = Workdir::new("joinp_non_equi_not_equal");
+
+    let teams = vec![
+        svec!["player", "team"],
+        svec!["Alice", "Red"],
+        svec!["Bob", "Blue"],
+        svec!["Carol", "Red"],
+    ];
+    let matches = vec![
+        svec!["opponent1", "team"],
+        svec!["David", "Green"],
+        svec!["Eve", "Blue"],
+        svec!["Frank", "Red"],
+    ];
+
+    wrk.create("teams.csv", teams);
+    wrk.create("matches.csv", matches);
+
+    let mut cmd = wrk.command("joinp");
+    cmd.arg("--non-equi")
+        .arg("team_left != team_right")
+        .args(&["teams.csv", "matches.csv"]);
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["player_left", "team_left", "opponent1_right", "team_right"],
+        svec!["Alice", "Red", "David", "Green"],
+        svec!["Alice", "Red", "Eve", "Blue"],
+        svec!["Bob", "Blue", "David", "Green"],
+        svec!["Bob", "Blue", "Frank", "Red"],
+        svec!["Carol", "Red", "David", "Green"],
+        svec!["Carol", "Red", "Eve", "Blue"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn joinp_non_equi_invalid_operator() {
+    let wrk = Workdir::new("joinp_non_equi_invalid_operator");
+
+    let mut cmd = wrk.command("joinp");
+    cmd.arg("--non-equi")
+        .arg("col1 INVALID col2")
+        .args(&["cities.csv", "places.csv"]);
+
+    wrk.assert_err(&mut cmd);
+}
+
+#[test]
+fn joinp_non_equi_invalid_format() {
+    let wrk = Workdir::new("joinp_non_equi_invalid_format");
+
+    let mut cmd = wrk.command("joinp");
+    cmd.arg("--non-equi")
+        .arg("invalid expression format")
+        .args(&["cities.csv", "places.csv"]);
+
+    wrk.assert_err(&mut cmd);
+}
+
+#[test]
+fn joinp_non_equi_compound() {
+    let wrk = Workdir::new("joinp_non_equi_compound");
+
+    // Create test data with employee salaries and job requirements
+    let employees = vec![
+        svec!["name", "salary", "experience"],
+        svec!["Alice", "75000", "5"],
+        svec!["Bob", "85000", "3"],
+        svec!["Carol", "95000", "8"],
+        svec!["David", "65000", "2"],
+    ];
+    let jobs = vec![
+        svec!["position", "min_salary", "min_exp", "max_salary"],
+        svec!["Senior Dev", "80000", "5", "100000"],
+        svec!["Junior Dev", "60000", "2", "80000"],
+        svec!["Tech Lead", "90000", "7", "120000"],
+    ];
+
+    wrk.create("employees.csv", employees);
+    wrk.create("jobs.csv", jobs);
+
+    let mut cmd = wrk.command("joinp");
+    cmd.arg("--non-equi")
+        .arg(
+            "salary_left >= min_salary_right AND salary_left <= max_salary_right AND \
+             experience_left >= min_exp_right",
+        )
+        .args(&["employees.csv", "jobs.csv"])
+        .args(&[
+            "--sql-filter",
+            "select * from join_result order by name_left, salary_left, experience_left, \
+             position_right",
+        ]);
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec![
+            "name_left",
+            "salary_left",
+            "experience_left",
+            "position_right",
+            "min_salary_right",
+            "min_exp_right",
+            "max_salary_right"
+        ],
+        svec!["Alice", "75000", "5", "Junior Dev", "60000", "2", "80000"],
+        svec!["Carol", "95000", "8", "Senior Dev", "80000", "5", "100000"],
+        svec!["Carol", "95000", "8", "Tech Lead", "90000", "7", "120000"],
+        svec!["David", "65000", "2", "Junior Dev", "60000", "2", "80000"],
+    ];
+    assert_eq!(got, expected);
+}
