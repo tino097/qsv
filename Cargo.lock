@@ -6640,10 +6640,9 @@ dependencies = [
 [[package]]
 name = "tabwriter"
 version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a327282c4f64f6dc37e3bba4c2b6842cc3a992f204fa58d917696a89f691e5f6"
+source = "git+https://github.com/jqnatividad/tabwriter?branch=bump_unicode-width_from-0.1-to-0.2#52e2cf8296e62268a143f88cba66ec57b6d63134"
 dependencies = [
- "unicode-width 0.1.14",
+ "unicode-width 0.2.0",
 ]
 
 [[package]]
@@ -6675,12 +6674,11 @@ dependencies = [
 [[package]]
 name = "textwrap"
 version = "0.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23d434d3f8967a09480fb04132ebe0a3e088c173e6d0ee7897abbdf4eab0f8b9"
+source = "git+https://github.com/mgeisler/textwrap?rev=0e581b8#0e581b8e7794043eed5aa07511f2b8ce6516ede7"
 dependencies = [
  "smawk",
  "unicode-linebreak",
- "unicode-width 0.1.14",
+ "unicode-width 0.2.0",
 ]
 
 [[package]]
