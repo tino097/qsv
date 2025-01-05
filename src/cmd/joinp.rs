@@ -15,10 +15,12 @@ For examples, see https://github.com/dathere/qsv/blob/master/tests/test_joinp.rs
 Usage:
     qsv joinp [options] <columns1> <input1> <columns2> <input2>
     qsv joinp --cross [--validate <arg>] <input1> <input2> [--output <file>]
+    qsv joinp --non-equi <expr> <input1> <input2> [options] [--output <file>]
     qsv joinp --help
 
 joinp arguments:
-    Both <input1> and <input2> files need to have headers. Stdin is not supported.
+    Both <input1> aka <left> & <input2> aka <right> files need to have headers.
+    Stdin is not supported.
 
     The columns arguments specify the columns to join for each input. Columns are
     referenced by name. Specify multiple columns by separating them with a comma.
@@ -66,6 +68,17 @@ joinp options:
                            equal to N * M, where N and M correspond to the
                            number of rows in the given data sets, respectively.
                            The columns1 and columns2 arguments are ignored.
+    --non-equi <expr>      Do a non-equi join. The given expression is evaluated
+                           for each row in the left dataset and can refer to columns
+                           in the left and right dataset. If the expression evaluates
+                           to true, the row is joined with the corresponding row in
+                           the right dataset.
+                           The expression is a valid Polars SQL where clause, with each
+                           column name followed by "_left" or "_right" suffixes to indicate
+                           which data set the column belongs to.
+                           (e.g. "salary_left >= min_salary_right AND \
+                                  salary_left <= max_salary_right AND \
+                                  experience_left >= min_exp_right")
 
     --coalesce             Force the join to coalesce columns with the same name.
                            For inner joins, this is not necessary as the join
@@ -193,9 +206,9 @@ joinp options:
 
                              OUTPUT FORMAT OPTIONS:
    --sql-filter <SQL>        The SQL expression to apply against the join result.
-                             Ordinarily used to select columns and filter rows from 
-                             the join result. Be sure to select from the "join_result"
-                             table when formulating the SQL expression.
+                             Used to select columns and filter rows AFTER running the join.
+                             Be sure to select from the "join_result" table when formulating
+                             the SQL expression.
                              (e.g. "select c1, c2 as colname from join_result where c2 > 20")
    --datetime-format <fmt>   The datetime format to use writing datetimes.
                              See https://docs.rs/chrono/latest/chrono/format/strftime/index.html
@@ -247,6 +260,7 @@ struct Args {
     flag_right_semi:           bool,
     flag_full:                 bool,
     flag_cross:                bool,
+    flag_non_equi:             Option<String>,
     flag_coalesce:             bool,
     flag_filter_left:          Option<String>,
     flag_filter_right:         Option<String>,
@@ -277,6 +291,13 @@ struct Args {
     flag_quiet:                bool,
     flag_ignore_case:          bool,
     flag_ignore_leading_zeros: bool,
+}
+
+#[derive(PartialEq, Eq)]
+enum SpecialJoin {
+    NonEqui(String),
+    AsOf,
+    None,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -331,54 +352,86 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         args.flag_full,
         args.flag_cross,
         args.flag_asof,
+        args.flag_non_equi.is_some(),
     ) {
         // default inner join
-        (false, false, false, false, false, false, false, false, false) => {
-            join.run(JoinType::Inner, validation, maintain_order, false)
-        },
+        (false, false, false, false, false, false, false, false, false, false) => join.run(
+            JoinType::Inner,
+            validation,
+            maintain_order,
+            SpecialJoin::None,
+        ),
         // left join
-        (true, false, false, false, false, false, false, false, false) => {
-            join.run(JoinType::Left, validation, maintain_order, false)
-        },
+        (true, false, false, false, false, false, false, false, false, false) => join.run(
+            JoinType::Left,
+            validation,
+            maintain_order,
+            SpecialJoin::None,
+        ),
         // left anti join
-        (false, true, false, false, false, false, false, false, false) => {
-            join.run(JoinType::Anti, validation, maintain_order, false)
-        },
+        (false, true, false, false, false, false, false, false, false, false) => join.run(
+            JoinType::Anti,
+            validation,
+            maintain_order,
+            SpecialJoin::None,
+        ),
         // left semi join
-        (false, false, true, false, false, false, false, false, false) => {
-            join.run(JoinType::Semi, validation, maintain_order, false)
-        },
+        (false, false, true, false, false, false, false, false, false, false) => join.run(
+            JoinType::Semi,
+            validation,
+            maintain_order,
+            SpecialJoin::None,
+        ),
         // right join
-        (false, false, false, true, false, false, false, false, false) => {
-            join.run(JoinType::Right, validation, maintain_order, false)
-        },
+        (false, false, false, true, false, false, false, false, false, false) => join.run(
+            JoinType::Right,
+            validation,
+            maintain_order,
+            SpecialJoin::None,
+        ),
         // right anti join
         // swap left and right data sets and run left anti join
-        (false, false, false, false, true, false, false, false, false) => {
+        (false, false, false, false, true, false, false, false, false, false) => {
             let mut swapped_join = join;
             swap(&mut swapped_join.left_lf, &mut swapped_join.right_lf);
             swap(&mut swapped_join.left_sel, &mut swapped_join.right_sel);
-            swapped_join.run(JoinType::Anti, validation, maintain_order, false)
+            swapped_join.run(
+                JoinType::Anti,
+                validation,
+                maintain_order,
+                SpecialJoin::None,
+            )
         },
         // right semi join
         // swap left and right data sets and run left semi join
-        (false, false, false, false, false, true, false, false, false) => {
+        (false, false, false, false, false, true, false, false, false, false) => {
             let mut swapped_join = join;
             swap(&mut swapped_join.left_lf, &mut swapped_join.right_lf);
             swap(&mut swapped_join.left_sel, &mut swapped_join.right_sel);
-            swapped_join.run(JoinType::Semi, validation, maintain_order, false)
+            swapped_join.run(
+                JoinType::Semi,
+                validation,
+                maintain_order,
+                SpecialJoin::None,
+            )
         },
         // full join
-        (false, false, false, false, false, false, true, false, false) => {
-            join.run(JoinType::Full, validation, maintain_order, false)
-        },
+        (false, false, false, false, false, false, true, false, false, false) => join.run(
+            JoinType::Full,
+            validation,
+            maintain_order,
+            SpecialJoin::None,
+        ),
         // cross join
-        (false, false, false, false, false, false, false, true, false) => {
-            join.run(JoinType::Cross, validation, MaintainOrderJoin::None, false)
-        },
+        (false, false, false, false, false, false, false, true, false, false) => join.run(
+            JoinType::Cross,
+            validation,
+            MaintainOrderJoin::None,
+            SpecialJoin::None,
+        ),
 
         // as of join
-        (false, false, false, false, false, false, false, false, true) => {
+        (false, false, false, false, false, false, false, false, true, false) => {
             // safety: flag_strategy is always is_some() as it has a default value
             args.flag_strategy = Some(args.flag_strategy.unwrap().to_lowercase());
             let strategy = match args.flag_strategy.as_deref() {
@@ -427,7 +480,19 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 JoinType::AsOf(asof_options),
                 validation,
                 MaintainOrderJoin::None,
-                true,
+                SpecialJoin::AsOf,
+            )
+        },
+
+        // non-equi join
+        (false, false, false, false, false, false, false, false, false, true) => {
+            // JoinType::Inner is just a placeholder value to satisfy the compiler
+            // as this is a non-equi join
+            join.run(
+                JoinType::Inner,
+                validation,
+                maintain_order,
+                SpecialJoin::NonEqui(args.flag_non_equi.unwrap()),
             )
         },
         _ => fail_incorrectusage_clierror!("Please pick exactly one join operation."),
@@ -465,7 +530,7 @@ impl JoinStruct {
         jointype: JoinType,
         validation: JoinValidation,
         maintain_order: MaintainOrderJoin,
-        asof_join: bool,
+        special_join: SpecialJoin,
     ) -> CliResult<(usize, usize)> {
         let mut left_selcols: Vec<_> = self
             .left_sel
@@ -581,7 +646,8 @@ impl JoinStruct {
                 .finish()
                 .collect()?
         } else {
-            if asof_join {
+            if special_join == SpecialJoin::AsOf {
+                // it's an asof join
                 // sort by the asof columns, as asof joins require sorted join column data
                 let left_selcols_vec: Vec<PlSmallStr> =
                     self.left_sel.split(',').map(PlSmallStr::from_str).collect();
@@ -601,19 +667,38 @@ impl JoinStruct {
                     .sort(right_selcols_vec, SortMultipleOptions::default());
             }
 
-            self.left_lf
-                .with_optimizations(optflags)
-                .join_builder()
-                .with(self.right_lf.with_optimizations(optflags))
-                .left_on(left_selcols)
-                .right_on(right_selcols)
-                .how(jointype)
-                .maintain_order(maintain_order)
-                .coalesce(coalesce_flag)
-                .allow_parallel(true)
-                .validate(validation)
-                .finish()
-                .collect()?
+            if let SpecialJoin::NonEqui(expr) = special_join {
+                // it's a non-equi join
+                let expr = polars::sql::sql_expr(expr)?;
+
+                // Add "_left" & "_right" suffixes to all columns before doing the non-equi join.
+                // This is necessary as the NonEqui expression is a SQL where clause and the
+                // column names for the left and right data sets are used in the expression.
+                self.left_lf = self.left_lf.select([all().name().suffix("_left")]);
+                self.right_lf = self.right_lf.select([all().name().suffix("_right")]);
+
+                self.left_lf
+                    .with_optimizations(optflags)
+                    .join_builder()
+                    .with(self.right_lf.with_optimizations(optflags))
+                    .join_where(vec![expr])
+                    .collect()?
+            } else {
+                // it's one of the "standard" joins as indicated by jointype
+                self.left_lf
+                    .with_optimizations(optflags)
+                    .join_builder()
+                    .with(self.right_lf.with_optimizations(optflags))
+                    .left_on(left_selcols)
+                    .right_on(right_selcols)
+                    .how(jointype)
+                    .maintain_order(maintain_order)
+                    .coalesce(coalesce_flag)
+                    .allow_parallel(true)
+                    .validate(validation)
+                    .finish()
+                    .collect()?
+            }
         };
 
         let mut results_df = if let Some(sql_filter) = &self.sql_filter {
