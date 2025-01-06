@@ -42,7 +42,7 @@
 arg_pat="$1"
 
 # the version of this script
-bm_version=5.6.0
+bm_version=6.0.0
 
 # CONFIGURABLE VARIABLES ---------------------------------------
 # change as needed to reflect your environment/workloads
@@ -558,6 +558,9 @@ run luau_script_colidx "$qsv_bin" luau map turnaround_time --colindex "file:turn
 run luau_script_no_globals "$qsv_bin" luau map turnaround_time --no-globals "file:turnaround_time.luau" "$data"
 run luau_script_no_globals_colidx "$qsv_bin" luau map turnaround_time --no-globals --colindex "file:turnaround_time.luau" "$data"
 run partition "$qsv_bin" partition \'Community Board\' /tmp/partitioned "$data"
+run pivotp_basic "$qsv_bin" pivotp "Agency" --index "Borough" --values "Complaint Type" "$data"
+run pivotp_smart "$qsv_bin" pivotp "Agency" --index "Borough" --values "Complaint Type" --agg smart "$data"
+run pivotp_dates "$qsv_bin" pivotp "Created Date" --index "Borough" --values "Complaint Type" --try-parsedates "$data"
 run pseudo "$qsv_bin" pseudo \'Unique Key\' "$data"
 run pseudo_formatstr "$qsv_bin" pseudo \'Unique Key\' --formatstr 'ID-{}' --increment 5 "$data"
 run rename "$qsv_bin" rename \'unique_key,created_date,closed_date,agency,agency_name,complaint_type,descriptor,loctype,zip,addr1,street,xstreet1,xstreet2,inter1,inter2,addrtype,city,landmark,facility_type,status,due_date,res_desc,res_act_date,comm_board,bbl,boro,xcoord,ycoord,opendata_type,parkname,parkboro,vehtype,taxi_boro,taxi_loc,bridge_hwy_name,bridge_hwy_dir,ramp,bridge_hwy_seg,lat,long,loc\' "$data"
