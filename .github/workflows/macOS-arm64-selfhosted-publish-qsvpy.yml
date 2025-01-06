@@ -132,6 +132,7 @@ jobs:
       with:
           repository: "dathere/qsv"
           latest: true
+          preRelease: true
           token: ${{ secrets.GITHUB_TOKEN }}
           fileName: qsv-${{ needs.analyze-tags.outputs.previous-tag }}-${{ matrix.job.target }}.zip
     - name: remove zipsign signature from zip archive
@@ -151,6 +152,8 @@ jobs:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: qsv-${{ needs.analyze-tags.outputs.previous-tag }}-${{ matrix.job.target }}.zip
         asset_name: qsv-${{ needs.analyze-tags.outputs.previous-tag }}-${{ matrix.job.target }}.zip
+        prerelease: true
+        make_latest: false
         overwrite: true
         tag: ${{ needs.analyze-tags.outputs.previous-tag }} 
  
