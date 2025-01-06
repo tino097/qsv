@@ -61,6 +61,11 @@ fn extsort_issue_2391() {
 
     let unsorted_csv = wrk.load_test_resource("issue2391-test_ids.csv");
     wrk.create_from_string("issue2391-test_ids.csv", &unsorted_csv);
+    // create index
+    let mut cmd_wrk = wrk.command("index");
+    cmd_wrk.arg("issue2391-test_ids.csv");
+
+    wrk.assert_success(&mut cmd_wrk);
 
     // as git mangles line endings, we need to convert manually to CRLF as per issue 2391
     // see https://github.com/dathere/qsv/issues/2391
