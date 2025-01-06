@@ -237,7 +237,7 @@ fn sort_csv(
             return fail!("Failed to retrieve position: invalid integer");
         };
 
-        idxfile.seek(position - position_delta)?;
+        idxfile.seek(position.saturating_sub(position_delta))?;
         idxfile.read_byte_record(&mut record_wrk)?;
         sorted_csv_wtr.write_byte_record(&record_wrk)?;
     }
