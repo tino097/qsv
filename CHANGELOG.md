@@ -6,14 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.0] - 2025-01-05
+## [2.0.0] - 2025-01-06
 
 ## qsv v2.0.0 is here! 🎉
 It took 193 releases to get to v1.0.0, and we're already at v2.0.0 a month later!?!
 
 Yes! We wanted a running start for 2025, and qsv 2.0.0 marks qsv's biggest release yet!
 
-* It fully enables the "Data Resource Upload First (DRUF)" workflow, allowing Datapusher+ to infer ["automagical metadata"](https://dathere.com/2023/11/automagical-metadata/) from the data itself. It exposes two Domain Specific Language (DSL) options - [Luau](https://luau.org) and [MiniJinja](https://docs.rs/minijinja/latest/minijinja/) - to enable powerful data transformation and validation capabilities. This allows data stewards to upload data first, then use qsv's DSL capabilities inside DP+ to automatically generate rich metadata - including data dictionaries, field descriptions, data quality rules, and data validation schemas. This "automagical metadata" approach dramatically reduces the friction in compiling high-quality, high-resolution metadata (using the [DCAT-US 3.0 specification](https://doi-do.github.io/dcat-us/) as a reference) that would otherwise be a manual, laborious, and error-prone process. Under the hood, the `fetchpost`, `template`, `stats`, and `luau` commands now have the necessary scaffolding to fully support this workflow inside Datapusher+ and ckanext-scheming.
+* It fully enables the "Data Resource Upload First (DRUF)" workflow, allowing Datapusher+ to infer ["automagical metadata"](https://dathere.com/2023/11/automagical-metadata/) from the data itself. It exposes two Domain Specific Language (DSL) options - [Luau](https://luau.org) and [MiniJinja](https://docs.rs/minijinja/latest/minijinja/) - to enable powerful data transformation and validation capabilities. This allows data stewards to upload data first, then use qsv's DSL capabilities inside DP+ to automatically generate rich metadata - including data dictionaries, field descriptions, data quality rules, and data validation schemas. This "automagical metadata" approach dramatically reduces the friction in compiling high-quality, high-resolution metadata (using the [DCAT-US 3.0 specification](https://doi-do.github.io/dcat-us/) as a reference) that would otherwise be a manual, laborious, and error-prone process.  
+Under the hood, the `fetchpost`, `template`, `stats`, and `luau` commands now have the necessary scaffolding to fully support this workflow inside Datapusher+ and ckanext-scheming.
 * It adds a new `pivotp` command, powered by Polars, to enable fast pivot operations on large datasets. You can now pivot your data in seconds by simply specifying the columns to pivot on while blowing past [Excel's PivotTable limitations](https://support.microsoft.com/en-us/office/excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3).
 * `stats` now computes geometric mean and harmonic mean and adds string length stats, all while getting a performance boost.
 * `join` and `joinp` got a lot of love in this release, with several new options:
