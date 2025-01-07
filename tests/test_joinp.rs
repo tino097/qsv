@@ -1966,10 +1966,10 @@ fn joinp_ignore_case_and_leading_zeros() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
-        svec!["id", "code", "value", "id_right", "code_right", "desc"],
-        svec!["1", "1abc", "a", "1", "1abc", "one"],
-        svec!["2", "2def", "b", "2", "2def", "two"],
-        svec!["3", "xyz", "c", "3", "xyz", "three"],
+        svec!["id", "code", "value", "desc"],
+        svec!["1", "1abc", "a", "one"],
+        svec!["2", "2def", "b", "two"],
+        svec!["3", "xyz", "c", "three"],
     ];
     assert_eq!(got, expected);
 }
