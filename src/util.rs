@@ -253,7 +253,12 @@ pub fn version() -> String {
     #[cfg(all(feature = "to", not(feature = "lite")))]
     enabled_features.push_str("to;");
     #[cfg(all(feature = "polars", not(feature = "lite")))]
-    enabled_features.push_str(format!("polars-{}-{};", polars::VERSION, QSV_POLARS_REV).as_str());
+    if QSV_POLARS_REV.is_empty() {
+        enabled_features.push_str(format!("polars-{};", polars::VERSION).as_str());
+    } else {
+        enabled_features
+            .push_str(format!("polars-{}:{};", polars::VERSION, QSV_POLARS_REV).as_str());
+    }
     #[cfg(feature = "self_update")]
     enabled_features.push_str("self_update");
     enabled_features.push('-');
