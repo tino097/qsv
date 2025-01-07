@@ -506,22 +506,23 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 }
 
 struct JoinStruct {
-    left_lf:          LazyFrame,
-    left_sel:         String,
-    right_lf:         LazyFrame,
-    right_sel:        String,
-    output:           Option<String>,
-    delim:            u8,
-    coalesce:         bool,
-    streaming:        bool,
-    no_optimizations: bool,
-    sql_filter:       Option<String>,
-    datetime_format:  Option<String>,
-    date_format:      Option<String>,
-    time_format:      Option<String>,
-    float_precision:  Option<usize>,
-    null_value:       String,
-    ignore_case:      bool,
+    left_lf:              LazyFrame,
+    left_sel:             String,
+    right_lf:             LazyFrame,
+    right_sel:            String,
+    output:               Option<String>,
+    delim:                u8,
+    coalesce:             bool,
+    streaming:            bool,
+    no_optimizations:     bool,
+    sql_filter:           Option<String>,
+    datetime_format:      Option<String>,
+    date_format:          Option<String>,
+    time_format:          Option<String>,
+    float_precision:      Option<usize>,
+    null_value:           String,
+    ignore_case:          bool,
+    ignore_leading_zeros: bool,
 }
 
 impl JoinStruct {
@@ -544,7 +545,9 @@ impl JoinStruct {
             .collect();
 
         // If ignore_case is enabled, create lowercase versions of the join columns
-        if self.ignore_case {
+        // but only if ignore_leading_zeros is not enabled
+        // because leading zeros handling does its own lowercase conversion
+        if self.ignore_case && !self.ignore_leading_zeros {
             // Create temporary lowercase versions of join columns in left dataframe
             for col in &left_selcols {
                 self.left_lf = self
@@ -711,7 +714,7 @@ impl JoinStruct {
         };
 
         // if self.ignore_case, remove the temporary lowercase columns from the dataframe
-        if self.ignore_case {
+        if self.ignore_case && !self.ignore_leading_zeros {
             // Get all column names
             let cols = results_df.get_column_names();
             // Filter out the lowercase columns (those with "_qsv-*-lower" pattern)
@@ -1170,6 +1173,7 @@ impl Args {
                 self.flag_null_value.clone()
             },
             ignore_case: self.flag_ignore_case,
+            ignore_leading_zeros: self.flag_ignore_leading_zeros,
         })
     }
 }
