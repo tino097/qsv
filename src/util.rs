@@ -252,6 +252,7 @@ pub fn version() -> String {
     }
     #[cfg(all(feature = "to", not(feature = "lite")))]
     enabled_features.push_str("to;");
+    #[allow(clippy::const_is_empty)]
     #[cfg(all(feature = "polars", not(feature = "lite")))]
     if QSV_POLARS_REV.is_empty() {
         enabled_features.push_str(format!("polars-{};", polars::VERSION).as_str());
