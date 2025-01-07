@@ -162,22 +162,22 @@ qsv is also distributed by several package managers and distros.
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/qsv.svg)](https://repology.org/project/qsv/versions)
 
+Here are the relevant commands for installing qsv using the various package managers and distros:
 ```bash
-# using Homebrew on macOS/Linux (https://formulae.brew.sh/formula/qsv#default)
-brew install qsv
-
-# using Scoop on Windows (https://scoop.sh/#/apps?q=qsv)
-scoop install qsv
-
-# using MacPorts on macOS (https://ports.macports.org/port/qsv/)
-sudo port install qsv
-
-# using Nixpkgs on Linux/macOS (https://search.nixos.org/packages?channel=unstable&show=qsv&from=0&size=50&sort=relevance&type=packages&query=qsv)
-nix-shell -p qsv
-
-## using other Linux package managers
 # Arch Linux AUR (https://aur.archlinux.org/packages/qsv)
 yay -S qsv
+
+# Homebrew on macOS/Linux (https://formulae.brew.sh/formula/qsv#default)
+brew install qsv
+
+# MacPorts on macOS (https://ports.macports.org/port/qsv/)
+sudo port install qsv
+
+# Nixpkgs on Linux/macOS (https://search.nixos.org/packages?channel=unstable&show=qsv&from=0&size=50&sort=relevance&type=packages&query=qsv)
+nix-shell -p qsv
+
+# Scoop on Windows (https://scoop.sh/#/apps?q=qsv)
+scoop install qsv
 
 # Void Linux (https://voidlinux.org/packages/?arch=x86_64&q=qsv)
 sudo xbps-install qsv
