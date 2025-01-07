@@ -203,7 +203,7 @@ Shows that I'm running qsv version 2.0.0, with the `mimalloc` allocator (instead
 - Polars with its version metadata (polars-0.45.1:py-1.19.0:72cd66a),
 - the Python version qsv is dynamically linked against (Python 3.10.14 (main, Aug  7 2024, 12:09:26) [Clang 16.0.0 (clang-1600.0.23.1)]). 
 - qsv will use 8 logical processors out of 8 detected when running multithreaded commands.
-- I can have a maximum input file size of 19.20 GiB for "non-streaming" commands (see [Memory Management](https://github.com/dathere/qsv#memory-management) for more info), 1.59 GiB of free swap memory, 510.91 MiB of available memory and 24.00 GiB of total memory.
+- a maximum input file size of 19.20 GiB for "non-streaming" commands (see [Memory Management](https://github.com/dathere/qsv#memory-management) for more info), 1.59 GiB of free swap memory, 510.91 MiB of available memory and 24.00 GiB of total memory.
 - the qsv binary was built to target the aarch64-apple-darwin platform (Apple Silicon), compiled using Rust 1.83.0. The binary was `compiled` using `cargo build`.
 
 ## Caching
@@ -222,14 +222,14 @@ The stats cache are automatically refreshed when the input file is modified the 
 
 Still, users will attempt to use non UTF-8 encoded files, and for the most part, they will still work! This is because most qsv commands use [ByteRecords](https://docs.rs/csv/latest/csv/struct.ByteRecord.html), where qsv manipulates raw bytes and doesn't care about the encoding.
 
-Where it does matter, qsv will attempt to convert the bytes to UTF-8. But instead of using [std::str::from_utf8](https://doc.rust-lang.org/stable/std/str/fn.from_utf8.html), it makes extensive use of [`simdutf8`](https://github.com/rusticstuff/simdutf8#simdutf8--high-speed-utf-8-validation) for [SIMD](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)-accelerated UTF-8 validation, which is up to 23x faster on x86-64 and 11x faster on aarch64 (Apple Silicon).
+Where it does matter (indicated by the 🔣 emoji), qsv will attempt to convert the bytes to UTF-8. But instead of using [std::str::from_utf8](https://doc.rust-lang.org/stable/std/str/fn.from_utf8.html), it makes extensive use of [`simdutf8`](https://github.com/rusticstuff/simdutf8#simdutf8--high-speed-utf-8-validation) for [SIMD](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)-accelerated UTF-8 validation, which is up to 23x faster on x86-64 and 11x faster on aarch64 (Apple Silicon).
 
 As UTF-8 is the de facto encoding standard, this shouldn't be a problem most of the time. However, should you need to process a CSV file with a different encoding, use the `input` command with the `--output` option first to "[loosely transcode](https://doc.rust-lang.org/std/string/struct.String.html#method.from_utf8_lossy)" it to UTF-8.
 
 ## Nightly Release Builds
 Pre-built binaries compiled using Rust Nightly/Unstable are also [available for download](https://github.com/dathere/qsv/releases/latest). These binaries are optimized for size and speed:
 
-* compiled with the last known Rust nightly/unstable that passes all 1,400+ tests.
+* compiled with the last known Rust nightly/unstable that passes all ~1,740 tests.
 * stdlib is compiled from source, instead of using the pre-built stdlib. This ensures stdlib is compiled with all of qsv's release settings
   (link time optimization, opt-level, codegen-units, panic=abort, etc.), presenting more opportunities for Rust/LLVM to optimize the generated code.
   This is why we only have nightly release builds for select platforms (the platform of GitHub's action runners), as we need access to the "native hardware"
