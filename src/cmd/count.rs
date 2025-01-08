@@ -529,10 +529,10 @@ pub fn polars_count_input(conf: &Config, low_memory: bool) -> CliResult<u64> {
         },
     };
 
-    let mut count = match sqlresult_lf.collect()?["len"].u64() {
+    let mut count = match sqlresult_lf.collect()?["len"].u32() {
         Ok(cnt) => {
             if let Some(count) = cnt.get(0) {
-                count
+                count as u64
             } else {
                 // Empty result, fall back to regular CSV reader
                 log::warn!("empty polars result, falling back to regular reader");
