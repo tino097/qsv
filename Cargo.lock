@@ -1963,15 +1963,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d6ef0072f8a535281e4876be788938b528e9a1d43900b82c2569af7da799125"
 
 [[package]]
-name = "dynfmt"
-version = "0.1.5"
-source = "git+https://github.com/jqnatividad/dynfmt?branch=2021-clippy_ptr_as_ptr-bumpdeps#0dec5eaceba58e294283d8ebc6333b421220c186"
+name = "dynfmt2"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da3f751b50a0b1cc5fe99b537638ac47c0e2702758cfcd323d8b1a8d97d700fa"
 dependencies = [
  "erased-serde",
- "lazy_static",
  "regex",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.9",
 ]
 
 [[package]]
@@ -5228,7 +5228,7 @@ dependencies = [
  "csvs_convert",
  "data-encoding",
  "dotenvy",
- "dynfmt",
+ "dynfmt2",
  "eudex",
  "ext-sort",
  "fast-float2",
