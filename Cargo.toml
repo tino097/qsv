@@ -102,7 +102,7 @@ csvs_convert = { version = "0.9.0", default-features = false, features = [
 ], optional = true }
 data-encoding = { version = "2.6", optional = true }
 dotenvy = "0.15"
-dynfmt = { version = "0.1", default-features = false, features = ["curly"] }
+dynfmt2 = { version = "0.2", default-features = false, features = ["curly"] }
 eudex = { version = "0.1", optional = true }
 ext-sort = { version = "0.1", default-features = false }
 fast-float2 = "0.2"
@@ -308,10 +308,6 @@ calamine = { git = "https://github.com/jqnatividad/calamine", branch = "qsv-2-op
 
 # use our fork of csvlens with unreleased fixes, bumped dependencies, and new clap-less API
 csvlens = { git = "https://github.com/jqnatividad/csvlens", branch = "116-clap-optional-dependency-cli-feature" }
-
-# needed as dynfmt doesn't work in release mode without this
-# see https://github.com/jan-auer/dynfmt/pull/9
-dynfmt = { git = "https://github.com/jqnatividad/dynfmt", branch = "2021-clippy_ptr_as_ptr-bumpdeps" }
 
 # needed to get latest dependencies and unreleased fixes
 grex = { git = "https://github.com/pemistahl/grex", rev = "cb71c10" }

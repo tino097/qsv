@@ -67,7 +67,7 @@ Common options:
 "#;
 
 use ahash::AHashMap;
-use dynfmt::Format;
+use dynfmt2::Format;
 use serde::Deserialize;
 
 use crate::{
@@ -130,7 +130,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let mut overflowed = false;
 
     if args.flag_formatstr == "{}" {
-        // we don't need to use dynfmt::SimpleCurlyFormat if the format string is "{}"
+        // we don't need to use dynfmt2::SimpleCurlyFormat if the format string is "{}"
         let mut values_num = ValuesNum::with_capacity(1000);
 
         while rdr.read_record(&mut record)? {
@@ -152,11 +152,11 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             wtr.write_record(&record)?;
         }
     } else {
-        // we need to use dynfmt::SimpleCurlyFormat if the format string is not "{}"
+        // we need to use dynfmt2::SimpleCurlyFormat if the format string is not "{}"
 
         // first, validate the format string
         if !args.flag_formatstr.contains("{}")
-            || dynfmt::SimpleCurlyFormat
+            || dynfmt2::SimpleCurlyFormat
                 .format(&args.flag_formatstr, [0])
                 .is_err()
         {
@@ -175,7 +175,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             let new_value = values.entry(value.clone()).or_insert_with(|| {
                 curr_counter = counter;
                 (counter, overflowed) = counter.overflowing_add(increment);
-                dynfmt::SimpleCurlyFormat
+                dynfmt2::SimpleCurlyFormat
                     .format(&args.flag_formatstr, [curr_counter])
                     .unwrap()
                     .to_string()

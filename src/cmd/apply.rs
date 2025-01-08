@@ -308,7 +308,7 @@ use censor::{Censor, Sex, Zealous};
 use cpc::{eval, units::Unit};
 use crc32fast;
 use data_encoding::BASE64;
-use dynfmt::Format;
+use dynfmt2::Format;
 use eudex::Hash;
 use gender_guesser::Gender;
 use indicatif::{ProgressBar, ProgressDrawTarget};
@@ -643,7 +643,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                                 record_vec.push(field.to_string());
                             }
                             if let Ok(formatted) =
-                                dynfmt::SimpleCurlyFormat.format(&dynfmt_template, record_vec)
+                                dynfmt2::SimpleCurlyFormat.format(&dynfmt_template, record_vec)
                             {
                                 cell = formatted.to_string();
                             }
@@ -664,7 +664,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                                 record_vec.push(field.to_string());
                             }
                             if let Ok(formatted) =
-                                dynfmt::SimpleCurlyFormat.format(&dynfmt_template, record_vec)
+                                dynfmt2::SimpleCurlyFormat.format(&dynfmt_template, record_vec)
                             {
                                 cell = formatted.to_string();
                             }
