@@ -6580,7 +6580,7 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 [[package]]
 name = "strum"
 version = "0.26.3"
-source = "git+https://github.com/dathere/strum?branch=bump-phf-to-0.11#33c1b0848634ea8e85daed31c19dac0c162f25bd"
+source = "git+https://github.com/dathere/strum?branch=upstream-with-bumped-phf-to-0.11#26e9d2f083554ef523e43a4f21678171decf6fd9"
 dependencies = [
  "phf",
  "strum_macros",
@@ -6589,7 +6589,7 @@ dependencies = [
 [[package]]
 name = "strum_macros"
 version = "0.26.4"
-source = "git+https://github.com/dathere/strum?branch=bump-phf-to-0.11#33c1b0848634ea8e85daed31c19dac0c162f25bd"
+source = "git+https://github.com/dathere/strum?branch=upstream-with-bumped-phf-to-0.11#26e9d2f083554ef523e43a4f21678171decf6fd9"
 dependencies = [
  "heck",
  "proc-macro2",
