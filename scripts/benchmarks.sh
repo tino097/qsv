@@ -42,7 +42,7 @@
 arg_pat="$1"
 
 # the version of this script
-bm_version=6.0.0
+bm_version=6.0.1
 
 # CONFIGURABLE VARIABLES ---------------------------------------
 # change as needed to reflect your environment/workloads
@@ -346,7 +346,7 @@ fi
 
 # we get the rowcount, just in case the benchmark data was modified by the user to tailor
 # the benchmark to their system/workload. We use the rowcount to compute records per second
-rowcount=$("$qsv_bin" count "$data")
+rowcount=$("$qsv_bin" count --no-polars "$data")
 printf "  Benchmark data rowcount: %'.0f\n" "$rowcount"
 qsv_absolute_path=$(which "$qsv_bin")
 benchmarker_absolute_path=$(which "$qsv_benchmarker_bin")
