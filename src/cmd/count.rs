@@ -529,13 +529,23 @@ pub fn polars_count_input(conf: &Config, low_memory: bool) -> CliResult<u64> {
         },
     };
 
-    let mut count = if let Ok(cnt) = sqlresult_lf.collect()?["len"].u32() {
-        cnt.get(0).unwrap_or(0) as u64 // Use unwrap_or to handle empty results
-    } else {
-        // Polars error, fall back to the regular CSV reader
-        log::warn!("polars error, falling back to regular reader");
-        let (count_regular, _) = count_input(conf, CountDelimsMode::NotRequired)?;
-        count_regular
+    let mut count = match sqlresult_lf.collect()?["len"].u64() {
+        Ok(cnt) => {
+            if let Some(count) = cnt.get(0) {
+                count
+            } else {
+                // Empty result, fall back to regular CSV reader
+                log::warn!("empty polars result, falling back to regular reader");
+                let (count_regular, _) = count_input(conf, CountDelimsMode::NotRequired)?;
+                count_regular
+            }
+        },
+        Err(e) => {
+            // Polars error, fall back to regular CSV reader
+            log::warn!("polars error, falling back to regular reader: {e}");
+            let (count_regular, _) = count_input(conf, CountDelimsMode::NotRequired)?;
+            count_regular
+        },
     };
 
     // remove the temporary file we created to read from stdin
