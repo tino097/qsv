@@ -239,7 +239,7 @@ use cached::{
     stores::DiskCacheBuilder,
     Cached, IOCached, RedisCache, Return, SizedCache,
 };
-use dynfmt::Format;
+use dynfmt2::Format;
 use governor::{
     clock::DefaultClock,
     middleware::NoOpMiddleware,
@@ -780,7 +780,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 );
             }
             if let Ok(formatted) =
-                dynfmt::SimpleCurlyFormat.format(&dynfmt_url_template, &*record_vec)
+                dynfmt2::SimpleCurlyFormat.format(&dynfmt_url_template, &*record_vec)
             {
                 url = formatted.into_owned();
             }

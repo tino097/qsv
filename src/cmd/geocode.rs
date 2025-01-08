@@ -370,7 +370,7 @@ use std::{
 
 use ahash::RandomState;
 use cached::{proc_macro::cached, SizedCache};
-use dynfmt::Format;
+use dynfmt2::Format;
 use geosuggest_core::{
     storage::{self, IndexStorage},
     CitiesRecord, CountryRecord, Engine,
@@ -1933,7 +1933,7 @@ fn format_result(
             };
         }
 
-        if let Ok(formatted) = dynfmt::SimpleCurlyFormat.format(formatstr, cityrecord_map) {
+        if let Ok(formatted) = dynfmt2::SimpleCurlyFormat.format(formatstr, cityrecord_map) {
             formatted.to_string()
         } else {
             INVALID_DYNFMT.to_string()
@@ -2047,7 +2047,7 @@ fn get_countryinfo(
             };
         }
 
-        if let Ok(formatted) = dynfmt::SimpleCurlyFormat.format(formatstr, countryrecord_map) {
+        if let Ok(formatted) = dynfmt2::SimpleCurlyFormat.format(formatstr, countryrecord_map) {
             Some(formatted.to_string())
         } else {
             Some(INVALID_DYNFMT.to_string())
