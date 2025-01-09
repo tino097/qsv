@@ -847,9 +847,9 @@ dependencies = [
 
 [[package]]
 name = "base62"
-version = "2.1.0"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0c1ec82797a31deab8e07c995677c89890ef2fb9f663f93d9941e3f802f233e"
+checksum = "3d2c393c12f2661ef3f22426d26f95bcfa13d730abab7554502f427562b72f37"
 dependencies = [
  "rustversion",
 ]
