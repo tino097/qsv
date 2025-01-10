@@ -571,7 +571,27 @@ impl<R> fmt::Debug for ValueIndex<R> {
 
 #[inline]
 fn get_row_key(sel: &Selection, row: &csv::ByteRecord, casei: bool) -> Vec<ByteString> {
-    sel.select(row).map(|v| util::transform(v, casei)).collect()
+    if casei {
+        sel.select(row)
+            .map(|v| {
+                if let Ok(s) = simdutf8::basic::from_utf8(v) {
+                    s.trim().to_lowercase().into_bytes()
+                } else {
+                    v.to_vec()
+                }
+            })
+            .collect()
+    } else {
+        sel.select(row)
+            .map(|v| {
+                if let Ok(s) = simdutf8::basic::from_utf8(v) {
+                    s.trim().as_bytes().to_vec()
+                } else {
+                    v.to_vec()
+                }
+            })
+            .collect()
+    }
 }
 
 struct KeysWriter {
