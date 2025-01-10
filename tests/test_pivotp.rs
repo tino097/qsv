@@ -571,14 +571,16 @@ pivotp_test!(
         wrk.assert_success(&mut cmd);
 
         let msg = wrk.output_stderr(&mut cmd);
-        let expected_msg = "Pivot on-column cardinality:\n  product: 2\n(2, 3)\n";
+        let expected_msg = "Info: High variability in values (CV > 1), using Median for more \
+                            robust central tendency\nPivot on-column cardinality:\n  product: \
+                            2\n(2, 3)\n";
         assert_eq!(msg, expected_msg);
 
         let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
         let expected = vec![
             svec!["date", "A", "B"],
-            svec!["2023-01-01", "300", "150"],
-            svec!["2023-01-02", "300", "600"],
+            svec!["2023-01-01", "150.0", "150.0"],
+            svec!["2023-01-02", "300.0", "300.0"],
         ];
         assert_eq!(got, expected);
     }
@@ -604,8 +606,8 @@ pivotp_test!(
         let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
         let expected = vec![
             svec!["date", "A", "B"],
-            svec!["2023-01-01", "300", "150"],
-            svec!["2023-01-02", "300", "600"],
+            svec!["2023-01-01", "150.0", "150.0"],
+            svec!["2023-01-02", "300.0", "300.0"],
         ];
         assert_eq!(got, expected);
     }
