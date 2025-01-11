@@ -29,7 +29,9 @@ input arguments:
     e.g. 'qsv frequency -s Agency nyc311.csv | qsv join value - id nycagencyinfo.csv'
 
 join options:
-    -i, --ignore-case      When set, joins are done case insensitively.
+    -i, --ignore-case           When set, joins are done case insensitively.
+    -z, --ignore-leading-zeros  When set, leading zeros are ignored in join keys.
+
     --left                 Do a 'left outer' join. This returns all rows in
                            first CSV data set, including rows with no
                            corresponding row in the second data set. When no
@@ -101,24 +103,25 @@ use crate::{
 
 #[derive(Deserialize)]
 struct Args {
-    arg_columns1:     SelectColumns,
-    arg_input1:       String,
-    arg_columns2:     SelectColumns,
-    arg_input2:       String,
-    flag_left:        bool,
-    flag_left_anti:   bool,
-    flag_left_semi:   bool,
-    flag_right:       bool,
-    flag_right_anti:  bool,
-    flag_right_semi:  bool,
-    flag_full:        bool,
-    flag_cross:       bool,
-    flag_output:      Option<String>,
-    flag_no_headers:  bool,
-    flag_ignore_case: bool,
-    flag_nulls:       bool,
-    flag_delimiter:   Option<Delimiter>,
-    flag_keys_output: Option<String>,
+    arg_columns1:              SelectColumns,
+    arg_input1:                String,
+    arg_columns2:              SelectColumns,
+    arg_input2:                String,
+    flag_left:                 bool,
+    flag_left_anti:            bool,
+    flag_left_semi:            bool,
+    flag_right:                bool,
+    flag_right_anti:           bool,
+    flag_right_semi:           bool,
+    flag_full:                 bool,
+    flag_cross:                bool,
+    flag_output:               Option<String>,
+    flag_no_headers:           bool,
+    flag_ignore_case:          bool,
+    flag_ignore_leading_zeros: bool,
+    flag_nulls:                bool,
+    flag_delimiter:            Option<Delimiter>,
+    flag_keys_output:          Option<String>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -199,6 +202,7 @@ struct IoState<R, W: io::Write> {
     sel2:       Selection,
     no_headers: bool,
     casei:      bool,
+    zerosi:     bool,
     nulls:      bool,
     keys_wtr:   KeysWriter,
 }
@@ -223,12 +227,13 @@ impl<R: io::Read + io::Seek, W: io::Write> IoState<R, W> {
 
     fn inner_join(mut self) -> CliResult<()> {
         let mut scratch = csv::ByteRecord::new();
-        let mut validx = ValueIndex::new(self.rdr2, &self.sel2, self.casei, self.nulls)?;
+        let mut validx =
+            ValueIndex::new(self.rdr2, &self.sel2, self.casei, self.zerosi, self.nulls)?;
         let mut row = csv::ByteRecord::new();
         let mut key;
 
         while self.rdr1.read_byte_record(&mut row)? {
-            key = get_row_key(&self.sel1, &row, self.casei);
+            key = get_row_key(&self.sel1, &row, self.casei, self.zerosi);
             if let Some(rows) = validx.values.get(&key) {
                 self.keys_wtr.write_key(&key)?;
 
@@ -255,12 +260,13 @@ impl<R: io::Read + io::Seek, W: io::Write> IoState<R, W> {
 
         let mut scratch = csv::ByteRecord::new();
         let (_, pad2) = self.get_padding()?;
-        let mut validx = ValueIndex::new(self.rdr2, &self.sel2, self.casei, self.nulls)?;
+        let mut validx =
+            ValueIndex::new(self.rdr2, &self.sel2, self.casei, self.zerosi, self.nulls)?;
         let mut row = csv::ByteRecord::new();
         let mut key;
 
         while self.rdr1.read_byte_record(&mut row)? {
-            key = get_row_key(&self.sel1, &row, self.casei);
+            key = get_row_key(&self.sel1, &row, self.casei, self.zerosi);
             if let Some(rows) = validx.values.get(&key) {
                 self.keys_wtr.write_key(&key)?;
 
@@ -286,12 +292,12 @@ impl<R: io::Read + io::Seek, W: io::Write> IoState<R, W> {
     }
 
     fn left_join(mut self, anti: bool) -> CliResult<()> {
-        let validx = ValueIndex::new(self.rdr2, &self.sel2, self.casei, self.nulls)?;
+        let validx = ValueIndex::new(self.rdr2, &self.sel2, self.casei, self.zerosi, self.nulls)?;
         let mut row = csv::ByteRecord::new();
         let mut key;
 
         while self.rdr1.read_byte_record(&mut row)? {
-            key = get_row_key(&self.sel1, &row, self.casei);
+            key = get_row_key(&self.sel1, &row, self.casei, self.zerosi);
             if validx.values.get(&key).is_none() {
                 if anti {
                     self.keys_wtr.write_key(&key)?;
@@ -310,7 +316,8 @@ impl<R: io::Read + io::Seek, W: io::Write> IoState<R, W> {
     fn full_outer_join(mut self) -> CliResult<()> {
         let mut scratch = csv::ByteRecord::new();
         let (pad1, pad2) = self.get_padding()?;
-        let mut validx = ValueIndex::new(self.rdr2, &self.sel2, self.casei, self.nulls)?;
+        let mut validx =
+            ValueIndex::new(self.rdr2, &self.sel2, self.casei, self.zerosi, self.nulls)?;
 
         // Keep track of which rows we've written from rdr2.
         let mut rdr2_written: Vec<_> = repeat(false).take(validx.num_rows).collect();
@@ -318,7 +325,7 @@ impl<R: io::Read + io::Seek, W: io::Write> IoState<R, W> {
         let mut key;
 
         while self.rdr1.read_byte_record(&mut row1)? {
-            key = get_row_key(&self.sel1, &row1, self.casei);
+            key = get_row_key(&self.sel1, &row1, self.casei, self.zerosi);
             if let Some(rows) = validx.values.get(&key) {
                 self.keys_wtr.write_key(&key)?;
 
@@ -415,6 +422,7 @@ impl Args {
             sel2,
             no_headers: rconf1.no_headers,
             casei: self.flag_ignore_case,
+            zerosi: self.flag_ignore_leading_zeros,
             nulls: self.flag_nulls,
             keys_wtr,
         })
@@ -464,6 +472,7 @@ impl<R: io::Read + io::Seek> ValueIndex<R> {
     /// * `rdr` - A CSV reader that implements Read + Seek
     /// * `sel` - A Selection that specifies which columns to index
     /// * `casei` - If true, values are compared case-insensitively
+    /// * `zerosi` - If true, leading zeros are removed
     /// * `nulls` - If true, rows with empty values are included in the index
     ///
     /// # Returns
@@ -482,6 +491,7 @@ impl<R: io::Read + io::Seek> ValueIndex<R> {
         mut rdr: csv::Reader<R>,
         sel: &Selection,
         casei: bool,
+        zerosi: bool,
         nulls: bool,
     ) -> CliResult<ValueIndex<R>> {
         let mut val_idx = AHashMap::with_capacity(20_000);
@@ -516,10 +526,25 @@ impl<R: io::Read + io::Seek> ValueIndex<R> {
                 .select(&row)
                 .map(|v| {
                     if let Ok(s) = simdutf8::basic::from_utf8(v) {
-                        if casei {
+                        let cased_bytes_vec = if casei {
                             s.trim().to_lowercase().into_bytes()
                         } else {
                             s.trim().as_bytes().to_vec()
+                        };
+                        if zerosi {
+                            if cased_bytes_vec.iter().all(|&b| b == b'0')
+                                && !cased_bytes_vec.is_empty()
+                            {
+                                vec![b'0']
+                            } else {
+                                cased_bytes_vec
+                                    .iter()
+                                    .skip_while(|&b| *b == b'0')
+                                    .copied()
+                                    .collect()
+                            }
+                        } else {
+                            cased_bytes_vec
                         }
                     } else {
                         v.to_vec()
@@ -570,28 +595,65 @@ impl<R> fmt::Debug for ValueIndex<R> {
 }
 
 #[inline]
-fn get_row_key(sel: &Selection, row: &csv::ByteRecord, casei: bool) -> Vec<ByteString> {
-    if casei {
-        sel.select(row)
-            .map(|v| {
-                if let Ok(s) = simdutf8::basic::from_utf8(v) {
+/// Extracts key values from a CSV row based on the given selection and options.
+///
+/// # Arguments
+///
+/// * `sel` - The selection that specifies which fields to extract from the row
+/// * `row` - The CSV row to extract values from
+/// * `casei` - If true, converts extracted values to lowercase for case-insensitive comparison
+/// * `zerosi` - If true, removes leading zeros from numeric values
+///
+/// # Returns
+///
+/// A vector of ByteStrings containing the extracted and processed key values.
+///
+/// # Processing
+///
+/// For each selected field:
+/// 1. Attempts to convert the bytes to a UTF-8 string
+/// 2. If successful:
+///    - Trims leading/trailing whitespace
+///    - Optionally converts to lowercase if `casei` is true
+///    - If `zerosi` is true:
+///      * For all-zero values, returns a single "0" byte
+///      * Otherwise, strips leading zeros
+///    - Converts back to bytes
+/// 3. If not valid UTF-8, returns the original bytes unchanged
+fn get_row_key(
+    sel: &Selection,
+    row: &csv::ByteRecord,
+    casei: bool,
+    zerosi: bool,
+) -> Vec<ByteString> {
+    let key: Vec<_> = sel
+        .select(row)
+        .map(|v| {
+            if let Ok(s) = simdutf8::basic::from_utf8(v) {
+                let cased_bytes_vec = if casei {
                     s.trim().to_lowercase().into_bytes()
                 } else {
-                    v.to_vec()
-                }
-            })
-            .collect()
-    } else {
-        sel.select(row)
-            .map(|v| {
-                if let Ok(s) = simdutf8::basic::from_utf8(v) {
                     s.trim().as_bytes().to_vec()
+                };
+                if zerosi {
+                    if cased_bytes_vec.iter().all(|&b| b == b'0') && !cased_bytes_vec.is_empty() {
+                        vec![b'0']
+                    } else {
+                        cased_bytes_vec
+                            .iter()
+                            .skip_while(|&b| *b == b'0')
+                            .copied()
+                            .collect()
+                    }
                 } else {
-                    v.to_vec()
+                    cased_bytes_vec
                 }
-            })
-            .collect()
-    }
+            } else {
+                v.to_vec()
+            }
+        })
+        .collect();
+    key
 }
 
 struct KeysWriter {
