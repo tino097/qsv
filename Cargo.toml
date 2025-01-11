@@ -140,7 +140,7 @@ jsonschema = { version = "0.28", features = [
 ], default-features = false }
 local-encoding = { version = "0.2", optional = true }
 localzone = { version = "0.3", features = ["auto_validation"] }
-log = "0.4"
+log = "=0.4.22"
 mimalloc = { version = "0.1", default-features = false, optional = true }
 minijinja = { version = "2", features = [
     "json",
@@ -306,8 +306,9 @@ cached = { git = "https://github.com/jaemk/cached", rev = "bbf457e" }
 # use our calamine fork with unreleased fixes, an upgraded quick-xml, and accelerated int/float parsing
 calamine = { git = "https://github.com/jqnatividad/calamine", branch = "qsv-2-optimized" }
 
-# use our fork of csvlens with unreleased fixes, bumped dependencies, and new clap-less API
-csvlens = { git = "https://github.com/jqnatividad/csvlens", branch = "116-clap-optional-dependency-cli-feature" }
+# use upstream of csvlens with unreleased fixes, bumped dependencies, and new clap-less API
+# now that our fork has been merged
+csvlens = { git = "https://github.com/YS-L/csvlens", rev = "f4d2e47" }
 
 # needed to get latest dependencies and unreleased fixes
 grex = { git = "https://github.com/pemistahl/grex", rev = "cb71c10" }
