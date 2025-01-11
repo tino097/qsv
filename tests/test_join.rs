@@ -47,14 +47,67 @@ fn setup(name: &str, headers: bool) -> Workdir {
     ];
     if headers {
         cities.insert(0, svec!["city", "state"]);
-    }
-    if headers {
         places.insert(0, svec!["city", "place"]);
     }
 
     let wrk = Workdir::new(name);
     wrk.create("cities.csv", cities);
     wrk.create("places.csv", places);
+    wrk
+}
+
+macro_rules! join_test_with_zeros {
+    ($name:ident, $fun:expr) => {
+        mod $name {
+            use std::process;
+
+            use super::{make_rows_with_zeros, setup_with_zeros};
+            use crate::workdir::Workdir;
+
+            #[test]
+            fn headers() {
+                let wrk = setup_with_zeros(stringify!($name), true);
+                let mut cmd = wrk.command("join");
+                cmd.args(&["id", "numbers1.csv", "id", "numbers2.csv"]);
+                $fun(wrk, cmd, true);
+            }
+
+            #[test]
+            fn no_headers() {
+                let n = stringify!(concat_idents!($name, _no_headers));
+                let wrk = setup_with_zeros(n, false);
+                let mut cmd = wrk.command("join");
+                cmd.arg("--no-headers");
+                cmd.args(&["1", "numbers1.csv", "1", "numbers2.csv"]);
+                $fun(wrk, cmd, false);
+            }
+        }
+    };
+}
+
+fn setup_with_zeros(name: &str, headers: bool) -> Workdir {
+    let mut numbers1 = vec![
+        svec!["01", "data1"],
+        svec!["02", "data2"],
+        svec!["1", "data3"],
+        svec!["10", "data4"],
+        svec!["00000", "data5"],
+    ];
+    let mut numbers2 = vec![
+        svec!["1", "info1"],
+        svec!["2", "info2"],
+        svec!["10", "info3"],
+        svec!["01", "info4"],
+        svec!["000", "info5"],
+    ];
+    if headers {
+        numbers1.insert(0, svec!["id", "value"]);
+        numbers2.insert(0, svec!["id", "info"]);
+    }
+
+    let wrk = Workdir::new(name);
+    wrk.create("numbers1.csv", numbers1);
+    wrk.create("numbers2.csv", numbers2);
     wrk
 }
 
@@ -65,6 +118,23 @@ fn make_rows(headers: bool, left_only: bool, rows: Vec<Vec<String>>) -> Vec<Vec<
             all_rows.push(svec!["city", "state"]);
         } else {
             all_rows.push(svec!["city", "state", "city", "place"]);
+        }
+    }
+    all_rows.extend(rows.into_iter());
+    all_rows
+}
+
+fn make_rows_with_zeros(
+    headers: bool,
+    left_only: bool,
+    rows: Vec<Vec<String>>,
+) -> Vec<Vec<String>> {
+    let mut all_rows = vec![];
+    if headers {
+        if left_only {
+            all_rows.push(svec!["id", "value"]);
+        } else {
+            all_rows.push(svec!["id", "value", "id", "info"]);
         }
     }
     all_rows.extend(rows.into_iter());
@@ -588,4 +658,257 @@ fn join_keys_output_cross() {
 
     // Cross join should not produce any keys output
     assert!(!wrk.path("keys.csv").exists());
+}
+
+join_test_with_zeros!(
+    join_inner_zeros,
+    |wrk: Workdir, mut cmd: process::Command, headers: bool| {
+        cmd.arg("--ignore-leading-zeros");
+
+        let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+        let expected = make_rows_with_zeros(
+            headers,
+            false,
+            vec![
+                svec!["01", "data1", "1", "info1"],
+                svec!["01", "data1", "01", "info4"],
+                svec!["02", "data2", "2", "info2"],
+                svec!["1", "data3", "1", "info1"],
+                svec!["1", "data3", "01", "info4"],
+                svec!["10", "data4", "10", "info3"],
+                svec!["00000", "data5", "000", "info5"],
+            ],
+        );
+        assert_eq!(got, expected);
+    }
+);
+
+join_test_with_zeros!(
+    join_inner_zeros_casei,
+    |wrk: Workdir, mut cmd: process::Command, headers: bool| {
+        let mut cities1 = vec![
+            svec!["01NYC", "data1"],
+            svec!["02LA", "data2"],
+            svec!["1nyc", "data3"],
+        ];
+        let mut cities2 = vec![
+            svec!["1NYC", "info1"],
+            svec!["2la", "info2"],
+            svec!["01nyc", "info3"],
+        ];
+        if headers {
+            cities1.insert(0, svec!["id", "value"]);
+            cities2.insert(0, svec!["id", "info"]);
+        }
+
+        let wrk = Workdir::new("join_inner_zeros_casei");
+        wrk.create("cities1.csv", cities1);
+        wrk.create("cities2.csv", cities2);
+
+        let mut cmd = wrk.command("join");
+        if headers {
+            cmd.args(&["id", "cities1.csv", "id", "cities2.csv"]);
+        } else {
+            cmd.args(&["1", "cities1.csv", "1", "cities2.csv"])
+                .arg("--no-headers");
+        }
+        cmd.arg("--ignore-leading-zeros").arg("--ignore-case");
+
+        let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+        let expected = make_rows_with_zeros(
+            headers,
+            false,
+            vec![
+                svec!["01NYC", "data1", "1NYC", "info1"],
+                svec!["01NYC", "data1", "01nyc", "info3"],
+                svec!["02LA", "data2", "2la", "info2"],
+                svec!["1nyc", "data3", "1NYC", "info1"],
+                svec!["1nyc", "data3", "01nyc", "info3"],
+            ],
+        );
+        assert_eq!(got, expected);
+    }
+);
+
+join_test_with_zeros!(
+    join_outer_left_zeros,
+    |wrk: Workdir, mut cmd: process::Command, headers: bool| {
+        cmd.arg("--ignore-leading-zeros").arg("--left");
+
+        let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+        let expected = make_rows_with_zeros(
+            headers,
+            false,
+            vec![
+                svec!["01", "data1", "1", "info1"],
+                svec!["01", "data1", "01", "info4"],
+                svec!["02", "data2", "2", "info2"],
+                svec!["1", "data3", "1", "info1"],
+                svec!["1", "data3", "01", "info4"],
+                svec!["10", "data4", "10", "info3"],
+                svec!["00000", "data5", "000", "info5"],
+            ],
+        );
+        assert_eq!(got, expected);
+    }
+);
+
+#[test]
+fn join_nulls() {
+    let wrk = Workdir::new("join_nulls");
+    wrk.create(
+        "data1.csv",
+        vec![
+            svec!["id", "value"],
+            svec!["1", "foo"],
+            svec!["2", ""],
+            svec!["3", "baz"],
+            svec!["", "bar"],
+        ],
+    );
+    wrk.create(
+        "data2.csv",
+        vec![
+            svec!["id", "info"],
+            svec!["1", "a"],
+            svec!["2", "b"],
+            svec!["3", "c"],
+            svec!["", "d"],
+        ],
+    );
+
+    // Test without --nulls flag (should skip empty fields)
+    let mut cmd = wrk.command("join");
+    cmd.args(["id", "data1.csv", "id", "data2.csv"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["id", "value", "id", "info"],
+        svec!["1", "foo", "1", "a"],
+        svec!["2", "", "2", "b"],
+        svec!["3", "baz", "3", "c"],
+    ];
+    assert_eq!(got, expected);
+
+    // Test with --nulls flag (should include empty fields)
+    let mut cmd = wrk.command("join");
+    cmd.args(["id", "data1.csv", "id", "data2.csv"])
+        .arg("--nulls");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["id", "value", "id", "info"],
+        svec!["1", "foo", "1", "a"],
+        svec!["2", "", "2", "b"],
+        svec!["3", "baz", "3", "c"],
+        svec!["", "bar", "", "d"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn join_multiple_key_columns() {
+    let wrk = Workdir::new("join_multiple_keys");
+    wrk.create(
+        "data1.csv",
+        vec![
+            svec!["city", "state", "value"],
+            svec!["Boston", "MA", "100"],
+            svec!["Portland", "OR", "200"],
+            svec!["Portland", "ME", "300"],
+        ],
+    );
+    wrk.create(
+        "data2.csv",
+        vec![
+            svec!["city", "state", "info"],
+            svec!["Boston", "MA", "large"],
+            svec!["Portland", "OR", "medium"],
+            svec!["Portland", "ME", "small"],
+        ],
+    );
+
+    let mut cmd = wrk.command("join");
+    cmd.args(["city,state", "data1.csv", "city,state", "data2.csv"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["city", "state", "value", "city", "state", "info"],
+        svec!["Boston", "MA", "100", "Boston", "MA", "large"],
+        svec!["Portland", "OR", "200", "Portland", "OR", "medium"],
+        svec!["Portland", "ME", "300", "Portland", "ME", "small"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn join_with_duplicate_keys() {
+    let wrk = Workdir::new("join_duplicates");
+    wrk.create(
+        "data1.csv",
+        vec![
+            svec!["id", "value"],
+            svec!["1", "a"],
+            svec!["1", "b"],
+            svec!["2", "c"],
+        ],
+    );
+    wrk.create(
+        "data2.csv",
+        vec![
+            svec!["id", "info"],
+            svec!["1", "x"],
+            svec!["1", "y"],
+            svec!["2", "z"],
+        ],
+    );
+
+    let mut cmd = wrk.command("join");
+    cmd.args(["id", "data1.csv", "id", "data2.csv"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["id", "value", "id", "info"],
+        svec!["1", "a", "1", "x"],
+        svec!["1", "a", "1", "y"],
+        svec!["1", "b", "1", "x"],
+        svec!["1", "b", "1", "y"],
+        svec!["2", "c", "2", "z"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn join_with_whitespace() {
+    let wrk = Workdir::new("join_whitespace");
+    wrk.create(
+        "data1.csv",
+        vec![
+            svec!["id", "value"],
+            svec!["  1", "a"],
+            svec!["2  ", "b"],
+            svec!["  3  ", "c"],
+        ],
+    );
+    wrk.create(
+        "data2.csv",
+        vec![
+            svec!["id", "info"],
+            svec!["1  ", "x"],
+            svec!["  2", "y"],
+            svec!["3", "z"],
+        ],
+    );
+
+    let mut cmd = wrk.command("join");
+    cmd.args(["id", "data1.csv", "id", "data2.csv"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["id", "value", "id", "info"],
+        svec!["  1", "a", "1  ", "x"],
+        svec!["2  ", "b", "  2", "y"],
+        svec!["  3  ", "c", "3", "z"],
+    ];
+    assert_eq!(got, expected);
 }
