@@ -600,7 +600,7 @@ impl<R> fmt::Debug for ValueIndex<R> {
 /// # Arguments
 ///
 /// * `sel` - The selection that specifies which fields to extract from the row
-/// * `row` - The CSV row to extract values from 
+/// * `row` - The CSV row to extract values from
 /// * `casei` - If true, converts extracted values to lowercase for case-insensitive comparison
 /// * `zerosi` - If true, removes leading zeros from numeric values
 ///
