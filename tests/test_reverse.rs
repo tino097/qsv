@@ -54,8 +54,11 @@ fn prop_reverse_no_headers() {
 }
 
 fn prop_reverse_indexed(name: &str, rows: CsvData, headers: bool) -> bool {
-    if rows.is_empty()
-        || rows[0].contains(&"\u{feff}".to_string())
+    if rows.is_empty() {
+        return true;
+    }
+
+    if rows[0].contains(&"\u{feff}".to_string())
         || rows.last().unwrap().contains(&"\u{feff}".to_string())
     {
         return true;
