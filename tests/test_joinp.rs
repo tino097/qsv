@@ -1844,11 +1844,58 @@ fn joinp_ignore_leading_zero() {
     wrk.assert_success(&mut cmd);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    // note that id and id_right have been stripped of leading zeros
+    // this is because Polars inferred the schema as all integers
+    // and automatically converted the values to integers
     let expected = vec![
-        svec!["id", "value", "desc"],
-        svec!["1", "a", "one"],
-        svec!["2", "b", "two"],
-        svec!["3", "c", "three"],
+        svec!["id", "value", "id_right", "desc"],
+        svec!["1", "a", "1", "one"],
+        svec!["2", "b", "2", "two"],
+        svec!["3", "c", "3", "three"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn joinp_ignore_leading_zero_string_schema() {
+    let wrk = Workdir::new("joinp_ignore_leading_zero_string_schema");
+
+    wrk.create(
+        "left.csv",
+        vec![
+            svec!["id", "value"],
+            svec!["001", "a"],
+            svec!["02", "b"],
+            svec!["3", "c"],
+        ],
+    );
+
+    wrk.create(
+        "right.csv",
+        vec![
+            svec!["id", "desc"],
+            svec!["1", "one"],
+            svec!["02", "two"],
+            svec!["003", "three"],
+        ],
+    );
+
+    let mut cmd = wrk.command("joinp");
+    cmd.args(&["id", "left.csv", "id", "right.csv"])
+        .arg("-z")
+        .args(["--cache-schema", "-2"]); // force schema to all String types
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    // note that id and id_right have been stripped of leading zeros
+    // this is because Polars inferred the schema as all integers
+    // and automatically converted the values to integers
+    let expected = vec![
+        svec!["id", "value", "id_right", "desc"],
+        svec!["001", "a", "1", "one"],
+        svec!["02", "b", "02", "two"],
+        svec!["3", "c", "003", "three"],
     ];
     assert_eq!(got, expected);
 }
@@ -1885,10 +1932,10 @@ fn joinp_ignore_leading_zero_with_non_numeric() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
-        svec!["code", "value", "desc"],
-        svec!["1A", "a", "one"],
-        svec!["2B", "b", "two"],
-        svec!["ABC", "c", "three"],
+        svec!["code", "value", "code_right", "desc"],
+        svec!["001A", "a", "1A", "one"],
+        svec!["02B", "b", "0002B", "two"],
+        svec!["ABC", "c", "ABC", "three"],
     ];
     assert_eq!(got, expected);
 }
@@ -1919,16 +1966,17 @@ fn joinp_ignore_leading_zero_multiple_columns() {
 
     let mut cmd = wrk.command("joinp");
     cmd.args(&["id,code", "left.csv", "id,code", "right.csv"])
-        .arg("--ignore-leading-zeros");
+        .arg("--ignore-leading-zeros")
+        .args(["--cache-schema", "-2"]); // force schema to all String types
 
     wrk.assert_success(&mut cmd);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
-        svec!["id", "code", "value", "desc"],
-        svec!["1", "1A", "a", "one"],
-        svec!["2", "2B", "b", "two"],
-        svec!["3", "ABC", "c", "three"],
+        svec!["id", "code", "value", "id_right", "code_right", "desc"],
+        svec!["001", "001A", "a", "1", "1A", "one"],
+        svec!["02", "02B", "b", "002", "0002B", "two"],
+        svec!["3", "ABC", "c", "03", "ABC", "three"],
     ];
     assert_eq!(got, expected);
 }
@@ -1960,16 +2008,59 @@ fn joinp_ignore_case_and_leading_zeros() {
     let mut cmd = wrk.command("joinp");
     cmd.args(&["id,code", "left.csv", "id,code", "right.csv"])
         .arg("--ignore-leading-zeros")
-        .arg("--ignore-case");
+        .arg("--ignore-case")
+        .args(["--cache-schema", "-2"]); // force schema to all String types
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["id", "code", "value", "id_right", "code_right", "desc"],
+        svec!["001", "001abc", "a", "1", "00001ABC", "one"],
+        svec!["02", "02DEF", "b", "002", "0002def", "two"],
+        svec!["3", "XYZ", "c", "03", "xyz", "three"],
+    ];
+    assert_eq!(got, expected);
+}
+#[test]
+fn joinp_ignore_case_and_leading_zeros_coalesce() {
+    let wrk = Workdir::new("joinp_ignore_case_and_leading_zeros_coalesce");
+
+    wrk.create(
+        "left.csv",
+        vec![
+            svec!["id", "code", "value"],
+            svec!["001", "001abc", "a"],
+            svec!["02", "02DEF", "b"],
+            svec!["3", "XYZ", "c"],
+        ],
+    );
+
+    wrk.create(
+        "right.csv",
+        vec![
+            svec!["id", "code", "desc"],
+            svec!["1", "00001ABC", "one"],
+            svec!["002", "0002def", "two"],
+            svec!["03", "xyz", "three"],
+        ],
+    );
+
+    let mut cmd = wrk.command("joinp");
+    cmd.args(&["id,code", "left.csv", "id,code", "right.csv"])
+        .arg("--ignore-leading-zeros")
+        .arg("--ignore-case")
+        .arg("--coalesce")
+        .args(["--cache-schema", "-2"]); // force schema to all String types
 
     wrk.assert_success(&mut cmd);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["id", "code", "value", "desc"],
-        svec!["1", "1abc", "a", "one"],
-        svec!["2", "2def", "b", "two"],
-        svec!["3", "xyz", "c", "three"],
+        svec!["001", "001abc", "a", "one"],
+        svec!["02", "02DEF", "b", "two"],
+        svec!["3", "XYZ", "c", "three"],
     ];
     assert_eq!(got, expected);
 }
@@ -2211,6 +2302,64 @@ fn joinp_non_equi_compound() {
         svec!["Carol", "95000", "8", "Senior Dev", "80000", "5", "100000"],
         svec!["Carol", "95000", "8", "Tech Lead", "90000", "7", "120000"],
         svec!["David", "65000", "2", "Junior Dev", "60000", "2", "80000"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn joinp_ignore_leading_zeros_issue_2424() {
+    let wrk = Workdir::new("joinp_ignore_leading_zeros_issue_2424");
+
+    wrk.create(
+        "file1.csv",
+        vec![
+            svec!["id", "company_id", "art_no"],
+            svec!["1", "COM1", "0724"],
+            svec!["2", "cm2", "002"],
+            svec!["3", "com3", "78"],
+            svec!["4", "CM2", "01"],
+            svec!["5", "Cp5", "1"],
+            svec!["6", "CPA", "000"],
+        ],
+    );
+
+    wrk.create(
+        "file2.csv",
+        vec![
+            svec!["id", "company_id", "art_no"],
+            svec!["1", "com1", "724"],
+            svec!["2", "CM2", "02"],
+            svec!["3", "Com3", "078"],
+            svec!["4", "cm2", "1"],
+            svec!["5", "CP5", "01"],
+            svec!["6", "cpa", "0"],
+        ],
+    );
+
+    let mut cmd = wrk.command("joinp");
+    cmd.args(&[
+        "-i",
+        "-z",
+        "--left-semi",
+        "--cache-schema",
+        "-1",
+        "company_id,art_no",
+        "file1.csv",
+        "company_id,art_no",
+        "file2.csv",
+    ]);
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["id", "company_id", "art_no"],
+        svec!["1", "COM1", "0724"],
+        svec!["2", "cm2", "002"],
+        svec!["3", "com3", "78"],
+        svec!["4", "CM2", "01"],
+        svec!["5", "Cp5", "1"],
+        svec!["6", "CPA", "000"],
     ];
     assert_eq!(got, expected);
 }
