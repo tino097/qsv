@@ -29,9 +29,6 @@ input arguments:
     e.g. 'qsv frequency -s Agency nyc311.csv | qsv join value - id nycagencyinfo.csv'
 
 join options:
-    -i, --ignore-case           When set, joins are done case insensitively.
-    -z, --ignore-leading-zeros  When set, leading zeros are ignored in join keys.
-
     --left                 Do a 'left outer' join. This returns all rows in
                            first CSV data set, including rows with no
                            corresponding row in the second data set. When no
@@ -76,6 +73,13 @@ join options:
                            is found.
                            Cross joins do not write keys.
 
+                           JOIN KEY TRANSFORMATION OPTIONS:
+                           Note that transformations are applied to TEMPORARY
+                           join key columns. The original columns are not modified
+                           and the TEMPORARY columns are removed after the join.
+-i, --ignore-case           When set, joins are done case insensitively.
+-z, --ignore-leading-zeros  When set, leading zeros are ignored in join keys.
+
 Common options:
     -h, --help             Display this message
     -o, --output <file>    Write output to <file> instead of stdout.
@@ -117,11 +121,11 @@ struct Args {
     flag_cross:                bool,
     flag_output:               Option<String>,
     flag_no_headers:           bool,
-    flag_ignore_case:          bool,
-    flag_ignore_leading_zeros: bool,
     flag_nulls:                bool,
     flag_delimiter:            Option<Delimiter>,
     flag_keys_output:          Option<String>,
+    flag_ignore_case:          bool,
+    flag_ignore_leading_zeros: bool,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
