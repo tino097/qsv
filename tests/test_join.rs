@@ -948,3 +948,67 @@ fn join_right_semi_header_order_issue_2434() {
     ];
     assert_eq!(got, expected);
 }
+
+#[test]
+fn join_right_semi_different_fields_issue_2437() {
+    let wrk = Workdir::new("join_right_semi_different_fields");
+    wrk.create(
+        "a.csv",
+        vec![
+            svec!["id", "PA", "PB", "PC", "PD"],
+            svec!["1", "104", "0101", "", ""],
+            svec!["2", "104", "0101", "", "D"],
+            svec!["3", "104", "0101", "", ""],
+        ],
+    );
+    wrk.create(
+        "b.csv",
+        vec![
+            svec!["id", "PA", "PB"],
+            svec!["1", "105", "0101"],
+            svec!["3", "105", "0101"],
+            svec!["4", "105", "0101"],
+        ],
+    );
+
+    let mut cmd = wrk.command("join");
+    cmd.args(["id", "a.csv", "id", "b.csv"]).arg("--right-semi");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["id", "PA", "PB"],
+        svec!["1", "105", "0101"],
+        svec!["3", "105", "0101"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn join_right_anti_different_fields_issue_2437() {
+    let wrk = Workdir::new("join_right_anti_different_fields");
+    wrk.create(
+        "a.csv",
+        vec![
+            svec!["id", "PA", "PB", "PC", "PD"],
+            svec!["1", "104", "0101", "", ""],
+            svec!["2", "104", "0101", "", "D"],
+            svec!["3", "104", "0101", "", ""],
+        ],
+    );
+    wrk.create(
+        "b.csv",
+        vec![
+            svec!["id", "PA", "PB"],
+            svec!["1", "105", "0101"],
+            svec!["3", "105", "0101"],
+            svec!["4", "105", "0101"],
+        ],
+    );
+
+    let mut cmd = wrk.command("join");
+    cmd.args(["id", "a.csv", "id", "b.csv"]).arg("--right-anti");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![svec!["id", "PA", "PB"], svec!["4", "105", "0101"]];
+    assert_eq!(got, expected);
+}
