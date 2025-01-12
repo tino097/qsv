@@ -165,19 +165,19 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         // right anti join
         // swap left and right data sets and run left anti join
         (false, false, false, false, true, false, false, false) => {
-            state.write_headers1()?;
             let mut swapped_join = state;
             swap(&mut swapped_join.rdr1, &mut swapped_join.rdr2);
             swap(&mut swapped_join.sel1, &mut swapped_join.sel2);
+            swapped_join.write_headers1()?;
             swapped_join.left_join(true)
         },
         // right semi join
         // swap left and right data sets and run left semi join
         (false, false, false, false, false, true, false, false) => {
-            state.write_headers1()?;
             let mut swapped_join = state;
             swap(&mut swapped_join.rdr1, &mut swapped_join.rdr2);
             swap(&mut swapped_join.sel1, &mut swapped_join.sel2);
+            swapped_join.write_headers1()?;
             swapped_join.left_join(false)
         },
         // full outer join
@@ -471,9 +471,9 @@ impl<R: io::Read + io::Seek> ValueIndex<R> {
     ///
     /// * `rdr` - A CSV reader that implements Read + Seek
     /// * `sel` - A Selection that specifies which columns to index
-    /// * `casei` - If true, values are compared case-insensitively
-    /// * `zerosi` - If true, leading zeros are removed
-    /// * `nulls` - If true, rows with empty values are included in the index
+    /// * `casei` - If true, indexed values are compared case-insensitively
+    /// * `zerosi` - If true, indexed values are compared without leading zeros
+    /// * `nulls` - If true, indexed rows with empty values are included
     ///
     /// # Returns
     ///
@@ -486,7 +486,7 @@ impl<R: io::Read + io::Seek> ValueIndex<R> {
     ///
     /// - Header rows are included in the byte offset index but not the value index
     /// - Values are trimmed and optionally converted to lowercase before indexing
-    /// - Rows with empty values are skipped unless nulls=true
+    /// - Rows with empty indexed values are skipped unless nulls=true
     fn new(
         mut rdr: csv::Reader<R>,
         sel: &Selection,
