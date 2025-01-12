@@ -2051,9 +2051,8 @@ pub fn get_stats_records(
                 break;
             }
             s_slice = curr_line.as_bytes().to_vec();
-            match simd_json::serde::from_slice(&mut s_slice) {
-                Ok(stats) => csv_stats.push(stats),
-                Err(_) => continue,
+            if let Ok(stats) = simd_json::serde::from_slice(&mut s_slice) {
+                csv_stats.push(stats)
             }
         }
         stats_data_loaded = !csv_stats.is_empty();
@@ -2208,9 +2207,8 @@ pub fn get_stats_records(
                 break;
             }
             s_slice = curr_line.as_bytes().to_vec();
-            match simd_json::serde::from_slice(&mut s_slice) {
-                Ok(stats) => csv_stats.push(stats),
-                Err(_) => continue,
+            if let Ok(stats) = simd_json::serde::from_slice(&mut s_slice) {
+                csv_stats.push(stats)
             }
         }
     };
