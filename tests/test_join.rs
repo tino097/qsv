@@ -380,7 +380,7 @@ join_test!(
     |wrk: Workdir, mut cmd: process::Command, headers: bool| {
         cmd.arg("--right-semi");
         let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-        let expected = make_rows(
+        let mut expected = make_rows(
             headers,
             true,
             vec![
@@ -389,6 +389,9 @@ join_test!(
                 svec!["Buffalo", "Ralph Wilson Stadium"],
             ],
         );
+        if headers {
+            expected[0] = svec!["city", "place"];
+        }
         assert_eq!(got, expected);
     }
 );
@@ -398,7 +401,7 @@ join_test!(
     |wrk: Workdir, mut cmd: process::Command, headers: bool| {
         cmd.arg("--right-semi").arg("--ignore-case");
         let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-        let expected = make_rows(
+        let mut expected = make_rows(
             headers,
             true,
             vec![
@@ -408,6 +411,9 @@ join_test!(
                 svec!["BOSTON", "BOSTON COMMON"],
             ],
         );
+        if headers {
+            expected[0] = svec!["city", "place"];
+        }
         assert_eq!(got, expected);
     }
 );
@@ -417,7 +423,7 @@ join_test!(
     |wrk: Workdir, mut cmd: process::Command, headers: bool| {
         cmd.arg("--right-anti");
         let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-        let expected = make_rows(
+        let mut expected = make_rows(
             headers,
             true,
             vec![
@@ -425,6 +431,9 @@ join_test!(
                 svec!["BOSTON", "BOSTON COMMON"],
             ],
         );
+        if headers {
+            expected[0] = svec!["city", "place"];
+        }
         assert_eq!(got, expected);
     }
 );
@@ -434,7 +443,10 @@ join_test!(
     |wrk: Workdir, mut cmd: process::Command, headers: bool| {
         cmd.arg("--right-anti").arg("--ignore-case");
         let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-        let expected = make_rows(headers, true, vec![svec!["Orlando", "Disney World"]]);
+        let mut expected = make_rows(headers, true, vec![svec!["Orlando", "Disney World"]]);
+        if headers {
+            expected[0] = svec!["city", "place"];
+        }
         assert_eq!(got, expected);
     }
 );
@@ -899,6 +911,40 @@ fn join_with_whitespace() {
         svec!["  1", "a", "1  ", "x"],
         svec!["2  ", "b", "  2", "y"],
         svec!["  3  ", "c", "3", "z"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn join_right_semi_header_order_issue_2434() {
+    let wrk = Workdir::new("join_right_semi_header_order_issue_2434");
+    wrk.create(
+        "file1.csv",
+        vec![
+            svec!["id", "company_id", "art_no"],
+            svec!["1", "A1", "1"],
+            svec!["2", "A2", "2"],
+            svec!["3", "A3", "3"],
+        ],
+    );
+    wrk.create(
+        "file2.csv",
+        vec![
+            svec!["id", "art_no", "company_id"],
+            svec!["1", "1", "B1"],
+            svec!["2", "2", "B2"],
+            svec!["3", "5", "B3"],
+        ],
+    );
+
+    let mut cmd = wrk.command("join");
+    cmd.args(["--right-semi", "art_no", "file1.csv", "art_no", "file2.csv"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["id", "art_no", "company_id"],
+        svec!["1", "1", "B1"],
+        svec!["2", "2", "B2"],
     ];
     assert_eq!(got, expected);
 }
