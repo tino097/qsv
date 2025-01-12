@@ -215,8 +215,12 @@ joinp options:
    --null-value <arg>        The string to use when writing null values.
                              (default: <empty string>)
 
-                             JOIN KEY OPTIONS:
-    -i, --ignore-case        When set, joins are done case insensitively.
+                             JOIN KEY TRANSFORMATION OPTIONS:
+                             Note that transformations are applied to TEMPORARY
+                             join key columns. The original columns are not modified
+                             and the TEMPORARY columns are removed after the join.
+
+-i, --ignore-case            When set, joins are done case insensitively.
 -z, --ignore-leading-zeros   When set, joins are done ignoring leading zeros.
                              Note that this is only applied to the join keys for
                              both numeric and string columns. Also note that
