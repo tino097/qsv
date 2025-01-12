@@ -582,7 +582,7 @@ fn generate_string_patterns(
     //  * no columns are selected
     //  * all columns are selected (by default, all columns are selected when no columns are
     //    explicitly specified)
-    if sel.len() == 0 || sel.len() == headers.len() {
+    if sel.is_empty() || sel.len() == headers.len() {
         debug!("no pattern columns selected");
         return Ok(pattern_map);
     }
