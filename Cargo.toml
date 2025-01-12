@@ -310,7 +310,7 @@ calamine = { git = "https://github.com/jqnatividad/calamine", branch = "qsv-2-op
 
 # use upstream of csvlens with unreleased fixes, bumped dependencies, and new clap-less API
 # now that our fork has been merged
-csvlens = { git = "https://github.com/YS-L/csvlens", rev = "9588ae4" }
+csvlens = { git = "https://github.com/YS-L/csvlens", rev = "15d1e2c" }
 
 # needed to get latest dependencies and unreleased fixes
 grex = { git = "https://github.com/pemistahl/grex", rev = "cb71c10" }
