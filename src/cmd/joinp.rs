@@ -215,7 +215,12 @@ joinp options:
    --null-value <arg>        The string to use when writing null values.
                              (default: <empty string>)
 
-    -i, --ignore-case        When set, joins are done case insensitively.
+                             JOIN KEY TRANSFORMATION OPTIONS:
+                             Note that transformations are applied to TEMPORARY
+                             join key columns. The original columns are not modified
+                             and the TEMPORARY columns are removed after the join.
+
+-i, --ignore-case            When set, joins are done case insensitively.
 -z, --ignore-leading-zeros   When set, joins are done ignoring leading zeros.
                              Note that this is only applied to the join keys for
                              both numeric and string columns. Also note that
@@ -223,6 +228,14 @@ joinp options:
                              numeric columns when it infers the schema.
                              To force the schema to be all String types,
                              set --cache-schema to -1 or -2.
+-N, --norm-unicode <arg>     When set, join keys are Unicode normalized.
+                             Valid values are:
+                               nfc - Normalization Form C
+                               nfd - Normalization Form D
+                               nfkc - Normalization Form KC
+                               nfkd - Normalization Form KD
+                               none - No normalization is performed.
+                             [default: none]
 
 Common options:
     -h, --help             Display this message
@@ -295,6 +308,7 @@ struct Args {
     flag_quiet:                bool,
     flag_ignore_case:          bool,
     flag_ignore_leading_zeros: bool,
+    flag_norm_unicode:         Option<String>,
 }
 
 #[derive(PartialEq, Eq)]
@@ -346,6 +360,19 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         s => return fail_incorrectusage_clierror!("Invalid maintain order option: {s}"),
     };
 
+    let flag_norm_unicode = args
+        .flag_norm_unicode
+        .unwrap_or_else(|| "none".to_string())
+        .to_lowercase();
+    let normalization_form = match flag_norm_unicode.as_str() {
+        "nfc" => Some(UnicodeForm::NFC),
+        "nfd" => Some(UnicodeForm::NFD),
+        "nfkc" => Some(UnicodeForm::NFKC),
+        "nfkd" => Some(UnicodeForm::NFKD),
+        "none" => None,
+        s => return fail_incorrectusage_clierror!("Invalid normalization form: {s}"),
+    };
+
     let join_shape: (usize, usize) = match (
         args.flag_left,
         args.flag_left_anti,
@@ -364,6 +391,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             validation,
             maintain_order,
             SpecialJoin::None,
+            normalization_form,
         ),
         // left join
         (true, false, false, false, false, false, false, false, false, false) => join.run(
@@ -371,6 +399,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             validation,
             maintain_order,
             SpecialJoin::None,
+            normalization_form,
         ),
         // left anti join
         (false, true, false, false, false, false, false, false, false, false) => join.run(
@@ -378,6 +407,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             validation,
             maintain_order,
             SpecialJoin::None,
+            normalization_form,
         ),
         // left semi join
         (false, false, true, false, false, false, false, false, false, false) => join.run(
@@ -385,6 +415,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             validation,
             maintain_order,
             SpecialJoin::None,
+            normalization_form,
         ),
         // right join
         (false, false, false, true, false, false, false, false, false, false) => join.run(
@@ -392,6 +423,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             validation,
             maintain_order,
             SpecialJoin::None,
+            normalization_form,
         ),
         // right anti join
         // swap left and right data sets and run left anti join
@@ -404,6 +436,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 validation,
                 maintain_order,
                 SpecialJoin::None,
+                normalization_form,
             )
         },
         // right semi join
@@ -417,6 +450,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 validation,
                 maintain_order,
                 SpecialJoin::None,
+                normalization_form,
             )
         },
         // full join
@@ -425,6 +459,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             validation,
             maintain_order,
             SpecialJoin::None,
+            normalization_form,
         ),
         // cross join
         (false, false, false, false, false, false, false, true, false, false) => join.run(
@@ -432,6 +467,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             validation,
             MaintainOrderJoin::None,
             SpecialJoin::None,
+            normalization_form,
         ),
 
         // as of join
@@ -485,6 +521,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 validation,
                 MaintainOrderJoin::None,
                 SpecialJoin::AsOf,
+                normalization_form,
             )
         },
 
@@ -497,6 +534,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 validation,
                 maintain_order,
                 SpecialJoin::NonEqui(args.flag_non_equi.unwrap()),
+                normalization_form,
             )
         },
         _ => fail_incorrectusage_clierror!("Please pick exactly one join operation."),
@@ -530,12 +568,14 @@ struct JoinStruct {
 }
 
 impl JoinStruct {
+    #[allow(clippy::needless_pass_by_value)]
     fn run(
         mut self,
         jointype: JoinType,
         validation: JoinValidation,
         maintain_order: MaintainOrderJoin,
         special_join: SpecialJoin,
+        normalization_form: Option<UnicodeForm>,
     ) -> CliResult<(usize, usize)> {
         let mut left_selcols: Vec<_> = self
             .left_sel
@@ -548,91 +588,69 @@ impl JoinStruct {
             .map(polars::lazy::dsl::col)
             .collect();
 
-        // Handle ignore_case and ignore_leading_zeros transformations
-        if self.ignore_case || self.ignore_leading_zeros {
-            // Create temporary versions of join columns in left dataframe
-            for col in &left_selcols {
-                let col_str = col.to_string();
-                let col_name = col_str
-                    .trim_start_matches(r#"col(""#)
-                    .trim_end_matches(r#"")"#)
-                    .to_string();
-                let temp_col_name = format!("_qsv-{col_name}-transformed");
-
-                // Create a temporary transformed column for joining
-                // we need to cast to string as the original column may be of a different type
-                // and we need a string type for the transformations
-                let transformed = col.clone().cast(DataType::String);
-                let transformed = if self.ignore_leading_zeros {
-                    transformed
-                        .str()
-                        .replace_all(lit(r"^0+"), lit(""), false)
-                        .str()
-                        .to_lowercase()
-                } else if self.ignore_case {
-                    transformed.str().to_lowercase()
-                } else {
+        // Handle ignore_case, ignore_leading_zeros, and unicode normalization transformations
+        let keys_transformed =
+            if self.ignore_case || self.ignore_leading_zeros || normalization_form.is_some() {
+                // Create transformation function that applies all enabled transformations
+                let transform_col = |col: Expr| {
+                    let mut transformed = col.cast(DataType::String);
+                    if self.ignore_leading_zeros {
+                        transformed = transformed.str().replace_all(lit(r"^0+"), lit(""), false);
+                    }
+                    if self.ignore_case {
+                        transformed = transformed.str().to_lowercase();
+                    }
+                    if let Some(ref form) = normalization_form {
+                        transformed = transformed.str().normalize(form.clone());
+                    }
                     transformed
                 };
 
-                // Add transformed column for joining - keep original untouched
-                self.left_lf = self.left_lf.with_column(transformed.alias(&temp_col_name));
-            }
-
-            // Create temporary versions of join columns in right dataframe
-            for col in &right_selcols {
-                let col_str = col.to_string();
-                let col_name = col_str
-                    .trim_start_matches(r#"col(""#)
-                    .trim_end_matches(r#"")"#)
-                    .to_string();
-                let temp_col_name = format!("_qsv-{col_name}-transformed");
-
-                // Create a temporary transformed column for joining
-                let transformed = col.clone().cast(DataType::String);
-                let transformed = if self.ignore_leading_zeros {
-                    transformed
-                        .str()
-                        .replace_all(lit(r"^0+"), lit(""), false)
-                        .str()
-                        .to_lowercase()
-                } else if self.ignore_case {
-                    transformed.str().to_lowercase()
-                } else {
-                    transformed
+                // Helper to get clean column name without col("") wrapper
+                let clean_col_name = |col: &Expr| {
+                    col.to_string()
+                        .trim_start_matches(r#"col(""#)
+                        .trim_end_matches(r#"")"#)
+                        .to_string()
                 };
 
-                // Add transformed column for joining - keep original untouched
-                self.right_lf = self.right_lf.with_column(transformed.alias(&temp_col_name));
-            }
+                // Transform left dataframe columns
+                for col in &left_selcols {
+                    let col_name = clean_col_name(col);
+                    let temp_col_name = format!("_qsv-{col_name}-transformed");
+                    self.left_lf = self
+                        .left_lf
+                        .with_column(transform_col(col.clone()).alias(&temp_col_name));
+                }
 
-            // Update selcols to use the transformed columns for joining
-            let left_selcols_w: Vec<_> = left_selcols
-                .iter()
-                .map(|col| {
-                    polars::lazy::dsl::col(format!(
-                        "_qsv-{}-transformed",
-                        col.to_string()
-                            .trim_start_matches(r#"col(""#)
-                            .trim_end_matches(r#"")"#)
-                    ))
-                })
-                .collect();
-            left_selcols = left_selcols_w;
+                // Transform right dataframe columns
+                for col in &right_selcols {
+                    let col_name = clean_col_name(col);
+                    let temp_col_name = format!("_qsv-{col_name}-transformed");
+                    self.right_lf = self
+                        .right_lf
+                        .with_column(transform_col(col.clone()).alias(&temp_col_name));
+                }
 
-            let right_selcols_w: Vec<_> = right_selcols
-                .iter()
-                .map(|col| {
-                    polars::lazy::dsl::col(format!(
-                        "_qsv-{}-transformed",
-                        col.to_string()
-                            .trim_start_matches(r#"col(""#)
-                            .trim_end_matches(r#"")"#)
-                    ))
-                })
-                .collect();
-            right_selcols = right_selcols_w;
-        }
+                // Update selcols to use transformed column names
+                left_selcols = left_selcols
+                    .iter()
+                    .map(|col| {
+                        polars::lazy::dsl::col(format!("_qsv-{}-transformed", clean_col_name(col)))
+                    })
+                    .collect();
+
+                right_selcols = right_selcols
+                    .iter()
+                    .map(|col| {
+                        polars::lazy::dsl::col(format!("_qsv-{}-transformed", clean_col_name(col)))
+                    })
+                    .collect();
+
+                true
+            } else {
+                false
+            };
 
         let left_selcols_len = left_selcols.len();
         let right_selcols_len = right_selcols.len();
@@ -748,7 +766,7 @@ impl JoinStruct {
             join_results
         };
 
-        if self.ignore_case || self.ignore_leading_zeros {
+        if keys_transformed {
             // Remove temporary transformed columns and
             // duplicate right-side join columns if coalesce is true
             let cols = results_df.get_column_names();
