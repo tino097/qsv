@@ -2363,3 +2363,156 @@ fn joinp_ignore_leading_zeros_issue_2424() {
     ];
     assert_eq!(got, expected);
 }
+
+#[test]
+fn joinp_unicode_normalization() {
+    let wrk = Workdir::new("joinp_unicode_normalization");
+
+    wrk.create(
+        "left.csv",
+        vec![
+            svec!["name", "value"],
+            svec!["cafe\u{0301}", "a"], // café decomposed
+            svec!["café", "b"],         // café precomposed
+        ],
+    );
+
+    wrk.create(
+        "right.csv",
+        vec![
+            svec!["name", "desc"],
+            svec!["café", "one"],         // café precomposed
+            svec!["cafe\u{0301}", "two"], // café decomposed
+        ],
+    );
+
+    // Test NFC normalization
+    let mut cmd = wrk.command("joinp");
+    cmd.args(&["name", "left.csv", "name", "right.csv"])
+        .args(["--norm-unicode", "nfc"]);
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["name", "value", "name_right", "desc"],
+        svec!["cafe\u{301}", "a", "café", "one"],
+        svec!["café", "b", "café", "one"],
+        svec!["cafe\u{301}", "a", "cafe\u{301}", "two"],
+        svec!["café", "b", "cafe\u{301}", "two"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn joinp_unicode_normalization_with_other_options() {
+    let wrk = Workdir::new("joinp_unicode_normalization_with_other_options");
+
+    wrk.create(
+        "left.csv",
+        vec![
+            svec!["id", "name", "value"],
+            svec!["001", "CAFÉ", "a"],
+            svec!["02", "cafe\u{0301}", "b"],
+        ],
+    );
+
+    wrk.create(
+        "right.csv",
+        vec![
+            svec!["id", "name", "desc"],
+            svec!["1", "café", "one"],
+            svec!["002", "CAFE\u{0301}", "two"],
+        ],
+    );
+
+    let mut cmd = wrk.command("joinp");
+    cmd.args(&["id,name", "left.csv", "id,name", "right.csv"])
+        .args(["--norm-unicode", "nfkc"])
+        .arg("--ignore-leading-zeros")
+        .arg("--ignore-case")
+        .args(["--cache-schema", "-2"]); // force schema to all String types
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["id", "name", "value", "id_right", "name_right", "desc"],
+        svec!["001", "CAFÉ", "a", "1", "café", "one"],
+        svec!["02", "cafe\u{0301}", "b", "002", "CAFE\u{0301}", "two"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn joinp_unicode_normalization_ligatures() {
+    let wrk = Workdir::new("joinp_unicode_normalization_ligatures");
+
+    wrk.create(
+        "left.csv",
+        vec![
+            svec!["name", "value"],
+            // Different ligature representations
+            svec!["fi\u{FB01}le", "a"], // "file" with "fi" ligature
+            svec!["ﬁle", "b"],          // "file" with precomposed "fi" ligature
+            svec!["file", "c"],         // "file" without ligature
+            svec!["o\u{FB03}ce", "d"],  // "office" with "ffi" ligature
+            svec!["oﬃce", "e"],         // "office" with precomposed "ffi" ligature
+            svec!["office", "f"],       // "office" without ligature
+        ],
+    );
+
+    wrk.create(
+        "right.csv",
+        vec![
+            svec!["name", "desc"],
+            svec!["file", "plain"],   // Regular "file"
+            svec!["office", "plain"], // Regular "office"
+        ],
+    );
+
+    // Test NFKC normalization (should decompose ligatures)
+    let mut cmd = wrk.command("joinp");
+    cmd.args(&["name", "left.csv", "name", "right.csv"])
+        .args(["--norm-unicode", "nfkc"])
+        .args(["--maintain-order", "left"]);
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["name", "value", "name_right", "desc"],
+        svec!["ﬁle", "b", "file", "plain"],
+        svec!["file", "c", "file", "plain"],
+        svec!["oﬃce", "d", "office", "plain"],
+        svec!["oﬃce", "e", "office", "plain"],
+        svec!["office", "f", "office", "plain"],
+    ];
+    assert_eq!(got, expected);
+
+    // Test NFKD normalization (should also decompose ligatures)
+    let mut cmd = wrk.command("joinp");
+    cmd.args(&["name", "left.csv", "name", "right.csv"])
+        .args(["--norm-unicode", "nfkd"]);
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert_eq!(got, expected);
+
+    // Test NFC normalization (should NOT decompose ligatures)
+    let mut cmd = wrk.command("joinp");
+    cmd.args(&["name", "left.csv", "name", "right.csv"])
+        .args(["--norm-unicode", "nfc"])
+        .args(["--maintain-order", "left"]);
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["name", "value", "name_right", "desc"],
+        svec!["file", "c", "file", "plain"],
+        svec!["office", "f", "office", "plain"],
+    ];
+    assert_eq!(got, expected);
+}
