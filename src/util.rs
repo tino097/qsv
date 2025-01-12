@@ -2052,7 +2052,7 @@ pub fn get_stats_records(
             }
             s_slice = curr_line.as_bytes().to_vec();
             if let Ok(stats) = simd_json::serde::from_slice(&mut s_slice) {
-                csv_stats.push(stats)
+                csv_stats.push(stats);
             }
         }
         stats_data_loaded = !csv_stats.is_empty();
@@ -2208,7 +2208,7 @@ pub fn get_stats_records(
             }
             s_slice = curr_line.as_bytes().to_vec();
             if let Ok(stats) = simd_json::serde::from_slice(&mut s_slice) {
-                csv_stats.push(stats)
+                csv_stats.push(stats);
             }
         }
     };
