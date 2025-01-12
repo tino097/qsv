@@ -5,7 +5,7 @@ use std::os::unix::process::ExitStatusExt;
 use std::{
     cmp::min,
     env, fs,
-    fs::{create_dir_all, File},
+    fs::File,
     io::{BufRead, BufReader, BufWriter, Read, Write},
     path::{Path, PathBuf},
     str,
@@ -785,7 +785,7 @@ impl FilenameTemplate {
         let filename = self.filename(unique_value);
         let full_path = path.as_ref().join(filename);
         if let Some(parent) = full_path.parent() {
-            create_dir_all(parent)?;
+            std::fs::create_dir_all(parent)?;
         }
         let spath = Some(full_path.display().to_string());
         Config::new(spath.as_ref()).writer()
