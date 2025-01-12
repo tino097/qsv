@@ -6,6 +6,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2025-01-12
+
+## What's Changed
+* build(deps): bump serde_json from 1.0.134 to 1.0.135 by @dependabot in https://github.com/dathere/qsv/pull/2416
+* build(deps): bump phf from 0.11.2 to 0.11.3 by @dependabot in https://github.com/dathere/qsv/pull/2417
+* build(deps): bump base62 from 2.0.3 to 2.1.0 by @dependabot in https://github.com/dathere/qsv/pull/2419
+* build(deps): bump azure/trusted-signing-action from 0.5.0 to 0.5.1 by @dependabot in https://github.com/dathere/qsv/pull/2420
+* Migrate from dynfmt to dynfmt2 by @jqnatividad in https://github.com/dathere/qsv/pull/2421
+* build(deps): bump tokio from 1.42.0 to 1.43.0 by @dependabot in https://github.com/dathere/qsv/pull/2423
+* build(deps): bump base62 from 2.1.0 to 2.2.0 by @dependabot in https://github.com/dathere/qsv/pull/2426
+* build(deps): bump uuid from 1.11.0 to 1.11.1 by @dependabot in https://github.com/dathere/qsv/pull/2427
+* refactor: `pivotp` - smarter aggregation suggestions by @jqnatividad in https://github.com/dathere/qsv/pull/2428
+* `join`: add `--ignore-leading-zeros` option by @jqnatividad in https://github.com/dathere/qsv/pull/2430
+* build(deps): bump pyo3 from 0.23.3 to 0.23.4 by @dependabot in https://github.com/dathere/qsv/pull/2431
+* `joinp`: refactor `--ignore-leading-zeros` handling by @jqnatividad in https://github.com/dathere/qsv/pull/2433
+* fix: `join` `--right-anti` and `--right-semi` joins didn't  swap headers by @jqnatividad in https://github.com/dathere/qsv/pull/2435
+* feat: `joinp` add `--norm-unicode` option to unicode normalize join keys by @jqnatividad in https://github.com/dathere/qsv/pull/2436
+
+
+**Full Changelog**: https://github.com/dathere/qsv/compare/2.0.0...2.1.0
+
 ## [2.0.0] - 2025-01-06
 
 ## qsv v2.0.0 is here! 🎉
