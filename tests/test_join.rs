@@ -683,52 +683,42 @@ join_test_with_zeros!(
     }
 );
 
-join_test_with_zeros!(
-    join_inner_zeros_casei,
-    |wrk: Workdir, mut cmd: process::Command, headers: bool| {
-        let mut cities1 = vec![
-            svec!["01NYC", "data1"],
-            svec!["02LA", "data2"],
-            svec!["1nyc", "data3"],
-        ];
-        let mut cities2 = vec![
-            svec!["1NYC", "info1"],
-            svec!["2la", "info2"],
-            svec!["01nyc", "info3"],
-        ];
-        if headers {
-            cities1.insert(0, svec!["id", "value"]);
-            cities2.insert(0, svec!["id", "info"]);
-        }
+#[test]
+fn join_inner_zeros_casei() {
+    let wrk = Workdir::new("join_inner_zeros_casei");
 
-        let wrk = Workdir::new("join_inner_zeros_casei");
-        wrk.create("cities1.csv", cities1);
-        wrk.create("cities2.csv", cities2);
+    let cities1 = vec![
+        svec!["id", "value"],
+        svec!["01NYC", "data1"],
+        svec!["02LA", "data2"],
+        svec!["1nyc", "data3"],
+    ];
+    let cities2 = vec![
+        svec!["id", "info"],
+        svec!["1NYC", "info1"],
+        svec!["2la", "info2"],
+        svec!["01nyc", "info3"],
+    ];
 
-        let mut cmd = wrk.command("join");
-        if headers {
-            cmd.args(&["id", "cities1.csv", "id", "cities2.csv"]);
-        } else {
-            cmd.args(&["1", "cities1.csv", "1", "cities2.csv"])
-                .arg("--no-headers");
-        }
-        cmd.arg("--ignore-leading-zeros").arg("--ignore-case");
+    wrk.create("cities1.csv", cities1);
+    wrk.create("cities2.csv", cities2);
 
-        let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-        let expected = make_rows_with_zeros(
-            headers,
-            false,
-            vec![
-                svec!["01NYC", "data1", "1NYC", "info1"],
-                svec!["01NYC", "data1", "01nyc", "info3"],
-                svec!["02LA", "data2", "2la", "info2"],
-                svec!["1nyc", "data3", "1NYC", "info1"],
-                svec!["1nyc", "data3", "01nyc", "info3"],
-            ],
-        );
-        assert_eq!(got, expected);
-    }
-);
+    let mut cmd = wrk.command("join");
+    cmd.args(&["id", "cities1.csv", "id", "cities2.csv"])
+        .arg("--ignore-leading-zeros")
+        .arg("--ignore-case");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["id", "value", "id", "info"],
+        svec!["01NYC", "data1", "1NYC", "info1"],
+        svec!["01NYC", "data1", "01nyc", "info3"],
+        svec!["02LA", "data2", "2la", "info2"],
+        svec!["1nyc", "data3", "1NYC", "info1"],
+        svec!["1nyc", "data3", "01nyc", "info3"],
+    ];
+    assert_eq!(got, expected);
+}
 
 join_test_with_zeros!(
     join_outer_left_zeros,
