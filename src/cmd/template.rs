@@ -128,6 +128,7 @@ use std::{
 };
 
 use ahash::{HashMap, HashMapExt};
+#[cfg(any(feature = "feature_capable", feature = "lite"))]
 use indicatif::{ProgressBar, ProgressDrawTarget};
 use minijinja::{value::ValueKind, Environment, Value};
 use minijinja_contrib::pycompat::unknown_method_callback;
@@ -162,6 +163,7 @@ struct Args {
     flag_batch:              usize,
     flag_delimiter:          Option<Delimiter>,
     flag_no_headers:         bool,
+    #[allow(dead_code)]
     flag_progressbar:        bool,
     flag_timeout:            u16,
     flag_cache_dir:          String,
@@ -342,10 +344,12 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let batchsize = util::optimal_batch_size(&rconfig, args.flag_batch, num_jobs);
 
     // prep progress bar
+    #[cfg(any(feature = "feature_capable", feature = "lite"))]
     let show_progress =
         (args.flag_progressbar || util::get_envvar_flag("QSV_PROGRESSBAR")) && !rconfig.is_stdin();
-
+    #[cfg(any(feature = "feature_capable", feature = "lite"))]
     let progress = ProgressBar::with_draw_target(None, ProgressDrawTarget::stderr_with_hz(5));
+    #[cfg(any(feature = "feature_capable", feature = "lite"))]
     if show_progress {
         util::prep_progress(&progress, rowcount);
     } else {
@@ -567,6 +571,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             }
         }
 
+        #[cfg(any(feature = "feature_capable", feature = "lite"))]
         if show_progress {
             progress.inc(batch.len() as u64);
         }
@@ -574,6 +579,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         batch.clear();
     } // end batch loop
 
+    #[cfg(any(feature = "feature_capable", feature = "lite"))]
     if show_progress {
         util::finish_progress(&progress);
     }

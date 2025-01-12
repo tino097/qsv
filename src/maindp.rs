@@ -85,6 +85,7 @@ static COMMAND_LIST: &str = r#"
     sortcheck   Check if a CSV is sorted
     sqlp        Run a SQL query against several CSVs using the Pola.rs engine
     stats       Infer data types and compute summary statistics
+    template    Render templates using CSV data
     validate    Validate CSV data for RFC4180-compliance or with JSON Schema
 
     NOTE: qsvdp ignores the --progressbar option for all commands."#;
@@ -277,6 +278,7 @@ enum Command {
     #[cfg(feature = "polars")]
     SqlP,
     Stats,
+    Template,
     Validate,
 }
 
@@ -336,6 +338,7 @@ impl Command {
             #[cfg(feature = "polars")]
             Command::SqlP => cmd::sqlp::run(argv),
             Command::Stats => cmd::stats::run(argv),
+            Command::Template => cmd::template::run(argv),
             Command::Validate => cmd::validate::run(argv),
         }
     }
