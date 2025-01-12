@@ -369,7 +369,7 @@ fn parse_dynenum_uri(uri: &str) -> (String, i64) {
     if !uri.contains('|') {
         return (
             uri.split('/')
-                .last()
+                .next_back()
                 .unwrap_or(DEFAULT_LOOKUP_NAME)
                 .trim_end_matches(".csv")
                 .to_string(),

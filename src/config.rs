@@ -714,7 +714,7 @@ pub fn get_delim_by_extension(path: &Path, default_delim: u8) -> (String, u8, bo
     let file_extension = if snappy {
         path_str
             .strip_suffix(".sz")
-            .and_then(|s| s.split('.').last())
+            .and_then(|s| s.split('.').next_back())
             .unwrap_or("")
             .to_string()
     } else {

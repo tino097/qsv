@@ -750,7 +750,7 @@ async fn geocode_main(args: Args) -> CliResult<()> {
         let cities_filename = args
             .flag_cities_url
             .split('/')
-            .last()
+            .next_back()
             .unwrap()
             .replace(".zip", ".txt");
 
