@@ -8,22 +8,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.1.0] - 2025-01-12
 
-## What's Changed
-* build(deps): bump serde_json from 1.0.134 to 1.0.135 by @dependabot in https://github.com/dathere/qsv/pull/2416
-* build(deps): bump phf from 0.11.2 to 0.11.3 by @dependabot in https://github.com/dathere/qsv/pull/2417
-* build(deps): bump base62 from 2.0.3 to 2.1.0 by @dependabot in https://github.com/dathere/qsv/pull/2419
-* build(deps): bump azure/trusted-signing-action from 0.5.0 to 0.5.1 by @dependabot in https://github.com/dathere/qsv/pull/2420
-* Migrate from dynfmt to dynfmt2 by @jqnatividad in https://github.com/dathere/qsv/pull/2421
-* build(deps): bump tokio from 1.42.0 to 1.43.0 by @dependabot in https://github.com/dathere/qsv/pull/2423
-* build(deps): bump base62 from 2.1.0 to 2.2.0 by @dependabot in https://github.com/dathere/qsv/pull/2426
-* build(deps): bump uuid from 1.11.0 to 1.11.1 by @dependabot in https://github.com/dathere/qsv/pull/2427
-* refactor: `pivotp` - smarter aggregation suggestions by @jqnatividad in https://github.com/dathere/qsv/pull/2428
-* `join`: add `--ignore-leading-zeros` option by @jqnatividad in https://github.com/dathere/qsv/pull/2430
-* build(deps): bump pyo3 from 0.23.3 to 0.23.4 by @dependabot in https://github.com/dathere/qsv/pull/2431
-* `joinp`: refactor `--ignore-leading-zeros` handling by @jqnatividad in https://github.com/dathere/qsv/pull/2433
-* fix: `join` `--right-anti` and `--right-semi` joins didn't  swap headers by @jqnatividad in https://github.com/dathere/qsv/pull/2435
-* feat: `joinp` add `--norm-unicode` option to unicode normalize join keys by @jqnatividad in https://github.com/dathere/qsv/pull/2436
+### Added
+* `join`: add `--ignore-leading-zeros` option https://github.com/dathere/qsv/pull/2430
+* `joinp` add `--norm-unicode` option to unicode normalize join keys https://github.com/dathere/qsv/pull/2436
+* `pivotp` added more smart aggregation suggestions https://github.com/dathere/qsv/pull/2428
+* `template`: added to qsvdp binary variant https://github.com/dathere/qsv/commit/9df85e65dedf130981ab430764b4a4cdc9382dc8
+* `benchmarks`: added `pivotp` benchmark https://github.com/dathere/qsv/commit/92e4c51cb17e5511f668b4a2cc96d9cab28a4758
 
+### Changed
+* `joinp`: refactored `--ignore-leading-zeros` handling https://github.com/dathere/qsv/pull/2433
+* Migrate from unmaintained dynfmt to dynfmt2 https://github.com/dathere/qsv/pull/2421
+* deps: bump csvlens to latest upstream https://github.com/dathere/qsv/commit/52c766da43642c2eef6f35819d8e9fb0966700a3
+* deps: bump to latest csv qsv-optimized fork https://github.com/dathere/qsv/commit/58ac650abfa51b7b8deb23d1a8917b3983515755
+* deps: bumped MiniJinja to 2.6.0 https://github.com/dathere/qsv/commit/8176368434982ba6bd206762c524a3dc47370039
+* deps: bump to latest Polars upstream
+* deps: bump qsv-stats to 0.26.0
+* build(deps): bump azure/trusted-signing-action from 0.5.0 to 0.5.1 by @dependabot in https://github.com/dathere/qsv/pull/2420
+* build(deps): bump base62 from 2.0.3 to 2.1.0 by @dependabot in https://github.com/dathere/qsv/pull/2419
+* build(deps): bump base62 from 2.1.0 to 2.2.0 by @dependabot in https://github.com/dathere/qsv/pull/2426
+* build(deps): bump phf from 0.11.2 to 0.11.3 by @dependabot in https://github.com/dathere/qsv/pull/2417
+* build(deps): bump pyo3 from 0.23.3 to 0.23.4 by @dependabot in https://github.com/dathere/qsv/pull/2431
+* build(deps): bump serde_json from 1.0.134 to 1.0.135 by @dependabot in https://github.com/dathere/qsv/pull/2416
+* build(deps): bump tokio from 1.42.0 to 1.43.0 by @dependabot in https://github.com/dathere/qsv/pull/2423
+* build(deps): bump uuid from 1.11.0 to 1.11.1 by @dependabot in https://github.com/dathere/qsv/pull/2427
+* apply several clippy suggestions
+* bumped numerous indirect dependencies to latest versions
+* bumped Rust nightly from 2024-12-19 to 2025-01-05 (same version used by Polars)
+* bump MSRV to latest Rust stable - v1.84.0
+
+### Fixed
+* `join`: revert optimization that actually resulted in a performance regression https://github.com/dathere/qsv/commit/e42af2b4e9ab9ef4eed43b97e343e253c50a35a1
+* `join`: `--right-anti` and `--right-semi` joins didn't swap headers properly https://github.com/dathere/qsv/pull/2435
+* `count`: polars-powered `count` didn't use the right data type SQL count(*) https://github.com/dathere/qsv/commit/d8c1524ca0dff4ac19164ccb8090b01fd740b571
 
 **Full Changelog**: https://github.com/dathere/qsv/compare/2.0.0...2.1.0
 
