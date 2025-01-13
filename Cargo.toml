@@ -321,9 +321,9 @@ local-encoding = { git = "https://github.com/slonopotamus/local-encoding-rs", br
 # use our patched fork of sled to get rid of unmaintained instant
 sled = { git = "https://github.com/dathere/sled", branch = "v0.34.7-bumped-parking_lot_to_0.12" }
 
-# use our fork of latest strum upstream with bumped phf dependency and unreleased fixes.
-strum        = { git = "https://github.com/dathere/strum", branch = "upstream-with-bumped-phf-to-0.11" }
-strum_macros = { git = "https://github.com/dathere/strum", branch = "upstream-with-bumped-phf-to-0.11" }
+# use latest strum upstream with bumped phf dependency and unreleased fixes.
+strum        = { git = "https://github.com/Peternator7/strum", rev = "1e6928c" }
+strum_macros = { git = "https://github.com/Peternator7/strum", rev = "1e6928c" }
 
 # use textwrap upstream with unreleased fixes and dependencies, used by minijinja-contrib
 textwrap = { git = "https://github.com/mgeisler/textwrap", rev = "0e581b8" }
