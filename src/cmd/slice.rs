@@ -77,7 +77,7 @@ Common options:
                            Must be a single character. (default: ,)
 "#;
 
-use std::fs;
+use std::{fs, path::PathBuf};
 
 use serde::Deserialize;
 
@@ -103,7 +103,26 @@ struct Args {
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
-    let args: Args = util::get_args(USAGE, argv)?;
+    let mut args: Args = util::get_args(USAGE, argv)?;
+
+    let tmpdir = tempfile::tempdir()?;
+    let work_input = util::process_input(
+        vec![PathBuf::from(
+            // if no input file is specified, read from stdin "-"
+            args.arg_input.clone().unwrap_or_else(|| "-".to_string()),
+        )],
+        &tmpdir,
+        "",
+    )?;
+
+    // safety: there's at least one valid element in work_input
+    let input_filename = work_input[0]
+        .canonicalize()?
+        .into_os_string()
+        .into_string()
+        .unwrap();
+
+    args.arg_input = Some(input_filename);
 
     if let Some(idxed) = args.rconfig().indexed()? {
         args.with_index(idxed)
