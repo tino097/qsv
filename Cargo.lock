@@ -6360,9 +6360,9 @@ checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
 
 [[package]]
 name = "simple-home-dir"
-version = "0.4.5"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d50f2938e12058068c9bb06ff39c57937befe678ebb8ab2eaf6c9b7559bbbd14"
+checksum = "cd988c122a92006d24f347b3cbba965d5558e0ce94659fa7f0b6074e48641913"
 dependencies = [
  "windows-sys 0.59.0",
 ]
