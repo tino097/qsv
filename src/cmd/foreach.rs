@@ -79,8 +79,6 @@ use std::{
 
 #[cfg(feature = "feature_capable")]
 use indicatif::{ProgressBar, ProgressDrawTarget};
-#[cfg(target_family = "windows")]
-use local_encoding::windows::multi_byte_to_wide_char;
 use regex::bytes::{NoExpand, Regex};
 use serde::Deserialize;
 
@@ -210,11 +208,10 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         #[cfg(target_family = "windows")]
         let command_bytes = command_pieces.next().unwrap().as_bytes();
         #[cfg(target_family = "windows")]
-        let command_wide_char = multi_byte_to_wide_char(65001, 0, command_bytes).unwrap();
-        #[cfg(target_family = "windows")]
-        let prog_str = OsString::from_str(command_wide_char.as_str()).unwrap();
-        #[cfg(target_family = "windows")]
-        let prog = prog_str.as_os_str();
+        let prog = OsString::from(
+            simdutf8::basic::from_utf8(command_bytes)
+                .unwrap_or_default()
+        );
 
         let cmd_args: Vec<String> = command_pieces
             .map(|piece| {
