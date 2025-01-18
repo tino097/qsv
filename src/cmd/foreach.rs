@@ -208,10 +208,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         #[cfg(target_family = "windows")]
         let command_bytes = command_pieces.next().unwrap().as_bytes();
         #[cfg(target_family = "windows")]
-        let prog = OsString::from(
-            simdutf8::basic::from_utf8(command_bytes)
-                .unwrap_or_default()
-        );
+        let prog = OsString::from(simdutf8::basic::from_utf8(command_bytes).unwrap_or_default());
 
         let cmd_args: Vec<String> = command_pieces
             .map(|piece| {
