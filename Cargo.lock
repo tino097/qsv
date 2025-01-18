@@ -1652,7 +1652,7 @@ dependencies = [
 [[package]]
 name = "csvlens"
 version = "0.11.0"
-source = "git+https://github.com/YS-L/csvlens?rev=15d1e2c#15d1e2c051570d52139c9318d0d1a1bd602a71bb"
+source = "git+https://github.com/YS-L/csvlens?rev=f1efb7a#f1efb7a639759226202b8bcca35285b164d82e88"
 dependencies = [
  "anyhow",
  "arboard",
