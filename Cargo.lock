@@ -1146,9 +1146,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.9"
+version = "1.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8293772165d9345bdaaa39b45b2109591e63fe5e6fbc23c6ff930a048aa310b"
+checksum = "13208fcbb66eaeffe09b99fffbe1af420f00a7b35aa99ad683dfc1aa76145229"
 dependencies = [
  "jobserver",
  "libc",
@@ -1208,9 +1208,9 @@ dependencies = [
 
 [[package]]
 name = "chrono-tz"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd6dd8046d00723a59a2f8c5f295c515b9bb9a331ee4f8f3d4dd49e428acd3b6"
+checksum = "9c6ac4f2c0bf0f44e9161aec9675e1050aa4a530663c4a9e37e108fa948bca9f"
 dependencies = [
  "chrono",
  "chrono-tz-build 0.4.0",
@@ -1614,9 +1614,9 @@ dependencies = [
 
 [[package]]
 name = "csv-diff"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf378965e48a7d858973826f7e7ef4a09c38543d0c074195f126023e30572fb5"
+checksum = "c472abdf9c60339b3fd083252dda1ade996587a08752e94646495be76084e0f3"
 dependencies = [
  "ahash",
  "crossbeam-channel",
@@ -2050,9 +2050,9 @@ dependencies = [
 
 [[package]]
 name = "enumflags2"
-version = "0.7.10"
+version = "0.7.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d232db7f5956f3f14313dc2f87985c58bd2c695ce124c8cdd984e08e15ac133d"
+checksum = "ba2f4b465f5318854c6f8dd686ede6c0a9dc67d4b1ac241cf0eb51521a309147"
 dependencies = [
  "enumflags2_derive",
  "serde",
@@ -2060,9 +2060,9 @@ dependencies = [
 
 [[package]]
 name = "enumflags2_derive"
-version = "0.7.10"
+version = "0.7.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de0d48a183585823424a4ce1aa132d174a6a81bd540895822eb4c8373a8e49e8"
+checksum = "fc4caf64a58d7a6d65ab00639b046ff54399a39f5f2554728895ace4b297cd79"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4486,7 +4486,7 @@ dependencies = [
  "avro-schema",
  "bytemuck",
  "chrono",
- "chrono-tz 0.10.0",
+ "chrono-tz 0.10.1",
  "dyn-clone",
  "either",
  "ethnum",
@@ -4550,7 +4550,7 @@ dependencies = [
  "bitflags 2.8.0",
  "bytemuck",
  "chrono",
- "chrono-tz 0.10.0",
+ "chrono-tz 0.10.1",
  "comfy-table",
  "either",
  "hashbrown 0.14.5",
@@ -4624,7 +4624,7 @@ dependencies = [
  "blake3",
  "bytes",
  "chrono",
- "chrono-tz 0.10.0",
+ "chrono-tz 0.10.1",
  "fast-float2",
  "flate2",
  "fs4",
@@ -4668,7 +4668,7 @@ source = "git+https://github.com/pola-rs/polars?tag=py-1.20.0#725c96009e4c6cb6b0
 dependencies = [
  "ahash",
  "chrono",
- "chrono-tz 0.10.0",
+ "chrono-tz 0.10.1",
  "fallible-streaming-iterator",
  "hashbrown 0.15.2",
  "indexmap",
@@ -4741,7 +4741,7 @@ dependencies = [
  "base64",
  "bytemuck",
  "chrono",
- "chrono-tz 0.10.0",
+ "chrono-tz 0.10.1",
  "either",
  "hashbrown 0.15.2",
  "hex",
@@ -4841,7 +4841,7 @@ dependencies = [
  "bytemuck",
  "bytes",
  "chrono",
- "chrono-tz 0.10.0",
+ "chrono-tz 0.10.1",
  "either",
  "futures",
  "hashbrown 0.15.2",
@@ -4946,7 +4946,7 @@ dependencies = [
  "atoi",
  "bytemuck",
  "chrono",
- "chrono-tz 0.10.0",
+ "chrono-tz 0.10.1",
  "now",
  "once_cell",
  "polars-arrow",
@@ -5206,7 +5206,7 @@ dependencies = [
  "calamine",
  "censor",
  "chrono",
- "chrono-tz 0.10.0",
+ "chrono-tz 0.10.1",
  "console",
  "cpc",
  "crc32fast",
@@ -6171,9 +6171,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.135"
+version = "1.0.136"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b0d7ba2887406110130a978386c4e1befb98c674b4fba677954e4db976630d9"
+checksum = "336a0c23cf42a38d9eaa7cd22c7040d04e1228a19a933890805ffd00a16437d2"
 dependencies = [
  "indexmap",
  "itoa",

@@ -124,6 +124,43 @@ diffresult,case_enquiry_id,open_dt,target_dt,closed_dt,ontime,case_status,closur
 }
 
 #[test]
+fn diff_sort_diff_result_by_lines_by_default_modified_rows_interleaved() {
+    let wrk = Workdir::new("diff_sort_diff_result_by_lines_by_default_modified_rows_interleaved");
+
+    let left = vec![
+        svec!["h1", "h2", "h3"],
+        svec!["4", "foo", "bar"],
+        svec!["2", "drix", "druux"],
+        svec!["3", "higgs", "corge"],
+    ];
+    wrk.create("left.csv", left);
+
+    let right = vec![
+        svec!["h1", "h2", "h3"],
+        svec!["1", "foo", "bar"],
+        svec!["3", "higgs_changed", "corge"],
+        svec!["2", "drix_changed", "druux"],
+    ];
+    wrk.create("right.csv", right);
+
+    let mut cmd = wrk.command("diff");
+    cmd.args(["left.csv", "right.csv"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected: Vec<Vec<String>> = vec![
+        svec!["diffresult", "h1", "h2", "h3"],
+        svec!["-", "4", "foo", "bar"],
+        svec!["+", "1", "foo", "bar"],
+        svec!["-", "2", "drix", "druux"],
+        svec!["+", "2", "drix_changed", "druux"],
+        svec!["-", "3", "higgs", "corge"],
+        svec!["+", "3", "higgs_changed", "corge"],
+    ];
+
+    assert_eq!(got, expected);
+}
+
+#[test]
 fn diff_sort_diff_result_by_first_column() {
     let wrk = Workdir::new("diff");
     let test_file = wrk.load_test_file("boston311-100.csv");
