@@ -177,7 +177,6 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                                     "Column name '{col_name}' not found on left CSV"
                                 ))
                             })
-                            .map(|pos| pos + index + 1)
                     })
                     .collect::<Result<Vec<usize>, _>>()?;
 
@@ -194,7 +193,6 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                                     "Column name '{col_name}' not found on right CSV"
                                 ))
                             })
-                            .map(|pos| pos + index + 1)
                     })
                     .collect::<Result<Vec<usize>, _>>()?;
 
@@ -235,10 +233,34 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                                     "Column name '{col_name}' not found on left CSV"
                                 ))
                             })
-                            .map(|pos| pos + index + 1)
                     })
                     .collect::<Result<Vec<usize>, _>>()?;
 
+                // now check if the right CSV has the same selected colnames in the same locations
+                let right_sort_indices = s
+                    .split(',')
+                    .enumerate()
+                    .map(|(index, col_name)| {
+                        headers_right
+                            .iter()
+                            .position(|h| h == col_name.as_bytes())
+                            .ok_or_else(|| {
+                                CliError::Other(format!(
+                                    "Column name '{col_name}' not found on right CSV"
+                                ))
+                            })
+                    })
+                    .collect::<Result<Vec<usize>, _>>()?;
+
+                if left_sort_indices != right_sort_indices {
+                    return fail_incorrectusage_clierror!(
+                        "Column names on left and right CSVs do not match.\nUse `qsv select` to \
+                         reorder the columns on the right CSV to match the order of the left \
+                         CSV.\nThe sort column indices on the left CSV are in index \
+                         locations:\n{left_sort_indices:?}\nand on the right CSV \
+                         are:\n{right_sort_indices:?}",
+                    );
+                }
                 Ok(left_sort_indices)
             }
         })
