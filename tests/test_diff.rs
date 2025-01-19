@@ -339,7 +339,7 @@ fn diff_key_sort_by_column_name() {
 
 #[test]
 fn diff_key_by_column_name_columns_have_different_order_error() {
-    let wrk = Workdir::new("diff_key_sort_by_column_name");
+    let wrk = Workdir::new("diff_key_by_column_name_columns_have_different_order_error");
 
     let left = vec![
         svec!["h1", "h2", "h3"],
