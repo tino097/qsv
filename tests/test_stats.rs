@@ -805,6 +805,8 @@ fn stats_with_date_inference_variance_stddev() {
         .arg("--dates-whitelist")
         .arg("aLL");
 
+    wrk.assert_success(&mut cmd);
+
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
 
     wrk.create("in2.csv", got);

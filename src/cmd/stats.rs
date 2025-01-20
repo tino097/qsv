@@ -741,7 +741,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             {
                 log::info!(
                     "{path_file_stem}.stats.csv already exists and is current. Skipping compute \
-                     and using cached stats instead - {time_saved} secs saved...",
+                     and using cached stats instead - {time_saved} milliseconds saved...",
                 );
                 compute_stats = false;
             } else {
@@ -904,11 +904,6 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         }
     }
 
-    // ensure create_cache is false if the user specified --cache-threshold 0
-    if args.flag_cache_threshold == 0 {
-        create_cache = false;
-    };
-
     wtr.flush()?;
 
     if let Some(pb) = stdin_tempfile_path {
@@ -950,8 +945,10 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             fs::copy(currstats_filename.clone(), stats_pathbuf.clone())?;
         }
 
-        if args.flag_cache_threshold.is_negative() && args.flag_cache_threshold % 10 == -5 {
-            // if the cache threshold is a negative number ending in 5,
+        if args.flag_cache_threshold == 0
+            || (args.flag_cache_threshold.is_negative() && args.flag_cache_threshold % 10 == -5)
+        {
+            // if the cache threshold zero or is a negative number ending in 5,
             // delete both the index file and the stats cache file
             if autoindex_set {
                 let index_file = path.with_extension("csv.idx");
@@ -961,10 +958,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                     log::warn!("Could not remove index file: {}", index_file.display());
                 }
             }
-            create_cache = false;
-        }
 
-        if !create_cache {
             // remove the stats cache file
             if fs::remove_file(stats_pathbuf.clone()).is_err() {
                 // fails silently if it can't remove the stats file
@@ -973,6 +967,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                     stats_pathbuf.display()
                 );
             }
+            create_cache = false;
         }
 
         if compute_stats && create_cache {
@@ -995,8 +990,13 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
             // save the stats data to "<FILESTEM>.stats.csv.data.jsonl"
             if write_stats_jsonl {
-                stats_pathbuf.set_extension("data.jsonl");
-                util::csv_to_jsonl(&currstats_filename, &get_stats_data_types(), &stats_pathbuf)?;
+                let mut stats_jsonl_pathbuf = stats_pathbuf.clone();
+                stats_jsonl_pathbuf.set_extension("data.jsonl");
+                util::csv_to_jsonl(
+                    &currstats_filename,
+                    &get_stats_data_types(),
+                    &stats_jsonl_pathbuf,
+                )?;
             }
         }
     }
