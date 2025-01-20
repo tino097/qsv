@@ -52,6 +52,8 @@ const DEFAULT_BATCH_SIZE: usize = 50_000;
 
 static ROW_COUNT: OnceLock<Option<u64>> = OnceLock::new();
 
+static JOBS_TO_USE: OnceLock<usize> = OnceLock::new();
+
 pub type ByteString = Vec<u8>;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -142,23 +144,26 @@ pub fn max_jobs() -> usize {
 /// If desired is Some and less than available cores,
 /// returns desired number of cores
 pub fn njobs(flag_jobs: Option<usize>) -> usize {
-    let max_jobs = max_jobs();
-    let jobs_to_use = flag_jobs.map_or(max_jobs, |jobs| {
-        if jobs == 0 || jobs > max_jobs {
-            max_jobs
+    let njobs_result = JOBS_TO_USE.get_or_init(|| {
+        let max_jobs = max_jobs();
+        let jobs_to_use = flag_jobs.map_or(max_jobs, |jobs| {
+            if jobs == 0 || jobs > max_jobs {
+                max_jobs
+            } else {
+                jobs
+            }
+        });
+        if let Err(e) = rayon::ThreadPoolBuilder::new()
+            .num_threads(jobs_to_use)
+            .build_global()
+        {
+            log::warn!("Failed to set global thread pool size to {jobs_to_use}: {e}");
         } else {
-            jobs
+            log::info!("Using {jobs_to_use} jobs...");
         }
+        jobs_to_use
     });
-    if let Err(e) = rayon::ThreadPoolBuilder::new()
-        .num_threads(jobs_to_use)
-        .build_global()
-    {
-        log::warn!("Failed to set global thread pool size to {jobs_to_use}: {e}");
-    } else {
-        log::info!("Using {jobs_to_use} jobs...");
-    }
-    jobs_to_use
+    *njobs_result
 }
 
 pub fn timeout_secs(timeout: u16) -> Result<u64, String> {
