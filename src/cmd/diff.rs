@@ -165,38 +165,10 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                     .map_err(|err| CliError::Other(err.to_string()))?
             } else {
                 // check if the key is a comma separated list of column names
-                let left_key_indices = s
-                    .split(',')
-                    .enumerate()
-                    .map(|(index, col_name)| {
-                        headers_left
-                            .iter()
-                            .position(|h| h == col_name.as_bytes())
-                            .ok_or_else(|| {
-                                CliError::Other(format!(
-                                    "Column name '{col_name}' not found on left CSV"
-                                ))
-                            })
-                            .map(|pos| pos + index + 1)
-                    })
-                    .collect::<Result<Vec<usize>, _>>()?;
+                let left_key_indices = s.col_names_to_indices(',', &headers_left, "left")?;
 
                 // now check if the right CSV has the same selected colnames in the same locations
-                let right_key_indices = s
-                    .split(',')
-                    .enumerate()
-                    .map(|(index, col_name)| {
-                        headers_right
-                            .iter()
-                            .position(|h| h == col_name.as_bytes())
-                            .ok_or_else(|| {
-                                CliError::Other(format!(
-                                    "Column name '{col_name}' not found on right CSV"
-                                ))
-                            })
-                            .map(|pos| pos + index + 1)
-                    })
-                    .collect::<Result<Vec<usize>, _>>()?;
+                let right_key_indices = s.col_names_to_indices(',', &headers_right, "right")?;
 
                 if left_key_indices != right_key_indices {
                     return fail_incorrectusage_clierror!(
@@ -223,22 +195,20 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                     .map_err(|err| CliError::Other(err.to_string()))
             } else {
                 // check if the sort columns is a comma separated list of column names
-                let left_sort_indices = s
-                    .split(',')
-                    .enumerate()
-                    .map(|(index, col_name)| {
-                        headers_left
-                            .iter()
-                            .position(|h| h == col_name.as_bytes())
-                            .ok_or_else(|| {
-                                CliError::Other(format!(
-                                    "Column name '{col_name}' not found on left CSV"
-                                ))
-                            })
-                            .map(|pos| pos + index + 1)
-                    })
-                    .collect::<Result<Vec<usize>, _>>()?;
+                let left_sort_indices = s.col_names_to_indices(',', &headers_left, "left")?;
 
+                // now check if the right CSV has the same selected colnames in the same locations
+                let right_sort_indices = s.col_names_to_indices(',', &headers_right, "right")?;
+
+                if left_sort_indices != right_sort_indices {
+                    return fail_incorrectusage_clierror!(
+                        "Column names on left and right CSVs do not match.\nUse `qsv select` to \
+                         reorder the columns on the right CSV to match the order of the left \
+                         CSV.\nThe sort column indices on the left CSV are in index \
+                         locations:\n{left_sort_indices:?}\nand on the right CSV \
+                         are:\n{right_sort_indices:?}",
+                    );
+                }
                 Ok(left_sort_indices)
             }
         })
@@ -279,6 +249,37 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         primary_key_cols,
     );
     Ok(csv_diff_writer.write_diff_byte_records(diff_byte_records)?)
+}
+
+trait StringExt {
+    fn col_names_to_indices<C: Into<char>>(
+        &self,
+        col_names_split_by: C,
+        headers: &ByteRecord,
+        msg_left_or_right: &str,
+    ) -> Result<Vec<usize>, CliError>;
+}
+
+impl StringExt for String {
+    fn col_names_to_indices<C: Into<char>>(
+        &self,
+        col_names_split_by: C,
+        headers: &ByteRecord,
+        msg_left_or_right: &str,
+    ) -> Result<Vec<usize>, CliError> {
+        self.split(col_names_split_by.into())
+            .map(|col_name| {
+                headers
+                    .iter()
+                    .position(|h| h == col_name.as_bytes())
+                    .ok_or_else(|| {
+                        CliError::Other(format!(
+                            "Column name '{col_name}' not found on {msg_left_or_right} CSV"
+                        ))
+                    })
+            })
+            .collect::<Result<Vec<usize>, _>>()
+    }
 }
 
 struct CsvDiffWriter<W: Write> {
