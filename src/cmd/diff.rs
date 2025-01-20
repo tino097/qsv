@@ -165,10 +165,10 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                     .map_err(|err| CliError::Other(err.to_string()))?
             } else {
                 // check if the key is a comma separated list of column names
-                let left_key_indices = s.col_names_to_indices(',', &headers_left, "left")?;
+                let left_key_indices = s.col_names_to_indices(',', headers_left, "left")?;
 
                 // now check if the right CSV has the same selected colnames in the same locations
-                let right_key_indices = s.col_names_to_indices(',', &headers_right, "right")?;
+                let right_key_indices = s.col_names_to_indices(',', headers_right, "right")?;
 
                 if left_key_indices != right_key_indices {
                     return fail_incorrectusage_clierror!(
@@ -195,10 +195,10 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                     .map_err(|err| CliError::Other(err.to_string()))
             } else {
                 // check if the sort columns is a comma separated list of column names
-                let left_sort_indices = s.col_names_to_indices(',', &headers_left, "left")?;
+                let left_sort_indices = s.col_names_to_indices(',', headers_left, "left")?;
 
                 // now check if the right CSV has the same selected colnames in the same locations
-                let right_sort_indices = s.col_names_to_indices(',', &headers_right, "right")?;
+                let right_sort_indices = s.col_names_to_indices(',', headers_right, "right")?;
 
                 if left_sort_indices != right_sort_indices {
                     return fail_incorrectusage_clierror!(
