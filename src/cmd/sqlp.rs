@@ -129,7 +129,7 @@ Example queries:
    qsv sqlp SKIP_INPUT "select * from read_csv('data.csv.zst')"
    qsv sqlp SKIP_INPUT "select * from read_csv('data.csv.zlib')"
 
-  Note that sqlp will automatically use this "fast path" read_csv() optimization when there 
+  Note that sqlp will automatically use the "fast path" read_csv() optimization when there 
   is only one input CSV file, no CSV parsing options are used, its not a SQL script and the
   `--no-optimizations` flag is not set.
 
