@@ -1239,15 +1239,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "chumsky"
-version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8eebd66744a15ded14960ab4ccdbfb51ad3b81f51f3f04a80adac98c985396c9"
-dependencies = [
- "hashbrown 0.14.5",
-]
-
-[[package]]
 name = "cipher"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3211,37 +3202,44 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9028f49264629065d057f340a86acb84867925865f73bbf8d47b4d149a7e88b8"
 
 [[package]]
-name = "jaq-interpret"
-version = "1.5.0"
+name = "jaq-core"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fe95ec3c24af3fd9f3dd1091593f5e49b003a66c496a8aa39d764d0a06ae17b"
+checksum = "b5b45dc93641bd41d2a8e0d85cfee07fef72f3362d6387faf0980efc4d4bce98"
 dependencies = [
- "ahash",
  "dyn-clone",
+ "once_cell",
+ "typed-arena",
+]
+
+[[package]]
+name = "jaq-json"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01d103d9e961e2d60c31c57b31869351ba3fa01717f2dde499eaf20da9cedd96"
+dependencies = [
+ "foldhash",
  "hifijson",
  "indexmap",
- "jaq-syn",
- "once_cell",
+ "jaq-core",
+ "jaq-std",
  "serde_json",
 ]
 
 [[package]]
-name = "jaq-parse"
-version = "1.0.3"
+name = "jaq-std"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0346d7d3146cdda8acd929581f3d6626a332356c74d5c95aeaffaac2eb6dee82"
+checksum = "df355eccf9f27755ebc5d0b220d4878b7017349b904acde126909155ba33fba1"
 dependencies = [
- "chumsky",
- "jaq-syn",
-]
-
-[[package]]
-name = "jaq-syn"
-version = "1.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ba44fe4428c71304604261ecbae047ee9cfb60c4f1a6bd222ebbb31726d3948"
-dependencies = [
- "serde",
+ "aho-corasick",
+ "base64",
+ "chrono",
+ "jaq-core",
+ "libm",
+ "log",
+ "regex-lite",
+ "urlencoding",
 ]
 
 [[package]]
@@ -5233,8 +5231,9 @@ dependencies = [
  "indicatif",
  "itertools 0.14.0",
  "itoa",
- "jaq-interpret",
- "jaq-parse",
+ "jaq-core",
+ "jaq-json",
+ "jaq-std",
  "jemallocator",
  "json-objects-to-csv",
  "jsonschema",
@@ -7019,6 +7018,12 @@ dependencies = [
  "ratatui",
  "unicode-width 0.2.0",
 ]
+
+[[package]]
+name = "typed-arena"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6af6ae20167a9ece4bcb41af5b80f8a1f1df981f6391189ce00fd257af04126a"
 
 [[package]]
 name = "typed-builder"

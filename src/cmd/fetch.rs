@@ -247,7 +247,8 @@ use governor::{
     Quota, RateLimiter,
 };
 use indicatif::{HumanCount, MultiProgress, ProgressBar, ProgressDrawTarget};
-use jaq_interpret::{Ctx, FilterT, ParseCtx, RcIter, Val};
+use jaq_core::{load, Compiler, Ctx, RcIter};
+use jaq_json::Val;
 use log::{
     debug, error, info, log_enabled, warn,
     Level::{Debug, Trace, Warn},
@@ -317,6 +318,8 @@ static DEFAULT_REDIS_POOL_SIZE: u32 = 20;
 static DEFAULT_DISKCACHE_TTL_SECS: u64 = 60 * 60 * 24 * 28;
 
 static TIMEOUT_SECS: OnceLock<u64> = OnceLock::new();
+
+// static JAQ_FILTER: OnceLock<jaq_core::Filter<jaq_core::Native<jaq_json::Val>>> = OnceLock::new();
 
 const FETCH_REPORT_PREFIX: &str = "qsv_fetch_";
 const FETCH_REPORT_SUFFIX: &str = ".fetch-report.tsv";
@@ -1454,6 +1457,33 @@ fn get_response(
     }
 }
 
+// we'll use this to compile the jaq selector once and use it as we iterate on the CSV
+// comment out for now
+// fn compile_jaq_filter(query: &str) ->
+// CliResult<jaq_core::Filter<jaq_core::Native<jaq_json::Val>>> {     // Create the program from
+// query string     let program = load::File {
+//         code: query,
+//         path: (),
+//     };
+
+//     // Setup loader and arena
+//     let loader = load::Loader::new(jaq_std::defs().chain(jaq_json::defs()));
+//     let arena = load::Arena::default();
+
+//     // Parse the filter
+//     let modules = loader
+//         .load(&arena, program)
+//         .map_err(|e| CliError::Other(format!("Failed to parse jaq query: {e:?}")))?;
+
+//     // Compile the filter
+//     let filter = Compiler::default()
+//         .with_funs(jaq_std::funs().chain(jaq_json::funs()))
+//         .compile(modules)
+//         .map_err(|e| CliError::Other(format!("Failed to compile jaq query: {e:?}")))?;
+
+//     Ok(filter)
+// }
+
 #[cached(
     size = 2_000_000,
     key = "String",
@@ -1461,34 +1491,39 @@ fn get_response(
     result = true
 )]
 pub fn process_jaq(json: &str, query: &str) -> CliResult<String> {
-    let mut deserializer = serde_json::Deserializer::from_str(json);
-
-    let value = match serde_json::Value::deserialize(&mut deserializer) {
-        Ok(valid_value) => valid_value,
-        Err(e) => return fail_clierror!("Failed to deserialize the JSON data: {e:?}"),
+    // Create the program from query string
+    let program = load::File {
+        code: query,
+        path: (),
     };
 
-    // Parse jaq filter based on JSON input
-    let mut defs = ParseCtx::new(Vec::new());
-    let (f, errs) = jaq_parse::parse(query, jaq_parse::main());
+    // Setup loader and arena
+    let loader = load::Loader::new(jaq_std::defs().chain(jaq_json::defs()));
+    let arena = load::Arena::default();
 
-    // Check for parsing errors
-    if !errs.is_empty() {
-        return fail_clierror!("Invalid jaq query: {errs:?}");
-    }
+    // Parse the filter
+    let modules = loader
+        .load(&arena, program)
+        .map_err(|e| CliError::Other(format!("Failed to parse jaq query: {e:?}")))?;
 
-    let f = match f {
-        Some(filter) => defs.compile(filter),
-        None => return fail_clierror!("Failed to compile jaq query"),
-    };
+    // Compile the filter
+    let jaq_filter = Compiler::default()
+        .with_funs(jaq_std::funs().chain(jaq_json::funs()))
+        .compile(modules)
+        .map_err(|e| CliError::Other(format!("Failed to compile jaq query: {e:?}")))?;
+
+    // Parse input JSON
+    let input: serde_json::Value = serde_json::from_str(json)?;
 
     let inputs = RcIter::new(core::iter::empty());
-    let out = f
-        .run((Ctx::new([], &inputs), Val::from(value)))
+
+    // Run the filter
+    let output = jaq_filter
+        .run((Ctx::new([], &inputs), Val::from(input)))
         .filter_map(std::result::Result::ok);
 
     #[allow(clippy::from_iter_instead_of_collect)]
-    let jaq_value = serde_json::Value::from_iter(out);
+    let jaq_value = serde_json::Value::from_iter(output);
 
     let final_val = match jaq_value {
         Value::Array(arr) => {
@@ -1543,7 +1578,7 @@ fn test_apply_jaq_invalid_json() {
     let value = process_jaq(json, selectors).unwrap_err().to_string();
 
     assert_eq!(
-        "Failed to deserialize the JSON data: Error(\"expected value\", line: 1, column: 1)",
+        "JSON error: Error(\"expected value\", line: 1, column: 1)",
         value
     );
 }
