@@ -96,7 +96,8 @@ Common options:
 
 use std::{env, io::Read};
 
-use jaq_interpret::{Ctx, FilterT, ParseCtx, RcIter, Val};
+use jaq_core::{load, Compiler, Ctx, RcIter};
+use jaq_json::Val;
 use json_objects_to_csv::{flatten_json_object::Flattener, Json2Csv};
 use serde::Deserialize;
 
@@ -173,11 +174,32 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     if let Some(filter) = args.flag_jaq {
         // Parse jaq filter based on JSON input
-        let mut defs = ParseCtx::new(Vec::new());
-        let (f, _errs) = jaq_parse::parse(filter.as_str(), jaq_parse::main());
-        let f = defs.compile(f.unwrap());
+
+        // Create the program from filter string
+        let program = load::File {
+            code: filter.as_str(),
+            path: (),
+        };
+
+        // Setup loader and arena
+        let loader = load::Loader::new(jaq_std::defs().chain(jaq_json::defs()));
+        let arena = load::Arena::default();
+
+        // Parse the filter
+        let modules = loader
+            .load(&arena, program)
+            .map_err(|e| CliError::Other(format!("Failed to parse jaq query: {e:?}")))?;
+
+        // Compile the filter
+        let jaq_filter = Compiler::default()
+            .with_funs(jaq_std::funs().chain(jaq_json::funs()))
+            .compile(modules)
+            .map_err(|e| CliError::Other(format!("Failed to compile jaq query: {e:?}")))?;
+
         let inputs = RcIter::new(core::iter::empty());
-        let out = f
+
+        // Run the filter
+        let out = jaq_filter
             .run((Ctx::new([], &inputs), Val::from(value.clone())))
             .filter_map(std::result::Result::ok);
 
