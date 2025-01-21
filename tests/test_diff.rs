@@ -791,3 +791,89 @@ fn create_file_with_delim(wrk: &Workdir, file_path_new: &str, file_path: &str, d
 
     wrk.create_with_delim(file_path_new, got, delimiter);
 }
+
+#[test]
+fn diff_with_delimiter_overrides_all_delimiters() {
+    let wrk = Workdir::new("diff_with_delimiter_overrides_all_delimiters");
+
+    let left = vec![svec!["h1", "h2", "h3"], svec!["1", "foo", "bar"]];
+    wrk.create_with_delim("left.csv", left, b';');
+
+    let right = vec![svec!["h1", "h2", "h3"], svec!["1", "foo_changed", "bar"]];
+    wrk.create_with_delim("right.csv", right, b';');
+
+    let mut cmd = wrk.command("diff");
+    cmd.args([
+        "left.csv",
+        "right.csv",
+        "--delimiter",
+        ";",
+        // These should be overridden by --delimiter
+        "--delimiter-left",
+        ",",
+        "--delimiter-right",
+        "\t",
+        "--delimiter-output",
+        "|",
+    ]);
+
+    let got: String = wrk.stdout(&mut cmd);
+    let expected = "\
+diffresult;h1;h2;h3
+-;1;foo;bar
++;1;foo_changed;bar";
+    assert_eq!(got.as_str(), expected);
+}
+
+#[test]
+fn diff_with_tab_delimiter() {
+    let wrk = Workdir::new("diff_with_tab_delimiter");
+
+    let left = vec![svec!["h1", "h2", "h3"], svec!["1", "foo", "bar"]];
+    wrk.create_with_delim("left.csv", left, b'\t');
+
+    let right = vec![svec!["h1", "h2", "h3"], svec!["1", "foo_changed", "bar"]];
+    wrk.create_with_delim("right.csv", right, b'\t');
+
+    let mut cmd = wrk.command("diff");
+    cmd.args(["left.csv", "right.csv", "--delimiter", "\t"]);
+
+    let got: String = wrk.stdout(&mut cmd);
+    let expected = "\
+diffresult\th1\th2\th3
+-\t1\tfoo\tbar
++\t1\tfoo_changed\tbar";
+    assert_eq!(got.as_str(), expected);
+}
+
+#[test]
+fn diff_with_mixed_delimiters() {
+    let wrk = Workdir::new("diff_with_mixed_delimiters");
+
+    // Create left file with semicolon delimiter
+    let left = vec![svec!["h1", "h2", "h3"], svec!["1", "foo", "bar"]];
+    wrk.create_with_delim("left.csv", left, b';');
+
+    // Create right file with tab delimiter
+    let right = vec![svec!["h1", "h2", "h3"], svec!["1", "foo_changed", "bar"]];
+    wrk.create_with_delim("right.csv", right, b'\t');
+
+    let mut cmd = wrk.command("diff");
+    cmd.args([
+        "--delimiter-left",
+        ";",
+        "--delimiter-right",
+        "\t",
+        "--delimiter-output",
+        "|",
+        "left.csv",
+        "right.csv",
+    ]);
+
+    let got: String = wrk.stdout(&mut cmd);
+    let expected = "\
+diffresult|h1|h2|h3
+-|1|foo|bar
++|1|foo_changed|bar";
+    assert_eq!(got.as_str(), expected);
+}

@@ -96,6 +96,9 @@ diff options:
 Common options:
     -h, --help                  Display this message
     -o, --output <file>         Write output to <file> instead of stdout.
+    -d, --delimiter <arg>       Set ALL delimiters to this character.
+                                Overrides --delimiter-right, --delimiter-left
+                                and --delimiter-output.
 "#;
 
 use std::io::{self, Write};
@@ -129,10 +132,19 @@ struct Args {
     flag_key:               Option<String>,
     flag_sort_columns:      Option<String>,
     flag_drop_equal_fields: bool,
+    flag_delimiter:         Option<Delimiter>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
-    let args: Args = util::get_args(USAGE, argv)?;
+    let mut args: Args = util::get_args(USAGE, argv)?;
+
+    if let Some(delim) = args.flag_delimiter {
+        [
+            args.flag_delimiter_left,
+            args.flag_delimiter_right,
+            args.flag_delimiter_output,
+        ] = [Some(delim); 3];
+    }
 
     let rconfig_left = Config::new(args.arg_input_left.as_ref())
         .delimiter(args.flag_delimiter_left)
@@ -345,6 +357,7 @@ impl<W: Write> CsvDiffWriter<W> {
         Ok(())
     }
 
+    #[inline]
     fn write_diff_byte_record(&mut self, diff_byte_record: &DiffByteRecord) -> csv::Result<()> {
         let add_sign: &[u8] = &b"+"[..];
         let remove_sign: &[u8] = &b"-"[..];
