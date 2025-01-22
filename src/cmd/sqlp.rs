@@ -265,7 +265,7 @@ Common options:
     -o, --output <file>    Write output to <file> instead of stdout.
     -d, --delimiter <arg>  The field delimiter for reading and writing CSV data.
                            Must be a single character. [default: ,]
-    -Q, --quiet            Do not return result shape to stderr.
+    -q, --quiet            Do not return result shape to stderr.
 "#;
 
 use std::{

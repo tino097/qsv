@@ -34,7 +34,7 @@ Common options:
     -o, --output <file>    Write output to <file> instead of stdout.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
-    -Q, --quiet            Don't print removed column information.
+    -q, --quiet            Don't print removed column information.
 "#;
 
 use std::cmp;

@@ -53,7 +53,7 @@ Common options:
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
     -p, --progressbar      Show progress bars. Not valid for stdin.
-    -Q, --quiet            Do not print number of replacements to stderr.
+    -q, --quiet            Do not print number of replacements to stderr.
 
 "#;
 

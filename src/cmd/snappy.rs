@@ -49,7 +49,7 @@ Common options:
     -o, --output <file>   Write output to <output> instead of stdout.
     -j, --jobs <arg>      The number of jobs to run in parallel when compressing.
                           When not set, its set to the number of CPUs - 1
-    -Q, --quiet           Suppress status messages to stderr.
+    -q, --quiet           Suppress status messages to stderr.
     -p, --progressbar     Show download progress bars. Only valid for URL input.
 "#;
 
