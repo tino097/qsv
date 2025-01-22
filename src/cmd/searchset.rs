@@ -55,7 +55,7 @@ searchset options:
     --unmatched-output <file>  When --flag-matches-only is enabled, output the rows
                                that did not match to <file>.
 
-    -q, --quick                Return on first match with an exitcode of 0, returning
+    -Q, --quick                Return on first match with an exitcode of 0, returning
                                the row number of the first match to stderr.
                                Return exit code 1 if no match is found.
                                No output is produced. Ignored if --json is enabled.
@@ -83,7 +83,7 @@ Common options:
     -d, --delimiter <arg>      The field delimiter for reading CSV data.
                                Must be a single character. (default: ,)
     -p, --progressbar          Show progress bars. Not valid for stdin.
-    -Q, --quiet                Do not return number of matches to stderr.
+    -q, --quiet                Do not return number of matches to stderr.
 "#;
 
 use std::{

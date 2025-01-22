@@ -50,7 +50,7 @@ Common options:
                                Must be a single character. (default: ,)
 
     -h, --help                 Display this message
-    -Q, --quiet                Do not print duplicate count to stderr.
+    -q, --quiet                Do not print duplicate count to stderr.
 "#;
 
 use std::{

@@ -65,7 +65,7 @@ sniff options:
                              Specify this when the delimiter is known beforehand,
                              as the delimiter inferencing algorithm can sometimes fail.
                              Must be a single ascii character.
-    -q, --quote <arg>        The quote character for reading CSV data.
+    --quote <arg>        The quote character for reading CSV data.
                              Specify this when the quote character is known beforehand,
                              as the quote char inferencing algorithm can sometimes fail.
                              Must be a single ascii character - typically, double quote ("),
@@ -88,7 +88,7 @@ sniff options:
                              in this mode.
     --just-mime              Only return the file's mime type. Use this to use sniff as a general
                              mime type detector. Synonym for --no-infer.
-    --quick                  When sniffing a non-CSV remote file, only download the first chunk of the file
+    -Q, --quick              When sniffing a non-CSV remote file, only download the first chunk of the file
                              before attempting to detect the mime type. This is faster but less accurate as
                              some mime types cannot be detected with just the first downloaded chunk.
     --harvest-mode           This is a convenience flag when using sniff in CKAN harvesters. 

@@ -183,7 +183,7 @@ Common options:
     -d, --delimiter <arg>      The field delimiter for reading CSV data.
                                Must be a single character.
     -p, --progressbar          Show progress bars. Not valid for stdin.
-    -Q, --quiet                Do not display validation summary message.
+    -q, --quiet                Do not display validation summary message.
 "#;
 
 use std::{

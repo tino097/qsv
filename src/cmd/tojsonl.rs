@@ -41,7 +41,7 @@ Common options:
     -o, --output <file>    Write output to <file> instead of stdout.
     --memcheck             Check if there is enough memory to load the entire
                            CSV into memory using CONSERVATIVE heuristics.
-    -Q, --quiet            Do not display enum/const list inferencing messages.
+    -q, --quiet            Do not display enum/const list inferencing messages.
 "#;
 
 use std::{fmt::Write, path::PathBuf, str::FromStr};

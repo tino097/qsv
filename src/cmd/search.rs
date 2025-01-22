@@ -43,7 +43,7 @@ search options:
                            of the matched rows and 0 for the non-matched rows.
                            If column is named M, only the M column will be written
                            to the output, and only matched rows are returned.
-    -q, --quick            Return on first match with an exitcode of 0, returning
+    -Q, --quick            Return on first match with an exitcode of 0, returning
                            the row number of the first match to stderr.
                            Return exit code 1 if no match is found.
                            No output is produced.
@@ -77,7 +77,7 @@ Common options:
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
     -p, --progressbar      Show progress bars. Not valid for stdin.
-    -Q, --quiet            Do not return number of matches to stderr.
+    -q, --quiet            Do not return number of matches to stderr.
 "#;
 
 #[cfg(any(feature = "feature_capable", feature = "lite"))]

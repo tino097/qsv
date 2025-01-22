@@ -51,7 +51,7 @@ describegpt options:
 Common options:
     -h, --help             Display this message
     -o, --output <file>    Write output to <file> instead of stdout.
-    -Q, --quiet            Do not print status messages to stderr.
+    -q, --quiet            Do not print status messages to stderr.
 "#;
 
 use std::{env, fs, io::Write, path::PathBuf, process::Command, time::Duration};

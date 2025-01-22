@@ -155,7 +155,7 @@ Common options:
     -o, --output <file>        Write output to <file> instead of stdout.
     -d, --delimiter <arg>      The delimiter to use when writing CSV data.
                                Must be a single character. [default: ,]
-    -Q, --quiet                Do not display export summary message.
+    -q, --quiet                Do not display export summary message.
 "#;
 
 use std::{cmp, fmt::Write, io::Read, path::PathBuf};
