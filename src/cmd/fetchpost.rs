@@ -283,8 +283,9 @@ use util::expand_tilde;
 
 use crate::{
     cmd::fetch::{
-        get_ratelimit_header_value, parse_ratelimit_header_value, process_jaq, CacheType,
-        DiskCacheConfig, FetchResponse, RedisConfig, ReportKind, DEFAULT_ACCEPT_ENCODING,
+        compile_jaq_filter, get_ratelimit_header_value, parse_ratelimit_header_value, process_jaq,
+        CacheType, DiskCacheConfig, FetchResponse, RedisConfig, ReportKind,
+        DEFAULT_ACCEPT_ENCODING, JAQ_FILTER,
     },
     config::{Config, Delimiter},
     select::SelectColumns,
@@ -690,6 +691,16 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         Some(ref jaq_file) => Some(fs::read_to_string(jaq_file)?),
         None => args.flag_jaq.as_ref().map(std::string::ToString::to_string),
     };
+
+    // this is primarily to check if the jaq query is valid
+    // and if is, to cache the compiled jaq filter
+    if let Some(ref query) = jaq_selector {
+        let Ok(()) = JAQ_FILTER.set(compile_jaq_filter(query)?) else {
+            return Err(CliError::Other(
+                "Failed to cache precompiled JAQ filter".to_string(),
+            ));
+        };
+    }
 
     // prepare report
     let report = if args.flag_report.to_lowercase().starts_with('d') {

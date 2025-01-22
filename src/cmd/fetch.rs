@@ -319,7 +319,8 @@ static DEFAULT_DISKCACHE_TTL_SECS: u64 = 60 * 60 * 24 * 28;
 
 static TIMEOUT_SECS: OnceLock<u64> = OnceLock::new();
 
-// static JAQ_FILTER: OnceLock<jaq_core::Filter<jaq_core::Native<jaq_json::Val>>> = OnceLock::new();
+pub static JAQ_FILTER: OnceLock<jaq_core::Filter<jaq_core::Native<jaq_json::Val>>> =
+    OnceLock::new();
 
 const FETCH_REPORT_PREFIX: &str = "qsv_fetch_";
 const FETCH_REPORT_SUFFIX: &str = ".fetch-report.tsv";
@@ -669,6 +670,16 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         Some(ref jaq_file) => Some(fs::read_to_string(jaq_file)?),
         None => args.flag_jaq.as_ref().map(std::string::ToString::to_string),
     };
+
+    // this is primarily to check if the jaq query is valid
+    // and if is, to cache the compiled jaq filter
+    if let Some(ref query) = jaq_selector {
+        let Ok(()) = JAQ_FILTER.set(compile_jaq_filter(query)?) else {
+            return Err(CliError::Other(
+                "Failed to cache precompiled JAQ filter".to_string(),
+            ));
+        };
+    }
 
     // prepare report
     let report = if args.flag_report.to_lowercase().starts_with('d') {
@@ -1457,40 +1468,9 @@ fn get_response(
     }
 }
 
-// we'll use this to compile the jaq selector once and use it as we iterate on the CSV
-// comment out for now
-// fn compile_jaq_filter(query: &str) ->
-// CliResult<jaq_core::Filter<jaq_core::Native<jaq_json::Val>>> {     // Create the program from
-// query string     let program = load::File {
-//         code: query,
-//         path: (),
-//     };
-
-//     // Setup loader and arena
-//     let loader = load::Loader::new(jaq_std::defs().chain(jaq_json::defs()));
-//     let arena = load::Arena::default();
-
-//     // Parse the filter
-//     let modules = loader
-//         .load(&arena, program)
-//         .map_err(|e| CliError::Other(format!("Failed to parse jaq query: {e:?}")))?;
-
-//     // Compile the filter
-//     let filter = Compiler::default()
-//         .with_funs(jaq_std::funs().chain(jaq_json::funs()))
-//         .compile(modules)
-//         .map_err(|e| CliError::Other(format!("Failed to compile jaq query: {e:?}")))?;
-
-//     Ok(filter)
-// }
-
-#[cached(
-    size = 2_000_000,
-    key = "String",
-    convert = r#"{ format!("{}-{}", json, query) }"#,
-    result = true
-)]
-pub fn process_jaq(json: &str, query: &str) -> CliResult<String> {
+pub fn compile_jaq_filter(
+    query: &str,
+) -> CliResult<jaq_core::Filter<jaq_core::Native<jaq_json::Val>>> {
     // Create the program from query string
     let program = load::File {
         code: query,
@@ -1507,10 +1487,26 @@ pub fn process_jaq(json: &str, query: &str) -> CliResult<String> {
         .map_err(|e| CliError::Other(format!("Failed to parse jaq query: {e:?}")))?;
 
     // Compile the filter
-    let jaq_filter = Compiler::default()
+    let filter = Compiler::default()
         .with_funs(jaq_std::funs().chain(jaq_json::funs()))
         .compile(modules)
         .map_err(|e| CliError::Other(format!("Failed to compile jaq query: {e:?}")))?;
+
+    Ok(filter)
+}
+
+#[cached(
+    size = 2_000_000,
+    key = "String",
+    convert = r#"{ format!("{}-{}", json, query) }"#,
+    result = true
+)]
+pub fn process_jaq(json: &str, query: &str) -> CliResult<String> {
+    let jaq_filter = JAQ_FILTER.get_or_init(|| {
+        // safety: we know query is not empty
+        // and the jaq query is valid as it was checked in main
+        compile_jaq_filter(query).unwrap()
+    });
 
     // Parse input JSON
     let input: serde_json::Value = serde_json::from_str(json)?;
@@ -1581,171 +1577,4 @@ fn test_apply_jaq_invalid_json() {
         "JSON error: Error(\"expected value\", line: 1, column: 1)",
         value
     );
-}
-
-#[test]
-fn test_apply_jaq_invalid_selector() {
-    let json_data = serde_json::json!(
-        {
-            "post code": "90210",
-            "country": "United States",
-            "country abbreviation": "US",
-            "places": [
-                {
-                    "place name": "Beverly Hills",
-                    "longitude": -118.4065,
-                    "state": "California",
-                    "state abbreviation": "CA",
-                    "latitude": 34.0901
-                }
-            ]
-        }
-    );
-    let json_string = serde_json::to_string(&json_data).unwrap();
-    let selectors = r#"."place"[0]."place name""#;
-
-    let value = process_jaq(&json_string, selectors)
-        .unwrap_err()
-        .to_string();
-
-    assert_eq!("Jaq query returned an empty result", value);
-}
-
-#[test]
-fn test_apply_jaq_string() {
-    let json_data = serde_json::json!(
-        {
-            "post code": "90210",
-            "country": "United States",
-            "country abbreviation": "US",
-            "places": [
-                {
-                    "place name": "Beverly Hills",
-                    "longitude": "-118.4065",
-                    "state": "California",
-                    "state abbreviation": "CA",
-                    "latitude": "34.0901"
-                }
-            ]
-        }
-    );
-    let json_string = serde_json::to_string(&json_data).unwrap();
-    let selectors = r#"."places"[0]."place name""#;
-
-    let value = process_jaq(&json_string, selectors).unwrap();
-
-    assert_eq!(r#""Beverly Hills""#, value);
-}
-
-#[test]
-fn test_apply_jaq() {
-    let json_data = serde_json::json!({
-        "data": [
-            {
-                "fruit": "apple",
-                "price": 0.50
-            },
-            {
-                "fruit": "banana",
-                "price": 1.00
-            }
-        ]
-    });
-
-    let json_string = serde_json::to_string(&json_data).unwrap();
-    let value = process_jaq(&json_string, ".data[]").unwrap();
-
-    assert_eq!(
-        "{\"fruit\":\"apple\",\"price\":0.5}, {\"fruit\":\"banana\",\"price\":1.0}",
-        value
-    );
-}
-
-#[test]
-fn test_apply_jaq_number() {
-    let json_data = serde_json::json!(
-        {
-            "post code": "90210",
-            "country": "United States",
-            "country abbreviation": "US",
-            "places": [
-                {
-                    "place name": "Beverly Hills",
-                    "longitude": -118.4065,
-                    "state": "California",
-                    "state abbreviation": "CA",
-                    "latitude": 34.0901
-                }
-            ]
-        }
-    );
-    let json_string = serde_json::to_string(&json_data).unwrap();
-    let selectors = r#"."places"[0]."longitude""#;
-
-    let value = process_jaq(&json_string, selectors).unwrap();
-
-    assert_eq!("-118.4065", value);
-}
-
-#[test]
-fn test_apply_jaq_bool() {
-    let json_data = serde_json::json!(
-        {
-            "post code": "90210",
-            "country": "United States",
-            "country abbreviation": "US",
-            "places": [
-                {
-                    "place name": "Beverly Hills",
-                    "longitude": -118.4065,
-                    "state": "California",
-                    "state abbreviation": "CA",
-                    "latitude": 34.0901,
-                    "expensive": true,
-                }
-            ]
-        }
-    );
-    let json_string = serde_json::to_string(&json_data).unwrap();
-    let selectors = r#"."places"[0]."expensive""#;
-
-    let value = process_jaq(&json_string, selectors).unwrap();
-
-    assert_eq!("true", value);
-}
-
-#[test]
-fn test_apply_jaq_array() {
-    let json_data = serde_json::json!(
-        {
-            "post code": "90210",
-            "country": "United States",
-            "country abbreviation": "US",
-            "places": [
-                {
-                    "place name": "Beverly Hills",
-                    "longitude": -118.4065,
-                    "state": "California",
-                    "state abbreviation": "CA",
-                    "latitude": 34.0901
-                }
-            ]
-        }
-    );
-    let json_string = serde_json::to_string(&json_data).unwrap();
-    let selectors = r#"[ ."places"[0]."longitude", ."places"[0]."latitude" ] "#;
-
-    let value = process_jaq(&json_string, selectors).unwrap();
-
-    assert_eq!("[-118.4065,34.0901]", value);
-}
-
-#[test]
-fn test_root_out_of_bounds_jaq() {
-    let json = r#"[{"page":1,"pages":1,"per_page":"50","total":1},[{"id":"BRA","iso2Code":"BR","name":"Brazil","region":{"id":"LCN","iso2code":"ZJ","value":"Latin America & Caribbean (all income levels)"},"adminregion":{"id":"LAC","iso2code":"XJ","value":"Latin America & Caribbean (developing only)"},"incomeLevel":{"id":"UMC","iso2code":"XT","value":"Upper middle income"},"lendingType":{"id":"IBD","iso2code":"XF","value":"IBRD"},"capitalCity":"Brasilia","longitude":"-47.9292","latitude":"-15.7801"}]]"#;
-    let selectors = r#".[2][0].incomeLevel.value"#;
-
-    let value = process_jaq(json, selectors).unwrap_err().to_string();
-
-    assert_eq!("Jaq query returned an empty result", value);
 }

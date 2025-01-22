@@ -1912,3 +1912,111 @@ fn test_fetchpost_column_list_globals() {
         r#"{"api_key":"secret123","message":"Hello World","user_id":"user456"}"#
     );
 }
+
+#[test]
+fn test_fetch_jaq_invalid_json() {
+    let wrk = Workdir::new("fetch_jaq_invalid");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["URL"],
+            svec![
+                "<!doctype html><html lang=\"en\"><meta charset=utf-8><title>shortest \
+                 html5</title>"
+            ],
+        ],
+    );
+    let mut cmd = wrk.command("fetch");
+    cmd.arg("URL")
+        .arg("--new-column")
+        .arg("result")
+        .arg("--jaq")
+        .arg(r#"."places"[0]."place name""#)
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["URL", "result"],
+        svec![
+            "<!doctype html><html lang=\"en\"><meta charset=utf-8><title>shortest html5</title>",
+            ""
+        ],
+    ];
+
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn test_fetch_jaq_invalid_selector() {
+    let wrk = Workdir::new("fetch_jaq_invalid_selector");
+    wrk.create(
+        "data.csv",
+        vec![svec!["URL"], svec!["https://api.zippopotam.us/us/90210"]],
+    );
+    let mut cmd = wrk.command("fetch");
+    cmd.arg("URL")
+        .arg("--new-column")
+        .arg("result")
+        .arg("--jaq")
+        .arg(r#"."place"[0]."place name""#) // Invalid selector
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["URL", "result"],
+        svec!["https://api.zippopotam.us/us/90210", ""],
+    ];
+
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn test_fetch_jaq_number() {
+    let wrk = Workdir::new("fetch_jaq_number");
+    wrk.create(
+        "data.csv",
+        vec![svec!["URL"], svec!["https://api.zippopotam.us/us/90210"]],
+    );
+    let mut cmd = wrk.command("fetch");
+    cmd.arg("URL")
+        .arg("--new-column")
+        .arg("longitude")
+        .arg("--jaq")
+        .arg(r#"."places"[0]."longitude""#)
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["URL", "longitude"],
+        svec!["https://api.zippopotam.us/us/90210", "\"-118.4065\""],
+    ];
+
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn test_fetch_jaq_array() {
+    let wrk = Workdir::new("fetch_jaq_array");
+    wrk.create(
+        "data.csv",
+        vec![svec!["URL"], svec!["https://api.zippopotam.us/us/90210"]],
+    );
+    let mut cmd = wrk.command("fetch");
+    cmd.arg("URL")
+        .arg("--new-column")
+        .arg("coordinates")
+        .arg("--jaq")
+        .arg(r#"[ ."places"[0]."longitude", ."places"[0]."latitude" ]"#)
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["URL", "coordinates"],
+        svec![
+            "https://api.zippopotam.us/us/90210",
+            "[\"-118.4065\",\"34.0901\"]"
+        ],
+    ];
+
+    assert_eq!(got, expected);
+}
