@@ -151,9 +151,9 @@ fn main() -> QsvExitCode {
                  following 49 commands:\n{COMMAND_LIST}\n\n{SPONSOR_MESSAGE}",
             );
 
-            // if no command is specified, auto-check for updates 10% of the time
+            // if no command is specified, auto-check for updates 50% of the time
             let mut rng = rand::thread_rng(); //DevSkim: ignore DS148264
-            if rng.gen_range(0..10) == 0 {
+            if rng.gen_range(0..2) == 0 {
                 _ = util::qsv_check_for_update(true, false);
             }
             util::log_end(qsv_args, now);
