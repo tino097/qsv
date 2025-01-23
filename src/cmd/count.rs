@@ -157,7 +157,13 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         count_input(&conf, count_delims_mode)?
                     } else {
                         let count = polars_count_input(&conf, args.flag_low_memory)?;
-                        (count, empty_record_stats)
+                        // if polars count returns a zero, do a regular CSV reader count
+                        // to be doubly sure as it will be cheap to do so with the regular count
+                        if count == 0 {
+                            count_input(&conf, count_delims_mode)?
+                        } else {
+                            (count, empty_record_stats)
+                        }
                     }
 
                     #[cfg(not(feature = "polars"))]
