@@ -424,6 +424,8 @@ fn validate_dynenum_with_column() {
     cmd.arg("data.csv").arg("schema.json");
     wrk.output(&mut cmd);
 
+    wrk.assert_err(&mut cmd);
+
     // Check validation-errors.tsv
     let validation_errors = wrk
         .read_to_string("data.csv.validation-errors.tsv")
@@ -495,6 +497,8 @@ fn validate_dynenum_with_column_index() {
     cmd.arg("data.csv").arg("schema.json");
     wrk.output(&mut cmd);
 
+    wrk.assert_err(&mut cmd);
+
     // Check validation-errors.tsv
     let validation_errors = wrk
         .read_to_string("data.csv.validation-errors.tsv")
@@ -552,6 +556,8 @@ fn validate_dynenum_with_invalid_column() {
     // Run validate command
     let mut cmd = wrk.command("validate");
     cmd.arg("data.csv").arg("schema.json");
+
+    wrk.assert_err(&mut cmd);
 
     // When an invalid column is specified, it should fall back to the first column
     let got = wrk.output_stderr(&mut cmd);
@@ -614,6 +620,8 @@ fn validate_dynenum_with_remote_csv() {
     let mut cmd = wrk.command("validate");
     cmd.arg("data.csv").arg("schema.json");
     wrk.output(&mut cmd);
+
+    wrk.assert_err(&mut cmd);
 
     // Check validation-errors.tsv
     let validation_errors = wrk
