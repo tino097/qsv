@@ -2278,14 +2278,16 @@ impl TypedMinMax {
     #[inline]
     fn add(&mut self, typ: FieldType, sample: &[u8]) {
         let sample_len = sample.len();
-        self.str_len.add(sample_len);
         if sample_len == 0 {
+            self.str_len.add(0);
             return;
         }
-        self.strings.add(sample.to_vec());
         // safety: we can use unwrap below since we know the data type of the sample
         match typ {
-            TString | TNull => {},
+            TString => {
+                self.str_len.add(sample_len);
+                self.strings.add(sample.to_vec());
+            },
             TFloat => {
                 let n = fast_float2::parse::<f64, &[u8]>(sample).unwrap();
 
@@ -2298,6 +2300,7 @@ impl TypedMinMax {
                 #[allow(clippy::cast_precision_loss)]
                 self.floats.add(n as f64);
             },
+            TNull => {},
             // it must be a TDate or TDateTime
             // we use "_" here instead of "TDate | TDateTime" for the match to avoid
             // the overhead of matching on the OR value, however minor

@@ -129,10 +129,10 @@ fn index_outdated_stats() {
             "3",
             "2",
             "Descending",
-            "1",
-            "1",
-            "3",
-            "1",
+            "",
+            "",
+            "",
+            "",
             "",
             "",
             "",
@@ -258,7 +258,7 @@ fn index_outdated_stats() {
             "",
             "",
             "",
-            "ed38d8c4f2747d82eec243d750fd8448ae4b5ebfb2c85c2323085e3e75b64b6a"
+            "dcbb915759b3be9b3e8918f8dfaa3c84472c93cded28ab42b20d6092b5667cbe"
         ],
     ];
 
