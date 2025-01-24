@@ -1,5 +1,5 @@
 field,type,is_ascii,sum,min,max,range,sort_order,min_length,max_length,sum_length,avg_length,mean,nullcount,max_precision,sparsity,qsv__value
-case_enquiry_id,Integer,,10100411645180,101004113298,101004155594,42296,Unsorted,12,12,1200,12,101004116451.8,0,,0,
+case_enquiry_id,Integer,,10100411645180,101004113298,101004155594,42296,Unsorted,,,,,101004116451.8,0,,0,
 open_dt,DateTime,,,2022-01-01T00:16:00+00:00,2022-01-31T11:46:00+00:00,30.47917,Unsorted,,,,,2022-01-04T07:07:45.050+00:00,0,,0,
 target_dt,DateTime,,,2022-01-03T10:32:34+00:00,2022-05-20T13:03:21+00:00,137.10471,Unsorted,,,,,2022-01-17T03:14:16.404+00:00,11,,0.11,
 closed_dt,DateTime,,,2022-01-01T12:56:14+00:00,2022-04-25T14:30:31+00:00,114.06547,Unsorted,,,,,2022-01-08T01:10:44.411+00:00,15,,0.15,
@@ -25,10 +25,10 @@ ward,String,true,, ,Ward 9,,Unsorted,1,7,499,4.99,,0,,0,
 precinct,String,true,, ,2210,,Unsorted,0,4,393,3.93,,1,,0.01,
 location_street_name,String,true,,103 N Beacon St,INTERSECTION Verdun St & Gallivan Blvd,,Unsorted,0,45,1800,18,,1,,0.01,
 location_zipcode,String,true,,02109,02215,,Unsorted,0,5,415,4.15,,17,,0.17,
-latitude,Float,,4233.6674,42.2553,42.3806,0.1253,Unsorted,6,7,694,6.94,42.3367,0,4,0,
-longitude,Float,,-7107.2688,-71.1626,-71.0298,0.1328,Unsorted,6,8,791,7.91,-71.0727,0,4,0,
+latitude,Float,,4233.6674,42.2553,42.3806,0.1253,Unsorted,,,,,42.3367,0,4,0,
+longitude,Float,,-7107.2688,-71.1626,-71.0298,0.1328,Unsorted,,,,,-71.0727,0,4,0,
 source,String,true,,Citizens Connect App,Self Service,,Unsorted,12,20,1801,18.01,,0,,0,
 qsv__rowcount,,,,,,,,,,,,,,,,100
 qsv__columncount,,,,,,,,,,,,,,,,29
 qsv__filesize_bytes,,,,,,,,,,,,,,,,47702
-qsv__fingerprint_hash,,,,,,,,,,,,,,,,a668d977d70c381c6edc4d7365032b09225e3f2605848237a49dd8cb149feef4
+qsv__fingerprint_hash,,,,,,,,,,,,,,,,56ccbaefb4c36882922ae8402f82bae9c9731b818ed2b6cf07118b2e714d0bd6

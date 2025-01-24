@@ -1275,10 +1275,10 @@ fn stats_zero_cv() {
             "5",
             "4",
             "Ascending",
-            "1",
-            "1",
-            "5",
-            "1",
+            "",
+            "",
+            "",
+            "",
             "",
             "",
             "",
@@ -1303,10 +1303,10 @@ fn stats_zero_cv() {
             "10",
             "20",
             "Ascending",
-            "1",
-            "3",
-            "9",
-            "1.8",
+            "",
+            "",
+            "",
+            "",
             "",
             "",
             "",
@@ -1331,10 +1331,10 @@ fn stats_zero_cv() {
             "100.0",
             "200",
             "Ascending",
-            "3",
-            "6",
-            "25",
-            "5",
+            "",
+            "",
+            "",
+            "",
             "",
             "",
             "",
@@ -1351,9 +1351,8 @@ fn stats_zero_cv() {
             ""
         ],
         svec![
-            "col4", "Integer", "", "935", "-900", "1000", "1900", "Unsorted", "1", "4", "14",
-            "2.8", "", "", "", "187", "304.3603", "0", "", "680.5703", "463176", "363.9414", "0",
-            "", "0", ""
+            "col4", "Integer", "", "935", "-900", "1000", "1900", "Unsorted", "", "", "", "", "",
+            "", "", "187", "304.3603", "0", "", "680.5703", "463176", "363.9414", "0", "", "0", ""
         ],
         svec![
             "qsv__rowcount",
@@ -1465,7 +1464,7 @@ fn stats_zero_cv() {
             "",
             "",
             "",
-            "bfe0b46361bf7532d2ea6fcdc1e2c25c07ad06d15ba448271d5aeea377d2d506"
+            "ce57f80725771c5a46e0299cdb0ae3ae3a97ede6721f02274bcf040aac21012f"
         ],
     ];
     assert_eq!(got, expected);
@@ -1496,13 +1495,13 @@ fn stats_output_tab_delimited() {
 
     let got = std::fs::read_to_string(out_file).unwrap();
     let expected = r#"field	type	is_ascii	sum	min	max	range	sort_order	min_length	max_length	sum_length	avg_length	stddev_length	variance_length	cv_length	mean	sem	geometric_mean	harmonic_mean	stddev	variance	cv	nullcount	max_precision	sparsity	qsv__value
-col1	Integer		15	1	5	4	Ascending	1	1	5	1				3	0.6325	2.6052	2.1898	1.4142	2	47.1405	0		0	
-col2	Integer		10644	0	4321	4321	Descending	1	4	17	3.4				2128.8	685.6979	0		1533.267	2350907.76	72.0249	0		0	
+col1	Integer		15	1	5	4	Ascending								3	0.6325	2.6052	2.1898	1.4142	2	47.1405	0		0	
+col2	Integer		10644	0	4321	4321	Descending								2128.8	685.6979	0		1533.267	2350907.76	72.0249	0		0	
 col3	String	true		01	10		Ascending	2	2	10	2	0	0	0								0		0	
 qsv__rowcount																									5
 qsv__columncount																									3
 qsv__filesize_bytes																									62
-qsv__fingerprint_hash																									14a30758a66a00ca7f90b3b763d16a4195fa7b7427f5ce5afb32ff87aece8d0c
+qsv__fingerprint_hash																									09e5437cc0b15ac327d13792b139d7fb2277e1e1b7851a2cb6ba92274e5261c4
 "#;
     assert_eq!(got, expected);
 }
@@ -1532,13 +1531,13 @@ fn stats_output_ssv_delimited() {
 
     let got = std::fs::read_to_string(out_file).unwrap();
     let expected = r#"field;type;is_ascii;sum;min;max;range;sort_order;min_length;max_length;sum_length;avg_length;stddev_length;variance_length;cv_length;mean;sem;geometric_mean;harmonic_mean;stddev;variance;cv;nullcount;max_precision;sparsity;qsv__value
-col1;Integer;;15;1;5;4;Ascending;1;1;5;1;;;;3;0.6325;2.6052;2.1898;1.4142;2;47.1405;0;;0;
-col2;Integer;;10644;0;4321;4321;Descending;1;4;17;3.4;;;;2128.8;685.6979;0;;1533.267;2350907.76;72.0249;0;;0;
+col1;Integer;;15;1;5;4;Ascending;;;;;;;;3;0.6325;2.6052;2.1898;1.4142;2;47.1405;0;;0;
+col2;Integer;;10644;0;4321;4321;Descending;;;;;;;;2128.8;685.6979;0;;1533.267;2350907.76;72.0249;0;;0;
 col3;String;true;;01;10;;Ascending;2;2;10;2;0;0;0;;;;;;;;0;;0;
 qsv__rowcount;;;;;;;;;;;;;;;;;;;;;;;;;5
 qsv__columncount;;;;;;;;;;;;;;;;;;;;;;;;;3
 qsv__filesize_bytes;;;;;;;;;;;;;;;;;;;;;;;;;62
-qsv__fingerprint_hash;;;;;;;;;;;;;;;;;;;;;;;;;14a30758a66a00ca7f90b3b763d16a4195fa7b7427f5ce5afb32ff87aece8d0c
+qsv__fingerprint_hash;;;;;;;;;;;;;;;;;;;;;;;;;09e5437cc0b15ac327d13792b139d7fb2277e1e1b7851a2cb6ba92274e5261c4
 "#;
     assert_eq!(got, expected);
 }
@@ -1571,13 +1570,13 @@ fn stats_output_csvsz_delimited() {
 
     let got: String = wrk.stdout(&mut cmd);
     let expected = r#"field,type,is_ascii,sum,min,max,range,sort_order,min_length,max_length,sum_length,avg_length,stddev_length,variance_length,cv_length,mean,sem,geometric_mean,harmonic_mean,stddev,variance,cv,nullcount,max_precision,sparsity,qsv__value
-col1,Integer,,15,1,5,4,Ascending,1,1,5,1,,,,3,0.6325,2.6052,2.1898,1.4142,2,47.1405,0,,0,
-col2,Integer,,10644,0,4321,4321,Descending,1,4,17,3.4,,,,2128.8,685.6979,0,,1533.267,2350907.76,72.0249,0,,0,
+col1,Integer,,15,1,5,4,Ascending,,,,,,,,3,0.6325,2.6052,2.1898,1.4142,2,47.1405,0,,0,
+col2,Integer,,10644,0,4321,4321,Descending,,,,,,,,2128.8,685.6979,0,,1533.267,2350907.76,72.0249,0,,0,
 col3,String,true,,01,10,,Ascending,2,2,10,2,0,0,0,,,,,,,,0,,0,
 qsv__rowcount,,,,,,,,,,,,,,,,,,,,,,,,,5
 qsv__columncount,,,,,,,,,,,,,,,,,,,,,,,,,3
 qsv__filesize_bytes,,,,,,,,,,,,,,,,,,,,,,,,,62
-qsv__fingerprint_hash,,,,,,,,,,,,,,,,,,,,,,,,,14a30758a66a00ca7f90b3b763d16a4195fa7b7427f5ce5afb32ff87aece8d0c"#;
+qsv__fingerprint_hash,,,,,,,,,,,,,,,,,,,,,,,,,09e5437cc0b15ac327d13792b139d7fb2277e1e1b7851a2cb6ba92274e5261c4"#;
     assert_eq!(got, expected);
 }
 
