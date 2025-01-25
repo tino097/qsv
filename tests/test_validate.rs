@@ -630,3 +630,123 @@ fn validate_dynenum_with_remote_csv() {
 
     wrk.assert_err(&mut cmd);
 }
+
+#[cfg(feature = "lite")]
+#[test]
+fn validate_lite_dynenum_combinations() {
+    let wrk = Workdir::new("validate_lite_dynenum_combinations").flexible(true);
+
+    // Create lookup file first
+    wrk.create(
+        "lookup.csv",
+        vec![
+            svec!["id", "name", "category"],
+            svec!["1", "Apple", "fruit"],
+            svec!["2", "Banana", "fruit"],
+            svec!["3", "Carrot", "vegetable"],
+        ],
+    );
+
+    // Test cases with different dynamicEnum URI patterns
+    let test_cases = vec![
+        // Simple file path
+        (
+            "lookup.csv",
+            vec![
+                svec!["id", "product"],
+                svec!["1", "Apple"],   // invalid
+                svec!["2", "Orange"],  // invalid
+            ],
+            2,
+        ),
+        // File path with column name
+        (
+            "lookup.csv|name",
+            vec![
+                svec!["id", "product"],
+                svec!["1", "Apple"],   // valid
+                svec!["2", "Orange"],  // invalid
+            ],
+            1,
+        ),
+        // File path with column index (2nd col - 0-based index)
+        (
+            "lookup.csv|1",
+            vec![
+                svec!["id", "product"],
+                svec!["1", "Apple"],   // valid
+                svec!["2", "Orange"],  // invalid
+            ],
+            1,
+        ),
+        // HTTP URL
+        (
+            "https://raw.githubusercontent.com/dathere/qsv/refs/heads/master/resources/test/fruits.csv",
+            vec![
+                svec!["id", "fruit"],
+                svec!["1", "banana"],  // valid
+                svec!["2", "mango"],   // invalid
+            ],
+            1,
+        ),
+        // HTTP URL with column
+        (
+            "https://raw.githubusercontent.com/dathere/qsv/refs/heads/master/resources/test/fruits.csv|0",
+            vec![
+                svec!["id", "fruit"],
+                svec!["1", "banana"],  // valid
+                svec!["2", "mango"],   // invalid
+            ],
+            1,
+        ),
+        // HTTP URL with column by name
+        (
+            "https://raw.githubusercontent.com/dathere/qsv/refs/heads/master/resources/test/fruits.csv|fruit",
+            vec![
+                svec!["id", "fruit"],
+                svec!["1", "banana"],  // valid
+                svec!["2", "mango"],   // invalid
+                svec!["3", "strawberry"], // valid
+            ],
+            1,
+        ),
+    ];
+
+    for (uri, data, expected_invalid_count) in test_cases {
+        // Create schema using dynamicEnum
+        let schema = format!(
+            r#"{{
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {{
+                    "id": {{ "type": "string" }},
+                    "product": {{ 
+                        "type": "string",
+                        "dynamicEnum": "{}"
+                    }}
+                }}
+            }}"#,
+            uri
+        );
+        wrk.create_from_string("schema.json", &schema);
+
+        // Create test data
+        wrk.create("data.csv", data);
+
+        // Run validate command
+        let mut cmd = wrk.command("validate");
+        cmd.arg("data.csv").arg("schema.json");
+        wrk.output(&mut cmd);
+
+        // Check validation errors count
+        let validation_errors = wrk
+            .read_to_string("data.csv.validation-errors.tsv")
+            .unwrap();
+        let error_count = validation_errors.lines().count() - 1; // subtract header row
+        assert_eq!(
+            error_count, expected_invalid_count,
+            "Failed for URI: {}",
+            uri
+        );
+    }
+}
