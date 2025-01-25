@@ -54,14 +54,14 @@ when the set of valid values is dynamic or too large to hardcode into the JSON S
   // on other qsv binary variants, dynamicEnum has expanded caching functionality
   dynamicEnum = "[cache_name;cache_age]|URI|colname" where cache_name and cache_age are optional
 
-    // use data.csv from current working directory; cache it as data.csv with a default 
+    // use data.csv from current working directory; cache it as data with a default 
     // cache age of 3600 seconds i.e. the cached data.csv expires after 1 hour
     dynamicEnum = "data.csv"
 
-    // get data.csv; cache it as custom_name.csv, cache age 600 seconds
+    // get data.csv; cache it as custom_name, cache age 600 seconds
     dynamicEnum = "custom_name;600|https://example.com/data.csv"
 
-    // get data.csv; cache it as data.csv, cache age 800 seconds
+    // get data.csv; cache it as data, cache age 800 seconds
     dynamicEnum = ";800|https://example.com/data.csv"
 
     // get the top matching result for nyc_neighborhoods (signaled by trailing ?),
@@ -368,49 +368,192 @@ impl Keyword for DynEnumValidator {
     }
 }
 
-/// Parse the dynamicEnum URI string to extract cache name, age and column
-/// Format: "[cache_name;cache_age]|URL|column" where cache_name, cache_age and column are optional
+/// Parse the dynamicEnum URI string to extract cache_name, final_uri, cache_age and column
+/// Format: "[cache_name;cache_age]|URL[|column]" where cache_name, cache_age and column are
+/// optional
+///
+/// # Arguments
+/// * `uri` - The dynamicEnum URI string to parse
+///
+/// # uri parsing examples:
+/// lookup.csv
+///    - cache_name: lookup, final_uri: lookup.csv, cache_age: 3600, column: None
+/// lookup.csv|name
+///    - cache_name: lookup, final_uri: lookup.csv, cache_age: 3600, column: Some(name)
+/// lookup_name;600|lookup.csv
+///    - cache_name: lookup_name, final_uri: lookup.csv, cache_age: 600, column: None
+/// remote_lookup|https://example.com/remote.csv|col1
+///    - cache_name: remote_lookup, final_uri: https://example.com/remote.csv, cache_age: 3600,
+///      column: Some(col1)
+/// https://example.com/remote.csv
+///    - cache_name: remote, final_uri: https://example.com/remote.csv, cache_age: 3600, column:
+///      None
+///
+/// # Returns
+/// * `(String, String, i64, Option<String>)` - Tuple containing:
+///   - cache_name: Name to use for caching the lookup table
+///   - final_uri: The actual URI/URL to load the lookup table from
+///   - cache_age: How long to cache the lookup table in seconds
+///   - column: Optional column name/index to use from the lookup table
 #[cfg(not(feature = "lite"))]
-fn parse_dynenum_uri(uri: &str) -> (String, i64, Option<String>) {
+fn parse_dynenum_uri(uri: &str) -> (String, String, i64, Option<String>) {
     const DEFAULT_CACHE_AGE_SECS: i64 = 3600; // 1 hour
-    const DEFAULT_LOOKUP_NAME: &str = "dynenum";
+
+    // Extract cache name from URI (handles both URLs and local files)
+    fn get_cache_name(uri: &str) -> String {
+        // For URIs with schemes (http://, dathere://, ckan://, etc.)
+        if uri.contains("://") {
+            // Split on "://" and take everything after it
+            let after_scheme = uri.split("://").nth(1).unwrap_or(uri);
+            // Then take the last part of the path and remove .csv case-insensitively
+            after_scheme
+                .split('/')
+                .next_back()
+                .unwrap_or(after_scheme)
+                .to_lowercase()
+                .trim_end_matches(".csv")
+                .to_string()
+        } else {
+            // For regular paths, just take the last part and remove .csv case-insensitively
+            uri.split('/')
+                .next_back()
+                .unwrap_or(uri)
+                .to_lowercase()
+                .trim_end_matches(".csv")
+                .to_string()
+        }
+    }
 
     // Handle simple URL case with no pipe separators
     if !uri.contains('|') {
-        return (
-            uri.split('/')
-                .next_back()
-                .unwrap_or(DEFAULT_LOOKUP_NAME)
-                .trim_end_matches(".csv")
-                .to_string(),
-            DEFAULT_CACHE_AGE_SECS,
-            None,
-        );
+        let final_uri = uri.to_string();
+        let cache_name = get_cache_name(&final_uri);
+        return (cache_name, final_uri, DEFAULT_CACHE_AGE_SECS, None);
     }
 
+    // Split the URI into parts
     let parts: Vec<&str> = uri.split('|').collect();
-    let cache_config = parts[0];
-    let column = parts.get(2).map(std::string::ToString::to_string);
 
-    if !cache_config.contains(';') {
-        return (cache_config.to_owned(), DEFAULT_CACHE_AGE_SECS, column);
-    }
-
-    let config_parts: Vec<&str> = cache_config.split(';').collect();
-    let cache_age = config_parts[1]
-        .parse::<i64>()
-        .unwrap_or(DEFAULT_CACHE_AGE_SECS);
-    let cache_name = config_parts[0].to_string();
-
-    (
-        if cache_name.is_empty() {
-            cache_config.to_string()
+    // Get the final URI and handle cache configuration
+    let (final_uri, cache_name, cache_age) = if parts[0].contains(';') {
+        // Has cache config: "name;age|uri"
+        let config_parts: Vec<&str> = parts[0].split(';').collect();
+        let name = if config_parts[0].is_empty() {
+            get_cache_name(parts[1])
         } else {
-            cache_name
-        },
-        cache_age,
-        column,
-    )
+            config_parts[0].trim_end_matches(".csv").to_string()
+        };
+        let age = config_parts
+            .get(1)
+            .and_then(|s| s.parse::<i64>().ok())
+            .unwrap_or(DEFAULT_CACHE_AGE_SECS);
+        (parts[1].to_string(), name, age)
+    } else if parts[1].contains("://") {
+        // Has URL/scheme: "name|scheme://uri"
+        (
+            parts[1].to_string(),
+            get_cache_name(parts[0]),
+            DEFAULT_CACHE_AGE_SECS,
+        )
+    } else {
+        // Simple case: "uri|column"
+        (
+            parts[0].to_string(),
+            get_cache_name(parts[0]),
+            DEFAULT_CACHE_AGE_SECS,
+        )
+    };
+
+    // Extract column if present (last part if it's not the URI)
+    let column = if parts.len() > 2 {
+        Some(parts[2].to_string())
+    } else if parts.len() == 2
+        && !parts[1].contains("://")
+        && !parts[1].to_lowercase().ends_with(".csv")
+    {
+        Some(parts[1].to_string())
+    } else {
+        None
+    };
+
+    (cache_name, final_uri, cache_age, column)
+}
+
+#[cfg(not(feature = "lite"))]
+#[test]
+fn test_parse_dynenum_uri() {
+    // Test simple URL with no pipe separators
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("https://example.com/data.csv");
+    assert_eq!(cache_name, "data");
+    assert_eq!(uri, "https://example.com/data.csv");
+    assert_eq!(cache_age, 3600);
+    assert_eq!(column, None);
+
+    // Test with custom cache name and age
+    let (cache_name, uri, cache_age, column) =
+        parse_dynenum_uri("custom_name;600|https://example.com/data.csv");
+    assert_eq!(cache_name, "custom_name");
+    assert_eq!(uri, "https://example.com/data.csv");
+    assert_eq!(cache_age, 600);
+    assert_eq!(column, None);
+
+    // Test with column name
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("lookup.csv|name");
+    assert_eq!(cache_name, "lookup");
+    assert_eq!(uri, "lookup.csv");
+    assert_eq!(cache_age, 3600);
+    assert_eq!(column, Some("name".to_string()));
+
+    // Test with cache config and column
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("mycache;1800|lookup.csv|code");
+    assert_eq!(cache_name, "mycache");
+    assert_eq!(uri, "lookup.csv");
+    assert_eq!(cache_age, 1800);
+    assert_eq!(column, Some("code".to_string()));
+
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri(";1800|lookup.csv|code");
+    assert_eq!(cache_name, "lookup");
+    assert_eq!(uri, "lookup.csv");
+    assert_eq!(cache_age, 1800);
+    assert_eq!(column, Some("code".to_string()));
+
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri(";1800|lookup.csv");
+    assert_eq!(cache_name, "lookup");
+    assert_eq!(uri, "lookup.csv");
+    assert_eq!(cache_age, 1800);
+    assert_eq!(column, None);
+
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("lookup.csv");
+    assert_eq!(cache_name, "lookup");
+    assert_eq!(uri, "lookup.csv");
+    assert_eq!(cache_age, 3600);
+    assert_eq!(column, None);
+
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("LookUp.csv");
+    assert_eq!(cache_name, "lookup");
+    assert_eq!(uri, "LookUp.csv");
+    assert_eq!(cache_age, 3600);
+    assert_eq!(column, None);
+
+    let (cache_name, uri, cache_age, column) =
+        parse_dynenum_uri("NYC_neighborhood_data|ckan://nyc_neighborhoods?");
+    assert_eq!(cache_name, "nyc_neighborhood_data");
+    assert_eq!(uri, "ckan://nyc_neighborhoods?");
+    assert_eq!(cache_age, 3600);
+    assert_eq!(column, None);
+
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("dathere://us_states.csv");
+    assert_eq!(cache_name, "us_states");
+    assert_eq!(uri, "dathere://us_states.csv");
+    assert_eq!(cache_age, 3600);
+    assert_eq!(column, None);
+
+    let (cache_name, uri, cache_age, column) =
+        parse_dynenum_uri("dathere://us_states.csv|state_col");
+    assert_eq!(cache_name, "us_states");
+    assert_eq!(uri, "dathere://us_states.csv");
+    assert_eq!(cache_age, 3600);
+    assert_eq!(column, Some("state_col".to_string()));
 }
 
 /// Factory function that creates a DynEnumValidator for validating against dynamic enums loaded
@@ -452,12 +595,12 @@ fn dyn_enum_validator_factory<'a>(
         )
     })?;
 
-    let (lookup_name, cache_age_secs, column) = parse_dynenum_uri(uri);
+    let (lookup_name, final_uri, cache_age_secs, column) = parse_dynenum_uri(uri);
 
     // Create lookup table options
     let opts = LookupTableOptions {
         name: lookup_name,
-        uri: uri.split('|').nth(1).unwrap_or(uri).to_string(), // Get actual URI part
+        uri: final_uri,
         cache_age_secs,
         cache_dir: QSV_CACHE_DIR.get().unwrap().to_string(),
         delimiter: DELIMITER.get().copied().flatten(),
@@ -493,8 +636,19 @@ fn dyn_enum_validator_factory<'a>(
         } else {
             // Try finding column by name
             match rdr.headers() {
-                Ok(headers) => headers.iter().position(|h| h == col_name).unwrap_or(0),
-                Err(_) => 0,
+                Ok(headers) => {
+                    let idx = headers.iter().position(|h| h == col_name);
+                    match idx {
+                        Some(i) => i,
+                        None => {
+                            return fail_validation_error!(
+                                "Column '{}' not found in lookup table",
+                                col_name
+                            )
+                        },
+                    }
+                },
+                Err(e) => return fail_validation_error!("Error reading headers: {e}"),
             }
         }
     } else {
@@ -927,7 +1081,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     // parse and compile supplied JSON Schema
     let (schema_json, schema_compiled): (Value, Validator) =
         // safety: we know the schema is_some() because we checked above
-        match load_json(&args.arg_json_schema.unwrap()) {
+        match load_json(&args.arg_json_schema.clone().unwrap()) {
             Ok(s) => {
                 // parse JSON string
                 let mut s_slice = s.as_bytes().to_vec();
@@ -943,13 +1097,13 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                             Ok(schema) => (json, schema),
                             Err(e) => {
                                 return fail_clierror!(r#"Cannot compile JSONschema. error: {e}
-Try running `qsv validate --validate-schema` to check the JSON Schema file."#);
+Try running `qsv validate schema {}` to check the JSON Schema file."#, args.arg_json_schema.unwrap());
                             },
                         }
                     },
                     Err(e) => {
                         return fail_clierror!(r#"Unable to parse JSONschema. error: {e}
-Try running `qsv validate --validate-schema` to check the JSON Schema file."#);
+Try running `qsv validate schema {}` to check the JSON Schema file."#, args.arg_json_schema.unwrap());
                     },
                 }
             },
