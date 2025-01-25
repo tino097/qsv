@@ -267,6 +267,19 @@ impl Workdir {
         path.push(name);
         create_dir_all(path)
     }
+
+    /// Read a CSV file and parse it into Vec<Vec<String>>
+    /// Note that this does not return the header row
+    pub fn read_csv(&self, name: &str) -> Vec<Vec<String>> {
+        let path = self.path(name);
+        let mut rdr = csv::ReaderBuilder::new()
+            .flexible(self.flexible)
+            .from_path(&path)
+            .unwrap();
+        rdr.records()
+            .map(|r| r.unwrap().iter().map(|s| s.to_string()).collect())
+            .collect()
+    }
 }
 
 impl fmt::Debug for Workdir {
