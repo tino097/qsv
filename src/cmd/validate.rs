@@ -505,36 +505,55 @@ fn test_parse_dynenum_uri() {
     assert_eq!(column, Some("name".to_string()));
 
     // Test with cache config and column
-    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("mycache;1800|lookup.csv|code");
-    assert_eq!(cache_name, "mycache");
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("MyCache;1800|lookup.csv|code");
+    assert_eq!(cache_name, "MyCache");
     assert_eq!(uri, "lookup.csv");
     assert_eq!(cache_age, 1800);
     assert_eq!(column, Some("code".to_string()));
 
+    // Test empty cache name with age and column
     let (cache_name, uri, cache_age, column) = parse_dynenum_uri(";1800|lookup.csv|code");
     assert_eq!(cache_name, "lookup");
     assert_eq!(uri, "lookup.csv");
     assert_eq!(cache_age, 1800);
     assert_eq!(column, Some("code".to_string()));
 
+    // Test empty cache name with age but no column
     let (cache_name, uri, cache_age, column) = parse_dynenum_uri(";1800|lookup.csv");
     assert_eq!(cache_name, "lookup");
     assert_eq!(uri, "lookup.csv");
     assert_eq!(cache_age, 1800);
     assert_eq!(column, None);
 
+    // Test simple local file path
     let (cache_name, uri, cache_age, column) = parse_dynenum_uri("lookup.csv");
     assert_eq!(cache_name, "lookup");
     assert_eq!(uri, "lookup.csv");
     assert_eq!(cache_age, 3600);
     assert_eq!(column, None);
 
+    // Test simple fully qualified local file path in Windows
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("c:\\Users\\jdoe\\lookup.csv");
+    assert_eq!(cache_name, "lookup");
+    assert_eq!(uri, "c:\\Users\\jdoe\\lookup.csv");
+    assert_eq!(cache_age, 3600);
+    assert_eq!(column, None);
+
+    // Test simple local file path on *nix filesystem, with column
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("/tmp/lookup.csv|first_col");
+    assert_eq!(cache_name, "/tmp/lookup");
+    assert_eq!(uri, "lookup.csv");
+    assert_eq!(cache_age, 3600);
+    assert_eq!(column, Some("first_col".to_string()));
+
+    // Test case-insensitive cache name generation
     let (cache_name, uri, cache_age, column) = parse_dynenum_uri("LookUp.csv");
     assert_eq!(cache_name, "lookup");
     assert_eq!(uri, "LookUp.csv");
     assert_eq!(cache_age, 3600);
     assert_eq!(column, None);
 
+    // Test CKAN URL with custom cache name
     let (cache_name, uri, cache_age, column) =
         parse_dynenum_uri("NYC_neighborhood_data|ckan://nyc_neighborhoods?");
     assert_eq!(cache_name, "nyc_neighborhood_data");
@@ -542,17 +561,43 @@ fn test_parse_dynenum_uri() {
     assert_eq!(cache_age, 3600);
     assert_eq!(column, None);
 
+    // Test CKAN URL with custom cache name and age
+    let (cache_name, uri, cache_age, column) =
+        parse_dynenum_uri("NYC_neighborhood_data;5000|ckan://nyc_neighborhoods?");
+    assert_eq!(cache_name, "NYC_neighborhood_data");
+    assert_eq!(uri, "ckan://nyc_neighborhoods?");
+    assert_eq!(cache_age, 5000);
+    assert_eq!(column, None);
+
+    // Test CKAN URL with custom cache name, age and column
+    let (cache_name, uri, cache_age, column) =
+        parse_dynenum_uri("NYC_neighborhood_data;5000|ckan://nyc_neighborhoods?|Neighborhood_Col");
+    assert_eq!(cache_name, "NYC_neighborhood_data");
+    assert_eq!(uri, "ckan://nyc_neighborhoods?");
+    assert_eq!(cache_age, 5000);
+    assert_eq!(column, Some("Neighborhood_Col".to_string()));
+
+    // Test dathere URL with no options
     let (cache_name, uri, cache_age, column) = parse_dynenum_uri("dathere://us_states.csv");
     assert_eq!(cache_name, "us_states");
     assert_eq!(uri, "dathere://us_states.csv");
     assert_eq!(cache_age, 3600);
     assert_eq!(column, None);
 
+    // Test dathere URL with column
     let (cache_name, uri, cache_age, column) =
         parse_dynenum_uri("dathere://us_states.csv|state_col");
     assert_eq!(cache_name, "us_states");
     assert_eq!(uri, "dathere://us_states.csv");
     assert_eq!(cache_age, 3600);
+    assert_eq!(column, Some("state_col".to_string()));
+
+    // Test dathere URL with custom cache name, age and column
+    let (cache_name, uri, cache_age, column) =
+        parse_dynenum_uri("usl_lookup;6000|dathere://us_states.csv|state_col");
+    assert_eq!(cache_name, "usl_lookup");
+    assert_eq!(uri, "dathere://us_states.csv");
+    assert_eq!(cache_age, 6000);
     assert_eq!(column, Some("state_col".to_string()));
 }
 
