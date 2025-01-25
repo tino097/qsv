@@ -379,7 +379,7 @@ fn validate_adur_public_toilets_dataset_with_json_schema_url() {
 fn validate_dynenum_with_column() {
     let wrk = Workdir::new("validate_dynenum_with_column").flexible(true);
 
-    // Create a sample CSV file with multiple columns
+    // Create lookup file first
     wrk.create(
         "lookup.csv",
         vec![
@@ -427,9 +427,8 @@ fn validate_dynenum_with_column() {
     wrk.assert_err(&mut cmd);
 
     // Check validation-errors.tsv
-    let validation_errors = wrk
-        .read_to_string("data.csv.validation-errors.tsv")
-        .unwrap();
+    let validation_errors: String = wrk.from_str(&wrk.path("data.csv.validation-errors.tsv"));
+
     let expected_errors = "row_number\tfield\terror\n3\tproduct\t\"Orange\" is not a valid \
                            dynamicEnum value\n4\tproduct\t\"Grape\" is not a valid dynamicEnum \
                            value\n";
@@ -524,7 +523,7 @@ fn validate_dynenum_with_column_index() {
 fn validate_dynenum_with_invalid_column() {
     let wrk = Workdir::new("validate_dynenum_with_invalid_column").flexible(true);
 
-    // Create a sample CSV file
+    // Create lookup file first
     wrk.create(
         "lookup.csv",
         vec![
@@ -557,29 +556,16 @@ fn validate_dynenum_with_invalid_column() {
     let mut cmd = wrk.command("validate");
     cmd.arg("data.csv").arg("schema.json");
 
-    wrk.assert_err(&mut cmd);
-
-    // When an invalid column is specified, it should fall back to the first column
+    // Check error output
     let got = wrk.output_stderr(&mut cmd);
-    assert!(got.contains("1 out of 1 records invalid."));
-
-    // Check validation-errors.tsv
-    let validation_errors = wrk
-        .read_to_string("data.csv.validation-errors.tsv")
-        .unwrap();
-    let expected_errors =
-        "row_number\tfield\terror\n1\tname\t\"Apple\" is not a valid dynamicEnum value\n";
-    assert_eq!(validation_errors, expected_errors);
-
-    // Check valid records
-    let valid_records = wrk.read_to_string("data.csv.valid").unwrap();
-    let expected_valid = "id,name\n".to_string();
-    assert_eq!(valid_records, expected_valid);
-
-    // Check invalid records
-    let invalid_records: Vec<Vec<String>> = wrk.read_csv("data.csv.invalid");
-    let expected_invalid = vec![svec!["1", "Apple"]];
-    assert_eq!(invalid_records, expected_invalid);
+    #[cfg(feature = "lite")]
+    assert_eq!(got, "1 out of 1 records invalid.\n");
+    #[cfg(not(feature = "lite"))]
+    assert_eq!(
+        got,
+        "Cannot compile JSONschema. error: Column 'nonexistent_column' not found in lookup \
+         table\nTry running `qsv validate schema schema.json` to check the JSON Schema file.\n"
+    );
 
     wrk.assert_err(&mut cmd);
 }
