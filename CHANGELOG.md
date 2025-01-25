@@ -6,6 +6,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2025-01-25
+
+## What's Changed
+* build(deps): bump log from 0.4.22 to 0.4.25 by @dependabot in https://github.com/dathere/qsv/pull/2439
+* build(deps): bump base62 from 2.2.0 to 2.2.1 by @dependabot in https://github.com/dathere/qsv/pull/2440
+* build(deps): bump uuid from 1.11.1 to 1.12.0 by @dependabot in https://github.com/dathere/qsv/pull/2441
+* build(deps): bump data-encoding from 2.6.0 to 2.7.0 by @dependabot in https://github.com/dathere/qsv/pull/2444
+* build(deps): bump simple-home-dir from 0.4.5 to 0.4.6 by @dependabot in https://github.com/dathere/qsv/pull/2445
+* deps: bump to polars 0.45.1 at py-polars-1.20.0 tag by @jqnatividad in https://github.com/dathere/qsv/pull/2448
+* build(deps): bump chrono-tz from 0.10.0 to 0.10.1 by @dependabot in https://github.com/dathere/qsv/pull/2449
+* `refactor`: `foreach` remove `local-encoding` dependency by @jqnatividad in https://github.com/dathere/qsv/pull/2454
+* build(deps): bump serde_json from 1.0.135 to 1.0.136 by @dependabot in https://github.com/dathere/qsv/pull/2455
+* Bump `csv-diff` to 0.1.1 by @janriemer in https://github.com/dathere/qsv/pull/2456
+* `diff`: Fix name to index conversion by @janriemer in https://github.com/dathere/qsv/pull/2457
+* build(deps): bump indexmap from 2.7.0 to 2.7.1 by @dependabot in https://github.com/dathere/qsv/pull/2461
+* refactor: `jaq` crate upgrade by @jqnatividad in https://github.com/dathere/qsv/pull/2458
+* build(deps): bump semver from 1.0.24 to 1.0.25 by @dependabot in https://github.com/dathere/qsv/pull/2459
+* build(deps): bump serde_json from 1.0.136 to 1.0.137 by @dependabot in https://github.com/dathere/qsv/pull/2460
+* feat: `diff` add `--delimiter` "convenience" option by @jqnatividad in https://github.com/dathere/qsv/pull/2464
+* build(deps): bump uuid from 1.12.0 to 1.12.1 by @dependabot in https://github.com/dathere/qsv/pull/2465
+* refactor: `fetch` & `fetchpost` cache compiled jaq filter by @jqnatividad in https://github.com/dathere/qsv/pull/2467
+* refactor: standardize -q and -Q shortcut options by @jqnatividad in https://github.com/dathere/qsv/pull/2468
+* build(deps): bump jsonschema from 0.28.1 to 0.28.2 by @dependabot in https://github.com/dathere/qsv/pull/2469
+* refactor: `stats` compute string length stats for string type only by @jqnatividad in https://github.com/dathere/qsv/pull/2471
+* feat: `validate` add dynamicEnum column specifier support by @jqnatividad in https://github.com/dathere/qsv/pull/2472
+* build(deps): bump jsonschema from 0.28.2 to 0.28.3 by @dependabot in https://github.com/dathere/qsv/pull/2473
+
+**Full Changelog**: https://github.com/dathere/qsv/compare/2.1.0...2.2.0
+
 ## [2.1.0] - 2025-01-12
 
 ### Added
