@@ -405,20 +405,18 @@ fn parse_dynenum_uri(uri: &str) -> (String, String, i64, Option<String>) {
         if uri.contains("://") {
             // Split on "://" and take everything after it
             let after_scheme = uri.split("://").nth(1).unwrap_or(uri);
-            // Then take the last part of the path and remove .csv case-insensitively
+            // Then take the last part of the path and remove .csv
             after_scheme
                 .split('/')
                 .next_back()
                 .unwrap_or(after_scheme)
-                .to_lowercase()
                 .trim_end_matches(".csv")
                 .to_string()
         } else {
-            // For regular paths, just take the last part and remove .csv case-insensitively
-            uri.split('/')
+            // For regular paths, split on both / and \ and take the last part
+            uri.split(|c| c == '/' || c == '\\')
                 .next_back()
                 .unwrap_or(uri)
-                .to_lowercase()
                 .trim_end_matches(".csv")
                 .to_string()
         }
@@ -533,22 +531,22 @@ fn test_parse_dynenum_uri() {
     assert_eq!(column, None);
 
     // Test simple fully qualified local file path in Windows
-    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("c:\\Users\\jdoe\\lookup.csv");
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri(r#"c:\Users\jdoe\lookup.csv"#);
     assert_eq!(cache_name, "lookup");
-    assert_eq!(uri, "c:\\Users\\jdoe\\lookup.csv");
+    assert_eq!(uri, r#"c:\Users\jdoe\lookup.csv"#);
     assert_eq!(cache_age, 3600);
     assert_eq!(column, None);
 
     // Test simple local file path on *nix filesystem, with column
     let (cache_name, uri, cache_age, column) = parse_dynenum_uri("/tmp/lookup.csv|first_col");
-    assert_eq!(cache_name, "/tmp/lookup");
-    assert_eq!(uri, "lookup.csv");
+    assert_eq!(cache_name, "lookup");
+    assert_eq!(uri, "/tmp/lookup.csv");
     assert_eq!(cache_age, 3600);
     assert_eq!(column, Some("first_col".to_string()));
 
     // Test case-insensitive cache name generation
     let (cache_name, uri, cache_age, column) = parse_dynenum_uri("LookUp.csv");
-    assert_eq!(cache_name, "lookup");
+    assert_eq!(cache_name, "LookUp");
     assert_eq!(uri, "LookUp.csv");
     assert_eq!(cache_age, 3600);
     assert_eq!(column, None);
@@ -556,7 +554,7 @@ fn test_parse_dynenum_uri() {
     // Test CKAN URL with custom cache name
     let (cache_name, uri, cache_age, column) =
         parse_dynenum_uri("NYC_neighborhood_data|ckan://nyc_neighborhoods?");
-    assert_eq!(cache_name, "nyc_neighborhood_data");
+    assert_eq!(cache_name, "NYC_neighborhood_data");
     assert_eq!(uri, "ckan://nyc_neighborhoods?");
     assert_eq!(cache_age, 3600);
     assert_eq!(column, None);
