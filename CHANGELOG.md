@@ -8,31 +8,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.2.0] - 2025-01-26
 
-## What's Changed
-* build(deps): bump log from 0.4.22 to 0.4.25 by @dependabot in https://github.com/dathere/qsv/pull/2439
+### Added
+* `diff`: add `--delimiter` "convenience" option. Fulfills #2447 https://github.com/dathere/qsv/pull/2464
+* `slice`: add stdin and snappy compressed file support https://github.com/dathere/qsv/commit/ab34a623f32bd25d9ff761972f66faa85f510a5d
+* `validate`: add dynamicEnum column specifier support. Fulfills #2470 https://github.com/dathere/qsv/pull/2472
+
+### What's Changed
+* `fetch` & `fetchpost`: `jaq` dependency upgrade - from `jaq-interpret` & `jaq-parse` to `jaq-core`/`jaq-json`/`jaq-std` https://github.com/dathere/qsv/pull/2458
+* `fetch` & `fetchpost`: cache compiled jaq filter https://github.com/dathere/qsv/pull/2467
+* `joinp`: adjust asofby test to reflect Polars py-1.20.0 behavior https://github.com/dathere/qsv/commit/853a266c866aa54598b6b1a3faa253d151a6b472
+* `stats`: compute string length stats for string type only https://github.com/dathere/qsv/pull/2471
+* `sqlp`: wordsmith fastpath explanation https://github.com/dathere/qsv/commit/4e3f85397f67cbe20562e8a84c228b7dc61e4bd7
+* refactor: standardize -q and -Q shortcut options. Fulfills #2466 https://github.com/dathere/qsv/pull/2468
+* deps: bump polars to 0.45.1 at py-polars-1.20.0 tag https://github.com/dathere/qsv/pull/2448
+* deps: bump polars to 0.45.1 at py-polars-1.21.0 tag https://github.com/dathere/qsv/commit/4525d00ecd4845feaac2062d40bb7bc64c13688f
+* deps: Bump csv-diff to 0.1.1 by @janriemer in https://github.com/dathere/qsv/pull/2456
+* deps: Bump csvlens to latest upstream https://github.com/dathere/qsv/commit/27a723eee4af046920a022605ad6c3476c0962e4
 * build(deps): bump base62 from 2.2.0 to 2.2.1 by @dependabot in https://github.com/dathere/qsv/pull/2440
-* build(deps): bump uuid from 1.11.1 to 1.12.0 by @dependabot in https://github.com/dathere/qsv/pull/2441
-* build(deps): bump data-encoding from 2.6.0 to 2.7.0 by @dependabot in https://github.com/dathere/qsv/pull/2444
-* build(deps): bump simple-home-dir from 0.4.5 to 0.4.6 by @dependabot in https://github.com/dathere/qsv/pull/2445
-* deps: bump to polars 0.45.1 at py-polars-1.20.0 tag by @jqnatividad in https://github.com/dathere/qsv/pull/2448
 * build(deps): bump chrono-tz from 0.10.0 to 0.10.1 by @dependabot in https://github.com/dathere/qsv/pull/2449
-* `refactor`: `foreach` remove `local-encoding` dependency by @jqnatividad in https://github.com/dathere/qsv/pull/2454
-* build(deps): bump serde_json from 1.0.135 to 1.0.136 by @dependabot in https://github.com/dathere/qsv/pull/2455
-* Bump `csv-diff` to 0.1.1 by @janriemer in https://github.com/dathere/qsv/pull/2456
-* `diff`: Fix name to index conversion by @janriemer in https://github.com/dathere/qsv/pull/2457
+* build(deps): bump data-encoding from 2.6.0 to 2.7.0 by @dependabot in https://github.com/dathere/qsv/pull/2444
 * build(deps): bump indexmap from 2.7.0 to 2.7.1 by @dependabot in https://github.com/dathere/qsv/pull/2461
-* refactor: `jaq` crate upgrade by @jqnatividad in https://github.com/dathere/qsv/pull/2458
-* build(deps): bump semver from 1.0.24 to 1.0.25 by @dependabot in https://github.com/dathere/qsv/pull/2459
-* build(deps): bump serde_json from 1.0.136 to 1.0.137 by @dependabot in https://github.com/dathere/qsv/pull/2460
-* feat: `diff` add `--delimiter` "convenience" option by @jqnatividad in https://github.com/dathere/qsv/pull/2464
-* build(deps): bump uuid from 1.12.0 to 1.12.1 by @dependabot in https://github.com/dathere/qsv/pull/2465
-* refactor: `fetch` & `fetchpost` cache compiled jaq filter by @jqnatividad in https://github.com/dathere/qsv/pull/2467
-* refactor: standardize -q and -Q shortcut options by @jqnatividad in https://github.com/dathere/qsv/pull/2468
 * build(deps): bump jsonschema from 0.28.1 to 0.28.2 by @dependabot in https://github.com/dathere/qsv/pull/2469
-* refactor: `stats` compute string length stats for string type only by @jqnatividad in https://github.com/dathere/qsv/pull/2471
-* feat: `validate` add dynamicEnum column specifier support by @jqnatividad in https://github.com/dathere/qsv/pull/2472
 * build(deps): bump jsonschema from 0.28.2 to 0.28.3 by @dependabot in https://github.com/dathere/qsv/pull/2473
-* refactor: `extdedup` to actually have memory-mapped file backing on-disk hash table by @jqnatividad in https://github.com/dathere/qsv/pull/2475
+* build(deps): bump log from 0.4.22 to 0.4.25 by @dependabot in https://github.com/dathere/qsv/pull/2439
+* build(deps): bump semver from 1.0.24 to 1.0.25 by @dependabot in https://github.com/dathere/qsv/pull/2459
+* build(deps): bump serde_json from 1.0.135 to 1.0.136 by @dependabot in https://github.com/dathere/qsv/pull/2455
+* build(deps): bump serde_json from 1.0.136 to 1.0.137 by @dependabot in https://github.com/dathere/qsv/pull/2460
+* build(deps): bump simple-home-dir from 0.4.5 to 0.4.6 by @dependabot in https://github.com/dathere/qsv/pull/2445
+* build(deps): bump uuid from 1.11.1 to 1.12.0 by @dependabot in https://github.com/dathere/qsv/pull/2441
+* build(deps): bump uuid from 1.12.0 to 1.12.1 by @dependabot in https://github.com/dathere/qsv/pull/2465
+* tests: enabled Windows CI caching for faster CI tests 
+* bumped numerous indirect dependencies to latest versions
+* applied select clippy lint suggestions
+
+### Fixed
+* `count`: Sometimes, polars count returns zero even if there are rows. Fixed by doing a regular csv reader count when polars count returns zero https://github.com/dathere/qsv/commit/abcd36524d6c26a17a2ecfac54498ecab58fe87c 
+* `diff`: Fix name to index conversion by @janriemer. Fixes #2443 https://github.com/dathere/qsv/pull/2457
+* `extdedup`: refactor/fix to actually have on-disk hash table backed by a mem-mapped file. Fixes #2462 https://github.com/dathere/qsv/pull/2475
+* `stats`: fix stats caching as it was inadvertently deleting the stats cache even when not necessary https://github.com/dathere/qsv/commit/96e6d289d31a2b22345524fb5cc71eca0d6ffae9
+
+### Removed
+* `foreach`: refactored to remove unmaintained `local-encoding` dependency https://github.com/dathere/qsv/pull/2454
+* remove `polars` feature from qsvdp binary variant. We'll use py-polars from DP+ directly.
+
 
 **Full Changelog**: https://github.com/dathere/qsv/compare/2.1.0...2.2.0
 
