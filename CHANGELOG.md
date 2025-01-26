@@ -8,13 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.2.0] - 2025-01-26
 
+## Highlights:
+* `stats` - the :heart: of qsv, got a little tune-up:
+  * It got a tad faster now that we only compute string length stats for string types. Previously, we were also computing length for numbers, thinking it'll be useful for storage sizing purposes (as everything is stored as string with CSV). But as [performance is goal number 1](https://github.com/dathere/qsv?tab=readme-ov-file#goals--non-goals), we're no longer doing so. Besides, this sizing info can be derived using other stats.
+  * Fixed the problem with the stats cache being deleted/ignored even when not necessary.<br/>This bug snuck in while implementing the `--cache-threshold` cache suppression option. With `stats` getting its cache mojo back - expect near-instant cache-backed response not only for `stats` but also other ["automagical" smart commands 🪄](https://github.com/dathere/qsv?tab=readme-ov-file#legend_deeplink).
+* `diff` - @janriemer squashed some bugs without sacrificing `diff`'s _ludicrous speed_! :wink:
+* `validate`: The `dynamicEnum` custom JSON Schema keyword column specifier support.<br/>You can now specify which column to validate against (by name or by 0-based column index), instead of always using the first column. This works for local & remote lookup files using the `http/s://`, `ckan://` and `dathere://` URL schemes.
+* `extdedup` now actually uses a proper memory-mapped backed on-disk hash table.<br/>Previously, it was only deduping in-memory as the odht crate was not properly wired to a memory mapped file :facepalm: (I took the name of the odht crate literally and thought it was handling it :shrug:). Thanks for the [detailed bug report](https://github.com/dathere/qsv/issues/2462) @Svenskunganka!
+* JSON query parsing overhaul.<br/>The `fetch`, `fetchpost` & `json` commands now use the latest [`jaq`](https://github.com/01mf02/jaq?tab=readme-ov-file#jaq) engine, making for faster performance especially now that we're precompiling and caching the jaq filter.
+* Polars engine upgraded. :polar_bear:<br/>By two versions - py-polars [1.20.0](https://github.com/pola-rs/polars/releases/tag/py-1.20.0) and [1.21.0](https://github.com/pola-rs/polars/releases/tag/py-1.21.0) - giving the `sqlp`, `joinp`, `pivotp` and `count` commands a little boost. :rocket:
+
+---
+
 ### Added
 * `diff`: add `--delimiter` "convenience" option. Fulfills #2447 https://github.com/dathere/qsv/pull/2464
 * `slice`: add stdin and snappy compressed file support https://github.com/dathere/qsv/commit/ab34a623f32bd25d9ff761972f66faa85f510a5d
 * `validate`: add dynamicEnum column specifier support. Fulfills #2470 https://github.com/dathere/qsv/pull/2472
 
 ### What's Changed
-* `fetch` & `fetchpost`: `jaq` dependency upgrade - from `jaq-interpret` & `jaq-parse` to `jaq-core`/`jaq-json`/`jaq-std` https://github.com/dathere/qsv/pull/2458
+* `fetch`, `fetchpost` & `json`: `jaq` dependency upgrade - from `jaq-interpret` & `jaq-parse` to `jaq-core`/`jaq-json`/`jaq-std` https://github.com/dathere/qsv/pull/2458
 * `fetch` & `fetchpost`: cache compiled jaq filter https://github.com/dathere/qsv/pull/2467
 * `joinp`: adjust asofby test to reflect Polars py-1.20.0 behavior https://github.com/dathere/qsv/commit/853a266c866aa54598b6b1a3faa253d151a6b472
 * `stats`: compute string length stats for string type only https://github.com/dathere/qsv/pull/2471
@@ -24,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * deps: bump polars to 0.45.1 at py-polars-1.21.0 tag https://github.com/dathere/qsv/commit/4525d00ecd4845feaac2062d40bb7bc64c13688f
 * deps: Bump csv-diff to 0.1.1 by @janriemer in https://github.com/dathere/qsv/pull/2456
 * deps: Bump csvlens to latest upstream https://github.com/dathere/qsv/commit/27a723eee4af046920a022605ad6c3476c0962e4
+* deps: use latest strum upstream https://github.com/dathere/qsv/commit/2ca1b0d476a20b93c786d0839cc5077e26fd6d88
 * build(deps): bump base62 from 2.2.0 to 2.2.1 by @dependabot in https://github.com/dathere/qsv/pull/2440
 * build(deps): bump chrono-tz from 0.10.0 to 0.10.1 by @dependabot in https://github.com/dathere/qsv/pull/2449
 * build(deps): bump data-encoding from 2.6.0 to 2.7.0 by @dependabot in https://github.com/dathere/qsv/pull/2444
@@ -50,7 +63,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 * `foreach`: refactored to remove unmaintained `local-encoding` dependency https://github.com/dathere/qsv/pull/2454
 * remove `polars` feature from qsvdp binary variant. We'll use py-polars from DP+ directly.
-
 
 **Full Changelog**: https://github.com/dathere/qsv/compare/2.1.0...2.2.0
 
