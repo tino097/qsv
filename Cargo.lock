@@ -5215,6 +5215,7 @@ dependencies = [
  "jsonschema",
  "localzone",
  "log",
+ "memmap2",
  "mimalloc",
  "minijinja",
  "minijinja-contrib",

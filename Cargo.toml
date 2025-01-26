@@ -143,6 +143,7 @@ jsonschema = { version = "0.28", features = [
 ], default-features = false }
 localzone = { version = "0.3", features = ["auto_validation"] }
 log = "0.4"
+memmap2 = "0.9"
 mimalloc = { version = "0.1", default-features = false, optional = true }
 minijinja = { version = "2", features = [
     "json",
@@ -178,6 +179,7 @@ polars = { version = "0.45", features = [
     # "cloud",
     "coalesce",
     "cross_join",
+    "cse",
     "csv",
     "decompress",
     "diagonal_concat",
