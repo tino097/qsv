@@ -1,13 +1,14 @@
 // inspired by https://github.com/race604/dedup/blob/master/src/cache.rs
 use std::{collections::HashSet, path::PathBuf};
 
+use log::debug;
 use memmap2::MmapMut;
-use odht::{Config, FxHashFn, HashTableOwned};
+use odht::{bytes_needed, Config, FxHashFn, HashTableOwned};
 use tempfile::NamedTempFile;
 
 struct ExtDedupConfig;
 
-const ODHT_FILE_INITIAL_SIZE: u64 = 1024 * 1024 * 1024; // (1GB initial size)
+const ODHT_CAPACITY: usize = 10_000_000; // 10 million initial capacity
 const CHUNK_SIZE: usize = 127;
 
 impl Config for ExtDedupConfig {
@@ -71,10 +72,29 @@ impl ExtDedupCache {
             .suffix(".tmp")
             .tempfile_in(&self.temp_dir)?;
 
-        // Preallocate file space
-        temp_file.as_file().set_len(ODHT_FILE_INITIAL_SIZE)?;
+        // Calculate required space for the hash table
+        let load_factor = 95;
+        let required_bytes = bytes_needed::<ExtDedupConfig>(ODHT_CAPACITY, load_factor);
 
-        let mmap = unsafe { MmapMut::map_mut(temp_file.as_file())? };
+        // Ensure file is large enough
+        temp_file.as_file().set_len(required_bytes as u64)?;
+
+        let mut mmap = unsafe { MmapMut::map_mut(temp_file.as_file())? };
+
+        // Create a properly initialized table
+        let table = HashTableOwned::<ExtDedupConfig>::with_capacity(ODHT_CAPACITY, load_factor);
+
+        // Copy the initialized bytes to mmap
+        let raw_bytes = table.raw_bytes();
+        if mmap.len() >= raw_bytes.len() {
+            mmap[..raw_bytes.len()].copy_from_slice(raw_bytes);
+            mmap.flush()?;
+        } else {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Mmap size too small for ODHT table",
+            ));
+        }
 
         self.mmap = Some(mmap);
         self.temp_file = Some(temp_file);
@@ -92,7 +112,7 @@ impl ExtDedupCache {
             self.memo_size += item.len() as u64;
             if self.disk.is_some() {
                 res = self.insert_on_disk(item);
-                // log::debug!("Insert on disk: {res}");
+                // debug!("Insert on disk: {res}");
             }
         }
 
@@ -114,18 +134,23 @@ impl ExtDedupCache {
 
     fn insert_on_disk(&mut self, item: &str) -> bool {
         if self.disk.is_none() {
-            log::debug!("Create new disk cache");
-            if let Err(e) = self.create_mmap() {
-                log::debug!("Failed to create memory map: {}", e);
-                // Fallback to regular HashTableOwned if mmap fails
-                self.disk = Some(HashTableOwned::<ExtDedupConfig>::with_capacity(
-                    1_000_000, 95,
-                ));
-            } else if let Some(mmap) = &self.mmap {
-                // Use from_raw_bytes_unchecked since we just created the mmap
-                self.disk = Some(unsafe {
-                    HashTableOwned::<ExtDedupConfig>::from_raw_bytes_unchecked(mmap)
-                });
+            debug!("Create new disk cache");
+            match self.create_mmap() {
+                Ok(()) => {
+                    if let Some(mmap) = &mut self.mmap {
+                        // Create the table from the properly initialized mmap
+                        self.disk = Some(unsafe {
+                            HashTableOwned::<ExtDedupConfig>::from_raw_bytes_unchecked(mmap)
+                        });
+                    }
+                },
+                Err(e) => {
+                    debug!("Failed to create memory map: {}", e);
+                    // Fallback to regular HashTableOwned if mmap fails
+                    self.disk = Some(HashTableOwned::<ExtDedupConfig>::with_capacity(
+                        1_000_000, 95,
+                    ));
+                },
             }
         }
 
@@ -153,7 +178,7 @@ impl ExtDedupCache {
     }
 
     fn dump_to_disk(&mut self) {
-        log::debug!("Memory cache is full, dump to disk");
+        debug!("Memory cache is full, dump to disk");
         let keys = self.memo.drain().collect::<Vec<_>>();
         for key in keys {
             self.insert_on_disk(&key);
