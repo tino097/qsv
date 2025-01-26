@@ -378,13 +378,17 @@ impl Keyword for DynEnumValidator {
 /// # uri parsing examples:
 /// lookup.csv
 ///    - cache_name: lookup, final_uri: lookup.csv, cache_age: 3600, column: None
+///
 /// lookup.csv|name
 ///    - cache_name: lookup, final_uri: lookup.csv, cache_age: 3600, column: Some(name)
+///
 /// lookup_name;600|lookup.csv
 ///    - cache_name: lookup_name, final_uri: lookup.csv, cache_age: 600, column: None
+///
 /// remote_lookup|https://example.com/remote.csv|col1
 ///    - cache_name: remote_lookup, final_uri: https://example.com/remote.csv, cache_age: 3600,
 ///      column: Some(col1)
+///
 /// https://example.com/remote.csv
 ///    - cache_name: remote, final_uri: https://example.com/remote.csv, cache_age: 3600, column:
 ///      None
@@ -414,7 +418,7 @@ fn parse_dynenum_uri(uri: &str) -> (String, String, i64, Option<String>) {
                 .to_string()
         } else {
             // For regular paths, split on both / and \ and take the last part
-            uri.split(|c| c == '/' || c == '\\')
+            uri.split(['/', '\\'])
                 .next_back()
                 .unwrap_or(uri)
                 .trim_end_matches(".csv")
