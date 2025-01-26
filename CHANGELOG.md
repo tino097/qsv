@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.2.0] - 2025-01-25
+## [2.2.0] - 2025-01-26
 
 ## What's Changed
 * build(deps): bump log from 0.4.22 to 0.4.25 by @dependabot in https://github.com/dathere/qsv/pull/2439
@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * refactor: `stats` compute string length stats for string type only by @jqnatividad in https://github.com/dathere/qsv/pull/2471
 * feat: `validate` add dynamicEnum column specifier support by @jqnatividad in https://github.com/dathere/qsv/pull/2472
 * build(deps): bump jsonschema from 0.28.2 to 0.28.3 by @dependabot in https://github.com/dathere/qsv/pull/2473
+* refactor: `extdedup` to actually have memory-mapped file backing on-disk hash table by @jqnatividad in https://github.com/dathere/qsv/pull/2475
 
 **Full Changelog**: https://github.com/dathere/qsv/compare/2.1.0...2.2.0
 
