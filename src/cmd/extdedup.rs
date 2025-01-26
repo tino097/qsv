@@ -39,6 +39,8 @@ extdedup options:
                                If more than 50, this is the memory in MB to allocate, capped
                                at 90 percent of total memory.
                                [default: 10]
+    --temp-dir <arg>           Directory to store temporary hash table file.
+                               If not specified, defaults to operating system temp directory.
 
 Common options:
                                CSV MODE ONLY:
@@ -56,6 +58,7 @@ Common options:
 use std::{
     fs,
     io::{self, stdin, stdout, BufRead, Write},
+    path::PathBuf,
 };
 
 use indicatif::HumanCount;
@@ -81,6 +84,7 @@ struct Args {
     flag_dupes_output:   Option<String>,
     flag_human_readable: bool,
     flag_memory_limit:   Option<u64>,
+    flag_temp_dir:       Option<String>,
     flag_quiet:          bool,
 }
 
@@ -138,7 +142,8 @@ fn dedup_csv(args: Args, mem_limited_buffer: u64) -> Result<u64, crate::clitypes
         dupewtr.write_byte_record(&dupe_headers)?;
     }
 
-    let mut dedup_cache = odhtcache::ExtDedupCache::new(mem_limited_buffer);
+    let temp_dir = args.flag_temp_dir.map(PathBuf::from);
+    let mut dedup_cache = odhtcache::ExtDedupCache::new(mem_limited_buffer, temp_dir);
     let mut dupes_count = 0_u64;
     let sel = rconfig.selection(&headers)?;
 
@@ -236,7 +241,8 @@ fn dedup_lines(args: Args, mem_limited_buffer: u64) -> Result<u64, crate::clityp
             fs::File::create("nul")?,
         )
     };
-    let mut dedup_cache = odhtcache::ExtDedupCache::new(mem_limited_buffer);
+    let temp_dir = args.flag_temp_dir.map(PathBuf::from);
+    let mut dedup_cache = odhtcache::ExtDedupCache::new(mem_limited_buffer, temp_dir);
     let mut dupes_count = 0_u64;
     let mut line_work = String::with_capacity(1024);
     for (row_idx, line) in input_reader.lines().enumerate() {

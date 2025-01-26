@@ -1,11 +1,13 @@
-// blatantly copied from https://github.com/race604/dedup/blob/master/src/cache.rs
-use std::collections::HashSet;
+// inspired by https://github.com/race604/dedup/blob/master/src/cache.rs
+use std::{collections::HashSet, path::PathBuf};
 
-use log::debug;
+use memmap2::MmapMut;
 use odht::{Config, FxHashFn, HashTableOwned};
+use tempfile::NamedTempFile;
 
 struct ExtDedupConfig;
 
+const ODHT_FILE_INITIAL_SIZE: u64 = 1024 * 1024 * 1024; // (1GB initial size)
 const CHUNK_SIZE: usize = 127;
 
 impl Config for ExtDedupConfig {
@@ -41,10 +43,13 @@ pub struct ExtDedupCache {
     disk:       Option<HashTableOwned<ExtDedupConfig>>,
     memo_limit: u64,
     memo_size:  u64,
+    temp_file:  Option<NamedTempFile>,
+    mmap:       Option<MmapMut>,
+    temp_dir:   PathBuf,
 }
 
 impl ExtDedupCache {
-    pub fn new(memo_limit: u64) -> Self {
+    pub fn new(memo_limit: u64, temp_dir: Option<PathBuf>) -> Self {
         Self {
             memo:       HashSet::new(),
             disk:       None,
@@ -54,7 +59,26 @@ impl ExtDedupCache {
                 memo_limit
             },
             memo_size:  0,
+            temp_file:  None,
+            mmap:       None,
+            temp_dir:   temp_dir.unwrap_or_else(std::env::temp_dir),
         }
+    }
+
+    fn create_mmap(&mut self) -> std::io::Result<()> {
+        let temp_file = tempfile::Builder::new()
+            .prefix("qsv-extdedup-")
+            .suffix(".tmp")
+            .tempfile_in(&self.temp_dir)?;
+
+        // Preallocate file space
+        temp_file.as_file().set_len(ODHT_FILE_INITIAL_SIZE)?;
+
+        let mmap = unsafe { MmapMut::map_mut(temp_file.as_file())? };
+
+        self.mmap = Some(mmap);
+        self.temp_file = Some(temp_file);
+        Ok(())
     }
 
     #[inline]
@@ -68,7 +92,7 @@ impl ExtDedupCache {
             self.memo_size += item.len() as u64;
             if self.disk.is_some() {
                 res = self.insert_on_disk(item);
-                // debug!("Insert on disk: {res}");
+                // log::debug!("Insert on disk: {res}");
             }
         }
 
@@ -89,13 +113,27 @@ impl ExtDedupCache {
     }
 
     fn insert_on_disk(&mut self, item: &str) -> bool {
-        let disk = self.disk.get_or_insert_with(|| {
-            debug!("Create new disk cache");
-            HashTableOwned::<ExtDedupConfig>::with_capacity(1_000_000, 95)
-        });
+        if self.disk.is_none() {
+            log::debug!("Create new disk cache");
+            if let Err(e) = self.create_mmap() {
+                log::debug!("Failed to create memory map: {}", e);
+                // Fallback to regular HashTableOwned if mmap fails
+                self.disk = Some(HashTableOwned::<ExtDedupConfig>::with_capacity(
+                    1_000_000, 95,
+                ));
+            } else if let Some(mmap) = &self.mmap {
+                // Use from_raw_bytes_unchecked since we just created the mmap
+                self.disk = Some(unsafe {
+                    HashTableOwned::<ExtDedupConfig>::from_raw_bytes_unchecked(mmap)
+                });
+            }
+        }
+
         let mut res = false;
-        for key in ExtDedupCache::item_to_keys(item) {
-            res = disk.insert(&key, &true).is_none() || res;
+        if let Some(disk) = &mut self.disk {
+            for key in ExtDedupCache::item_to_keys(item) {
+                res = disk.insert(&key, &true).is_none() || res;
+            }
         }
         res
     }
@@ -115,12 +153,20 @@ impl ExtDedupCache {
     }
 
     fn dump_to_disk(&mut self) {
-        // debug!("Memory cache is full, dump to disk");
+        log::debug!("Memory cache is full, dump to disk");
         let keys = self.memo.drain().collect::<Vec<_>>();
         for key in keys {
             self.insert_on_disk(&key);
         }
         self.memo_size = 0;
+    }
+}
+
+impl Drop for ExtDedupCache {
+    fn drop(&mut self) {
+        // Explicitly drop mmap first
+        self.mmap.take();
+        // temp_file will be automatically deleted when dropped
     }
 }
 
@@ -132,7 +178,7 @@ mod tests {
 
     #[test]
     fn test_basic_cache() {
-        let mut cache = ExtDedupCache::new(0);
+        let mut cache = ExtDedupCache::new(0, None);
         assert!(cache.insert("hello"));
         assert!(cache.insert("world"));
 
@@ -143,13 +189,13 @@ mod tests {
 
     #[test]
     fn test_limit_memory() {
-        let mut cache = ExtDedupCache::new(1024);
+        let mut cache = ExtDedupCache::new(1024, None);
         for _ in 0..100 {
             cache.insert(&rand_string(32));
         }
         assert!(cache.memo.len() < 100);
         assert!(cache.disk.is_some());
-        assert!(cache.disk.unwrap().len() > 0);
+        assert!(cache.disk.as_ref().unwrap().len() > 0);
     }
 
     fn rand_string(len: usize) -> String {
