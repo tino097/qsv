@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.1] - 2025-01-26
+
+### Changed
+* deps: bumped polars to 0.46.0. This will allow us to publish qsv to crates.io as qsv was using features that were not enabled in polars 0.45.1 https://github.com/dathere/qsv/commit/275b2b8bd3cb41d9ddf30ba721d393d446bd2b48
+
+### Fixed
+* `stats`: fix cache json processing bug. Fixes #2476  https://github.com/dathere/qsv/pull/2477
+* benchmarks: v6.1.0 - ensured all `stats` cache benchmarks actually used the stats cache even if the `--cache-threshold` is 5 seconds - too high to trigger stats cache creation https://github.com/dathere/qsv/commit/ac33010260bf55c3424f8baa195f359f10ffe088
+
+**Full Changelog**: https://github.com/dathere/qsv/compare/2.2.0...2.2.1
+
 ## [2.2.0] - 2025-01-26
 
 ## Highlights:
