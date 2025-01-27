@@ -42,7 +42,7 @@
 arg_pat="$1"
 
 # the version of this script
-bm_version=6.0.1
+bm_version=6.1.0
 
 # CONFIGURABLE VARIABLES ---------------------------------------
 # change as needed to reflect your environment/workloads
@@ -639,23 +639,24 @@ run sqlp_nooptimizations "$qsv_bin" sqlp "$data" -Q --no-optimizations --infer-l
 run sqlp_tryparsedates "$qsv_bin" sqlp "$data" -Q --try-parsedates --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
 run sqlp_tryparsedates_inferlen "$qsv_bin" sqlp "$data" -Q --infer-len 10000 --try-parsedates '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
 run stats "$qsv_bin" stats --force "$data"
-run stats_create_cache "$qsv_bin" stats --force "$data"
+run stats_create_cache "$qsv_bin" stats --force "$data" --cache-threshold 1
 run --index stats_index "$qsv_bin" stats --force "$data"
-run --index stats_index_with_cache "$qsv_bin" stats "$data"
+run --index stats_index_with_cache "$qsv_bin" stats "$data" --cache-threshold 1
 run --index stats_index_j1 "$qsv_bin" stats -j 1 --force "$data"
-run --index stats_index_j1_with_cache "$qsv_bin" stats -j 1 "$data"
+run --index stats_index_j1_with_cache "$qsv_bin" stats -j 1 "$data" --cache-threshold 1
 run stats_everything "$qsv_bin" stats "$data" --force --everything
-run stats_everything_create_cache "$qsv_bin" stats "$data" --force --everything
+run stats_everything_create_cache "$qsv_bin" stats "$data" --force --everything --cache-threshold 1
 run stats_everything_infer_dates "$qsv_bin" stats "$data" --force --everything --infer-dates
 run stats_everything_j1 "$qsv_bin" stats "$data" --force --everything -j 1
 run stats_everything_sorted "$qsv_bin" stats data_sorted.csv --force --everything
 run --index stats_everything_index "$qsv_bin" stats "$data" --force --everything
-run --index stats_everything_index_with_cache "$qsv_bin" stats "$data" --everything
+run --index stats_everything_index_with_cache "$qsv_bin" stats "$data" --everything --cache-threshold 1
 run --index stats_everything_infer_dates_index "$qsv_bin" stats "$data" --force --everything --infer-dates
-run --index stats_everything_infer_dates_index_with_cache "$qsv_bin" stats "$data" --everything --infer-dates
+run --index stats_everything_infer_dates_index_with_cache "$qsv_bin" stats "$data" --everything --infer-dates --cache-threshold 1
 run --index stats_everything_index_j1 "$qsv_bin" stats "$data" --force --everything -j 1
-run --index stats_everything_index_j1_with_cache "$qsv_bin" stats "$data" --everything -j 1
+run --index stats_everything_index_j1_with_cache "$qsv_bin" stats "$data" --everything -j 1 --cache-threshold 1
 run --index stats_everything_sorted_index "$qsv_bin" stats data_sorted.csv --force --everything
+run --index stats_everything_sorted_index_with_cache "$qsv_bin" stats data_sorted.csv --everything --cache-threshold 1
 run table "$qsv_bin" table "$data"
 run template "$qsv_bin" template --template-file template.tpl "$data" > /dev/null
 run template_lookup_outdir "$qsv_bin" template --template-file template-with-cb-lookup.tpl "$data" > /dev/null
