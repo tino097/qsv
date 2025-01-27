@@ -664,92 +664,100 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         log::warn!(
                             "Could not read {path_file_stem}.stats.csv.json: {e:?}, recomputing..."
                         );
-                        fs::remove_file(&stats_file)?;
-                        fs::remove_file(&stats_args_json_file)?;
+                        // remove stats cache files silently even if they don't exists
+                        let _ = fs::remove_file(&stats_file);
+                        let _ = fs::remove_file(&stats_args_json_file);
                         String::new()
                     },
                 };
 
-            let time_saved: u64;
-            // deserialize the existing stats args json
-            let existing_stats_args_json: StatsArgs = {
-                let mut json_buffer = existing_stats_args_json_str.into_bytes();
-                match simd_json::to_owned_value(&mut json_buffer) {
-                    Ok(value) => {
-                        // Convert OwnedValue to StatsArgs
-                        match StatsArgs::from_owned_value(&value) {
-                            Ok(mut stat_args) => {
-                                // we init these fields to empty values because we don't want to
-                                // compare them when checking if the
-                                // args are the same
-                                stat_args.canonical_input_path = String::new();
-                                stat_args.canonical_stats_path = String::new();
-                                stat_args.record_count = 0;
-                                stat_args.date_generated = String::new();
-                                time_saved = stat_args.compute_duration_ms;
-                                stat_args.compute_duration_ms = 0;
-                                stat_args
-                            },
-                            Err(e) => {
-                                time_saved = 0;
-                                log::warn!(
-                                    "Could not deserialize {path_file_stem}.stats.csv.json: \
-                                     {e:?}, recomputing..."
-                                );
-                                fs::remove_file(&stats_file)?;
-                                fs::remove_file(&stats_args_json_file)?;
-                                StatsArgs::default()
-                            },
-                        }
-                    },
-                    Err(e) => {
-                        time_saved = 0;
-                        log::warn!(
-                            "Could not parse {path_file_stem}.stats.csv.json: {e:?}, \
-                             recomputing..."
-                        );
-                        fs::remove_file(&stats_file)?;
-                        fs::remove_file(&stats_args_json_file)?;
-                        StatsArgs::default()
-                    },
-                }
-            };
+            if !existing_stats_args_json_str.is_empty() {
+                let time_saved: u64;
+                // deserialize the existing stats args json
+                let existing_stats_args_json: StatsArgs = {
+                    let mut json_buffer = existing_stats_args_json_str.into_bytes();
+                    match simd_json::to_owned_value(&mut json_buffer) {
+                        Ok(value) => {
+                            // Convert OwnedValue to StatsArgs
+                            match StatsArgs::from_owned_value(&value) {
+                                Ok(mut stat_args) => {
+                                    // we init these fields to empty values because we don't want to
+                                    // compare them when checking if the
+                                    // args are the same
+                                    stat_args.canonical_input_path = String::new();
+                                    stat_args.canonical_stats_path = String::new();
+                                    stat_args.record_count = 0;
+                                    stat_args.date_generated = String::new();
+                                    time_saved = stat_args.compute_duration_ms;
+                                    stat_args.compute_duration_ms = 0;
+                                    stat_args
+                                },
+                                Err(e) => {
+                                    time_saved = 0;
+                                    log::warn!(
+                                        "Could not deserialize {path_file_stem}.stats.csv.json: \
+                                         {e:?}, recomputing..."
+                                    );
+                                    let _ = fs::remove_file(&stats_file);
+                                    let _ = fs::remove_file(&stats_args_json_file);
+                                    StatsArgs::default()
+                                },
+                            }
+                        },
+                        Err(e) => {
+                            time_saved = 0;
+                            log::warn!(
+                                "Could not parse {path_file_stem}.stats.csv.json: {e:?}, \
+                                 recomputing..."
+                            );
+                            let _ = fs::remove_file(&stats_file);
+                            let _ = fs::remove_file(&stats_args_json_file);
+                            StatsArgs::default()
+                        },
+                    }
+                };
 
-            // check if the cached stats are current (ie the stats file is newer than the input
-            // file), use the same args or if the --everything flag was set, and
-            // all the other non-stats args are equal. If so, we don't need to recompute the stats
-            let input_file_modified = fs::metadata(&path)?.modified()?;
-            let stats_file_modified = fs::metadata(&stats_file)?.modified()?;
-            #[allow(clippy::nonminimal_bool)]
-            if stats_file_modified > input_file_modified
-                && (existing_stats_args_json == current_stats_args
-                    || existing_stats_args_json.flag_everything
-                        && existing_stats_args_json.flag_infer_dates
-                            == current_stats_args.flag_infer_dates
-                        && existing_stats_args_json.flag_dates_whitelist
-                            == current_stats_args.flag_dates_whitelist
-                        && existing_stats_args_json.flag_prefer_dmy
-                            == current_stats_args.flag_prefer_dmy
-                        && existing_stats_args_json.flag_no_headers
-                            == current_stats_args.flag_no_headers
-                        && existing_stats_args_json.flag_dates_whitelist
-                            == current_stats_args.flag_dates_whitelist
-                        && existing_stats_args_json.flag_delimiter
-                            == current_stats_args.flag_delimiter
-                        && existing_stats_args_json.flag_nulls == current_stats_args.flag_nulls
-                        && existing_stats_args_json.qsv_version == current_stats_args.qsv_version)
-            {
-                log::info!(
-                    "{path_file_stem}.stats.csv already exists and is current. Skipping compute \
-                     and using cached stats instead - {time_saved} milliseconds saved...",
-                );
-                compute_stats = false;
-            } else {
-                log::info!(
-                    "{path_file_stem}.stats.csv already exists, but is older than the input file \
-                     or the args have changed, recomputing...",
-                );
-                fs::remove_file(&stats_file)?;
+                // check if the cached stats are current (ie the stats file is newer than the input
+                // file), use the same args or if the --everything flag was set, and
+                // all the other non-stats args are equal. If so, we don't need to recompute the
+                // stats
+                let input_file_modified = fs::metadata(&path)?.modified()?;
+                let stats_file_modified = fs::metadata(&stats_file)
+                    .and_then(|m| m.modified())
+                    .unwrap_or(input_file_modified);
+                #[allow(clippy::nonminimal_bool)]
+                if stats_file_modified > input_file_modified
+                    && (existing_stats_args_json == current_stats_args
+                        || existing_stats_args_json.flag_everything
+                            && existing_stats_args_json.flag_infer_dates
+                                == current_stats_args.flag_infer_dates
+                            && existing_stats_args_json.flag_dates_whitelist
+                                == current_stats_args.flag_dates_whitelist
+                            && existing_stats_args_json.flag_prefer_dmy
+                                == current_stats_args.flag_prefer_dmy
+                            && existing_stats_args_json.flag_no_headers
+                                == current_stats_args.flag_no_headers
+                            && existing_stats_args_json.flag_dates_whitelist
+                                == current_stats_args.flag_dates_whitelist
+                            && existing_stats_args_json.flag_delimiter
+                                == current_stats_args.flag_delimiter
+                            && existing_stats_args_json.flag_nulls == current_stats_args.flag_nulls
+                            && existing_stats_args_json.qsv_version
+                                == current_stats_args.qsv_version)
+                {
+                    log::info!(
+                        "{path_file_stem}.stats.csv already exists and is current. Skipping \
+                         compute and using cached stats instead - {time_saved} milliseconds \
+                         saved...",
+                    );
+                    compute_stats = false;
+                } else {
+                    log::info!(
+                        "{path_file_stem}.stats.csv already exists, but is older than the input \
+                         file or the args have changed, recomputing...",
+                    );
+                    let _ = fs::remove_file(&stats_file);
+                }
             }
         }
         if compute_stats {
