@@ -42,7 +42,7 @@
 arg_pat="$1"
 
 # the version of this script
-bm_version=6.1.0
+bm_version=6.1.1
 
 # CONFIGURABLE VARIABLES ---------------------------------------
 # change as needed to reflect your environment/workloads
@@ -549,7 +549,6 @@ run luau_filter_no_globals "$qsv_bin" luau filter --no-globals \"Location == \'\
 run luau_filter_no_globals_colidx "$qsv_bin" luau filter --no-globals --colindex \"Location == \'\'\" "$data"
 run luau_multi "$qsv_bin" luau map dow,hourday,weekno "file:dt_format.luau" "$data"
 run luau_multi_colidx "$qsv_bin" luau map dow,hourday,weekno "file:dt_format.luau" --colindex "$data"
-run luau_filter_no_globals_colidx "$qsv_bin" luau filter --no-globals --colindex \"Location == \'\'\" "$data"
 run luau_filter_no_globals_no_colidx "$qsv_bin" luau filter --no-globals \"Location == \'\'\" "$data"
 run luau_multi_no_globals "$qsv_bin" luau map dow,hourday,weekno --no-globals "file:dt_format.luau" "$data"
 run luau_multi_no_globals_colidx "$qsv_bin" luau map dow,hourday,weekno --no-globals --colindex "file:dt_format.luau" "$data"
