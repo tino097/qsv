@@ -531,6 +531,11 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     // -------- setup Luau environment --------
     let luau = Lua::new();
+
+    // enable sandboxing which enables several optimizations
+    // see: https://docs.rs/mlua/latest/mlua/struct.Lua.html#method.sandbox
+    luau.sandbox(true)?;
+
     // see Compiler settings here: https://docs.rs/mlua/latest/mlua/struct.Compiler.html#
     let luau_compiler = if log_enabled!(log::Level::Debug) || log_enabled!(log::Level::Trace) {
         // debugging is on, set more debugging friendly compiler settings
@@ -550,6 +555,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     luau.set_compiler(luau_compiler.clone());
 
     let globals = luau.globals();
+    globals.set_safeenv(true);
 
     // check the QSV_CKAN_API environment variable
     let ckan_api = if let Ok(api) = std::env::var("QSV_CKAN_API") {
@@ -630,7 +636,7 @@ fn sequential_mode(
 
     let mut rdr = rconfig.reader()?;
     let mut wtr = Config::new(args.flag_output.as_ref()).writer()?;
-    let mut headers = rdr.headers()?.clone();
+    let mut headers = rdr.headers()?.to_owned();
     let mut remap_headers = csv::StringRecord::new();
     let mut new_column_count = 0_u8;
     let mut headers_count = headers.len();
@@ -723,6 +729,7 @@ fn sequential_mode(
     let mut computed_value;
     let mut must_keep_row;
     let col = luau.create_table_with_capacity(record.len(), 1)?;
+    col.set_safeenv(true);
 
     let flag_no_globals = args.flag_no_globals;
     let flag_remap = args.flag_remap;
@@ -758,7 +765,7 @@ fn sequential_mode(
                 col.raw_set(h, v)?;
             }
         }
-        globals.raw_set("col", col.clone())?;
+        globals.raw_set("col", &col)?;
 
         // Updating global
         if !flag_no_globals && !no_headers {
@@ -955,7 +962,7 @@ fn random_access_mode(
     }
 
     let mut wtr = Config::new(args.flag_output.as_ref()).writer()?;
-    let mut headers = idx_file.headers()?.clone();
+    let mut headers = idx_file.headers()?.to_owned();
     let mut remap_headers = csv::StringRecord::new();
     let mut new_column_count = 0_u8;
     let mut headers_count = headers.len();
@@ -1105,7 +1112,7 @@ fn random_access_mode(
                 col.raw_set(h, v)?;
             }
         }
-        globals.raw_set("col", col.clone())?;
+        globals.raw_set("col", &col)?;
 
         // Updating global
         if !flag_no_globals && !no_headers {
@@ -1540,7 +1547,7 @@ fn setup_helpers(
             }
             idx += 1;
         }
-        luau.globals().raw_set(QSV_BREAK_MSG, break_msg.clone())?;
+        luau.globals().raw_set(QSV_BREAK_MSG, &*break_msg)?;
         QSV_BREAK.store(true, Ordering::Relaxed);
 
         Ok(break_msg)
@@ -1816,7 +1823,7 @@ fn setup_helpers(
                 },
             };
 
-            luau.globals().raw_set(table_name.clone(), luau_value)?;
+            luau.globals().raw_set(&*table_name, luau_value)?;
 
             info!(
                 "{} successfully loaded JSON into table '{}'.",
@@ -2001,7 +2008,7 @@ fn setup_helpers(
             }
         }
         luau.globals()
-            .raw_set(QSV_INSERTRECORD_TBL, insertrecord_table.clone())?;
+            .raw_set(QSV_INSERTRECORD_TBL, &insertrecord_table)?;
 
         if log::log_enabled!(log::Level::Debug) {
             log::debug!("qsv_insertrecord() - inserting record: {insertrecord_table:?}");
@@ -2524,7 +2531,7 @@ fn setup_helpers(
                 lookup_table.raw_set(key, inside_table)?;
             }
 
-            luau.globals().raw_set(lookup_name.clone(), lookup_table)?;
+            luau.globals().raw_set(&*lookup_name, lookup_table)?;
 
             // Return headers table
             let headers_table = luau.create_table()?;
