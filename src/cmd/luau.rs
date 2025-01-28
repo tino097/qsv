@@ -178,7 +178,7 @@ Luau options:
                           Luau globals and a bit more performance.
                           Note: access to Luau globals thru _G remains even with -g.
   --colindex              Create a 1-based column index. Useful when some column names
-                          mask standard Luau globals. Automatically enabled with--no-headers.
+                          mask standard Luau globals. Automatically enabled with --no-headers.
   -r, --remap             Only the listed new columns are written to the output CSV.
                           Only applies to "map" subcommand.
   -B, --begin <script>    Luau script/file to execute in the BEGINning, before
@@ -712,6 +712,9 @@ fn sequential_mode(
     // check if _IDX was used in the MAIN script
     let idx_used = main_script.contains(QSV_V_IDX);
 
+    // check if qsv_break() was called in the MAIN script
+    let qsv_break_used = main_script.contains("qsv_break(");
+
     // only precompile main script to bytecode if debug is disabled
     let main_bytecode = if debug_enabled {
         Vec::new()
@@ -794,7 +797,11 @@ fn sequential_mode(
             },
         };
 
-        if QSV_BREAK.load(Ordering::Relaxed) {
+        // check if qsv_break() was called in the MAIN script
+        // this is a performance optimization so we don't need to check
+        // the AtomicBool QSV_BREAK when we short-circuit on the
+        // qsv_break_used flag
+        if qsv_break_used && QSV_BREAK.load(Ordering::Relaxed) {
             let qsv_break_msg: String = globals.raw_get(QSV_BREAK_MSG)?;
             winfo!("{qsv_break_msg}");
             break 'main;
@@ -1088,6 +1095,9 @@ fn random_access_mode(
     let mut err_msg: String;
     let mut computed_result;
 
+    // check if qsv_break() was called in the MAIN script
+    let qsv_break_used = main_script.contains("qsv_break(");
+
     // main loop - here we use an indexed file reader to implement random access mode,
     // seeking to the next record to read by looking at _INDEX special var
     'main: while idx_file.read_record(&mut record)? {
@@ -1139,7 +1149,7 @@ fn random_access_mode(
             },
         };
 
-        if QSV_BREAK.load(Ordering::Relaxed) {
+        if qsv_break_used && QSV_BREAK.load(Ordering::Relaxed) {
             let qsv_break_msg: String = globals.raw_get(QSV_BREAK_MSG)?;
             winfo!("{qsv_break_msg}");
             break 'main;
