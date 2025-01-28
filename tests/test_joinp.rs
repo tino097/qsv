@@ -2508,3 +2508,177 @@ fn joinp_unicode_normalization_ligatures() {
     ];
     assert_eq!(got, expected);
 }
+
+#[test]
+fn joinp_asof_allow_exact_matches() {
+    let wrk = Workdir::new("joinp_asof_allow_exact_matches");
+
+    // Test data includes both exact and inexact matches
+    wrk.create(
+        "trades.csv",
+        vec![
+            svec!["time", "price"],
+            svec!["2024-01-01 10:00:00", "100.0"], // Exact match
+            svec!["2024-01-01 10:00:03", "100.5"], // In between quotes
+            svec!["2024-01-01 10:00:05", "101.0"], // Exact match
+            svec!["2024-01-01 10:00:08", "101.5"], // In between quotes
+            svec!["2024-01-01 10:00:10", "102.0"], // Exact match
+            svec!["2024-01-01 10:00:12", "102.5"], // In between quotes
+            svec!["2024-01-01 10:00:15", "103.0"], // Exact match
+        ],
+    );
+
+    wrk.create(
+        "quotes.csv",
+        vec![
+            svec!["time", "bid"],
+            svec!["2024-01-01 10:00:00", "99.5"], // Matches trades[0]
+            svec!["2024-01-01 10:00:05", "99.5"], // Matches trades[2]
+            svec!["2024-01-01 10:00:10", "101.5"], // Matches trades[4]
+            svec!["2024-01-01 10:00:15", "102.25"], // Matches trades[6]
+        ],
+    );
+
+    let mut cmd = wrk.command("joinp");
+    cmd.arg("--asof")
+        .args(["time", "trades.csv", "time", "quotes.csv"])
+        .arg("--allow-exact-matches")
+        .arg("--try-parsedates")
+        .args(["--datetime-format", "%Y-%m-%d %H:%M:%S"]);
+
+    let expected = vec![
+        svec!["time", "price", "bid"],
+        svec!["2024-01-01 10:00:00", "100.0", "99.5"], // Exact match
+        svec!["2024-01-01 10:00:03", "100.5", "99.5"], // Uses previous quote
+        svec!["2024-01-01 10:00:05", "101.0", "99.5"], // Exact match
+        svec!["2024-01-01 10:00:08", "101.5", "99.5"], // Uses previous quote
+        svec!["2024-01-01 10:00:10", "102.0", "101.5"], // Exact match
+        svec!["2024-01-01 10:00:12", "102.5", "101.5"], // Uses previous quote
+        svec!["2024-01-01 10:00:15", "103.0", "102.25"], // Exact match
+    ];
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert_eq!(got, expected);
+
+    // Test without --allow-exact-matches
+    let mut cmd = wrk.command("joinp");
+    cmd.arg("--asof")
+        .args(["time", "trades.csv", "time", "quotes.csv"])
+        .arg("--try-parsedates")
+        .args(["--datetime-format", "%Y-%m-%d %H:%M:%S"]);
+
+    let expected = vec![
+        svec!["time", "price", "bid"],
+        svec!["2024-01-01 10:00:00", "100.0", ""], // No match since exact matches not allowed
+        svec!["2024-01-01 10:00:03", "100.5", "99.5"], // Uses quote from 10:00:00
+        svec!["2024-01-01 10:00:05", "101.0", "99.5"], /* Uses quote from 10:00:00 (exact not
+                                                    * allowed) */
+        svec!["2024-01-01 10:00:08", "101.5", "99.5"], // Uses quote from 10:00:05
+        svec!["2024-01-01 10:00:10", "102.0", "99.5"], /* Uses quote from 10:00:05 (exact not
+                                                        * allowed) */
+        svec!["2024-01-01 10:00:12", "102.5", "101.5"], // Uses quote from 10:00:10
+        svec!["2024-01-01 10:00:15", "103.0", "101.5"], /* Uses quote from 10:00:10 (exact not
+                                                         * allowed) */
+    ];
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn joinp_asof_sortkey_options() {
+    let wrk = Workdir::new("joinp_asof_sortkey_options");
+
+    // Exactly the same trades and quotes test data as the joinp_asof_allow_exact_matches test
+    // above, but the data are not sorted.
+    wrk.create(
+        "trades.csv",
+        vec![
+            svec!["time", "price"],
+            svec!["2024-01-01 10:00:10", "102.0"],
+            svec!["2024-01-01 10:00:05", "101.0"],
+            svec!["2024-01-01 10:00:00", "100.0"],
+            svec!["2024-01-01 10:00:15", "103.0"],
+            svec!["2024-01-01 10:00:12", "102.5"],
+            svec!["2024-01-01 10:00:03", "100.5"],
+            svec!["2024-01-01 10:00:08", "101.5"],
+        ],
+    );
+
+    wrk.create(
+        "quotes.csv",
+        vec![
+            svec!["time", "bid"],
+            svec!["2024-01-01 10:00:10", "101.5"],
+            svec!["2024-01-01 10:00:05", "99.5"],
+            svec!["2024-01-01 10:00:00", "99.5"],
+            svec!["2024-01-01 10:00:15", "102.25"],
+        ],
+    );
+
+    // But we automatically sort by the asof columns by default, so this works
+    let mut cmd = wrk.command("joinp");
+    cmd.arg("--asof")
+        .args(["time", "trades.csv", "time", "quotes.csv"])
+        .arg("--allow-exact-matches")
+        .arg("--try-parsedates")
+        .args(["--datetime-format", "%Y-%m-%d %H:%M:%S"]);
+
+    let expected = vec![
+        svec!["time", "price", "bid"],
+        svec!["2024-01-01 10:00:00", "100.0", "99.5"], // Exact match
+        svec!["2024-01-01 10:00:03", "100.5", "99.5"], // Uses previous quote
+        svec!["2024-01-01 10:00:05", "101.0", "99.5"], // Exact match
+        svec!["2024-01-01 10:00:08", "101.5", "99.5"], // Uses previous quote
+        svec!["2024-01-01 10:00:10", "102.0", "101.5"], // Exact match
+        svec!["2024-01-01 10:00:12", "102.5", "101.5"], // Uses previous quote
+        svec!["2024-01-01 10:00:15", "103.0", "102.25"], // Exact match
+    ];
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert_eq!(got, expected);
+
+    // Test without --allow-exact-matches
+    let mut cmd = wrk.command("joinp");
+    cmd.arg("--asof")
+        .args(["time", "trades.csv", "time", "quotes.csv"])
+        .arg("--try-parsedates")
+        .args(["--datetime-format", "%Y-%m-%d %H:%M:%S"]);
+
+    let expected = vec![
+        svec!["time", "price", "bid"],
+        svec!["2024-01-01 10:00:00", "100.0", ""],
+        svec!["2024-01-01 10:00:03", "100.5", "99.5"],
+        svec!["2024-01-01 10:00:05", "101.0", "99.5"],
+        svec!["2024-01-01 10:00:08", "101.5", "99.5"],
+        svec!["2024-01-01 10:00:10", "102.0", "99.5"],
+        svec!["2024-01-01 10:00:12", "102.5", "101.5"],
+        svec!["2024-01-01 10:00:15", "103.0", "101.5"],
+    ];
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert_eq!(got, expected);
+
+    // Test with --no-sort
+    let mut cmd = wrk.command("joinp");
+    cmd.arg("--asof")
+        .args(["time", "trades.csv", "time", "quotes.csv"])
+        .arg("--no-sort")
+        .arg("--try-parsedates")
+        .args(["--datetime-format", "%Y-%m-%d %H:%M:%S"]);
+
+    // and the output is INCORRECT because the data is not sorted
+    let expected = vec![
+        svec!["time", "price", "bid"],
+        svec!["2024-01-01 10:00:10", "102.0", ""],
+        svec!["2024-01-01 10:00:05", "101.0", ""],
+        svec!["2024-01-01 10:00:00", "100.0", ""],
+        svec!["2024-01-01 10:00:15", "103.0", "99.5"],
+        svec!["2024-01-01 10:00:12", "102.5", "99.5"],
+        svec!["2024-01-01 10:00:03", "100.5", "99.5"],
+        svec!["2024-01-01 10:00:08", "101.5", "99.5"],
+    ];
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert_eq!(got, expected);
+}

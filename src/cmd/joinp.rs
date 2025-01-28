@@ -150,9 +150,16 @@ joinp options:
                            ASOF JOIN OPTIONS:
     --asof                 Do an 'asof' join. This is similar to a left inner
                            join, except we match on nearest key rather than
-                           equal keys. Note that both CSV data sets will be SORTED
-                           AUTOMATICALLY on the join columns.
+                           equal keys (see --allow-exact-matches).
                            Particularly useful for time series data.
+                           Note that both CSV data sets will be SORTED on the join columns
+                           by default, unless --no-sort is set.
+    --no-sort              Do not sort the CSV data sets on the join columns by default.
+                           Note that asof joins REQUIRE the join keys to be sorted,
+                           so this option should only be used as a performance optimization
+                           when you know the CSV join keys are already sorted.
+                           If the CSV join keys are not sorted, the asof join will fail or
+                           return incorrect results.
     --left_by <arg>        Do an 'asof_by' join - a special implementation of the asof
                            join that searches for the nearest keys within a subgroup
                            set by the asof_by columns. This specifies the column/s for
@@ -198,6 +205,10 @@ joinp options:
                              Suffix with “_saturating” to indicate that dates too
                              large for their month should saturate at the largest date
                              (e.g. 2022-02-29 -> 2022-02-28) instead of erroring.
+   -X, --allow-exact-matches  When set, the asof join will allow exact matches.
+                              (i.e. less-than-or-equal-to or greater-than-or-equal-to)
+                              Otherwise, the asof join will only allow nearest matches
+                              (strictly less-than or greater-than) by default.
 
                              OUTPUT FORMAT OPTIONS:
    --sql-filter <SQL>        The SQL expression to apply against the join result.
@@ -293,10 +304,12 @@ struct Args {
     flag_no_optimizations:     bool,
     flag_ignore_errors:        bool,
     flag_asof:                 bool,
+    flag_no_sort:              bool,
     flag_left_by:              Option<String>,
     flag_right_by:             Option<String>,
     flag_strategy:             Option<String>,
     flag_tolerance:            Option<String>,
+    flag_allow_exact_matches:  bool,
     flag_sql_filter:           Option<String>,
     flag_datetime_format:      Option<String>,
     flag_date_format:          Option<String>,
@@ -314,7 +327,8 @@ struct Args {
 #[derive(PartialEq, Eq)]
 enum SpecialJoin {
     NonEqui(String),
-    AsOf,
+    AsOfAutoSort,
+    AsOfNoSort,
     None,
 }
 
@@ -483,6 +497,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
             let mut asof_options = AsOfOptions {
                 strategy,
+                allow_eq: args.flag_allow_exact_matches,
                 ..Default::default()
             };
 
@@ -520,7 +535,11 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 JoinType::AsOf(asof_options),
                 validation,
                 MaintainOrderJoin::None,
-                SpecialJoin::AsOf,
+                if args.flag_no_sort {
+                    SpecialJoin::AsOfNoSort
+                } else {
+                    SpecialJoin::AsOfAutoSort
+                },
                 normalization_form,
             )
         },
@@ -702,8 +721,8 @@ impl JoinStruct {
                 .finish()
                 .collect()?
         } else {
-            if special_join == SpecialJoin::AsOf {
-                // it's an asof join
+            if special_join == SpecialJoin::AsOfAutoSort {
+                // it's an asof join and --no-sort is not set
                 // sort by the asof columns, as asof joins require sorted join column data
                 let left_selcols_vec: Vec<PlSmallStr> =
                     self.left_sel.split(',').map(PlSmallStr::from_str).collect();
