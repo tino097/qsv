@@ -29,7 +29,7 @@ export QSV_AUTOINDEX_SIZE=10000000
 ```
 
 ## Stats Cache
-`stats` is the primary reason qsv was created. Several projects we were working on required GUARANTEED data type inferences at speed when we first working on it in 2021. As we iterated and started additional projects, we started needing additional capabilities to enable the ["automagical metadata"](https://dathere.com/2023/11/automagical-metadata/) inferencing workflow we wanted for our data ingestion pipelines.
+`stats` is the primary reason qsv was created. Several projects we were working on required GUARANTEED data type inferences at speed when we first started working on it in 2021. As we iterated and started additional projects, we started needing additional capabilities to enable the ["automagical metadata"](https://dathere.com/2023/11/automagical-metadata/) inferencing workflow we wanted for our data ingestion pipelines.
 
 From the original 11 summary statistics in xsv (type, sum, min/max, min/max length, mean, stddev, median, mode & cardinality ), 22 more were added incrementally over time (is_ascii, range, sort_order, sum_length, avg_length, mean_length, sem, variance, cv, nullcount, max_precision, sparsity, mad, lower outer/inner fence, q1, q2_median, q3, iqr, upper inner/outer fence, skewness, mode_count, mode_occurrences, antimode, antimode_count, antimode_occurrences). Check the [Wiki](https://github.com/dathere/qsv/wiki/Supplemental#stats-command-output-explanation) for more info.
 
