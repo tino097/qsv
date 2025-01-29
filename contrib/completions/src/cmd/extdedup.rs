@@ -7,6 +7,7 @@ pub fn extdedup_cmd() -> Command {
         arg!(--"dupes-output"),
         arg!(--"human-readable"),
         arg!(--"memory-limit"),
+        arg!(--"temp-dir"),
         arg!(--"no-headers"),
         arg!(--delimiter),
         arg!(--quiet),
