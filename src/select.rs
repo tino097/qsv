@@ -1,7 +1,7 @@
 use std::{
     cmp::Ordering,
     fmt,
-    iter::{self, repeat},
+    iter::{self, repeat_n},
     ops, slice,
     str::FromStr,
 };
@@ -420,7 +420,7 @@ impl Selection {
         let mut normal = inds.clone();
         normal.sort_unstable();
         normal.dedup();
-        let mut set: Vec<_> = repeat(false).take(normal[normal.len() - 1] + 1).collect();
+        let mut set: Vec<_> = repeat_n(false, normal[normal.len() - 1] + 1).collect();
         for i in normal {
             set[i] = true;
         }
