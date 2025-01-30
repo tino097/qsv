@@ -6,7 +6,7 @@ intersection of rows on the keys specified.
 
 Unlike the join command, joinp can process files larger than RAM, is multithreaded,
 has join key validation, a maintain row order option, pre-join filtering, supports
-asof joins and its output columns can be coalesced (no duplicate columns).
+non-equi & asof joins and its output columns can be coalesced (no duplicate columns).
 
 Returns the shape of the join result (number of rows, number of columns) to stderr.
 
