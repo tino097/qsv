@@ -316,6 +316,7 @@ fn get_prompt(
     };
     // Replace variable data in prompt
     #[allow(clippy::to_string_in_format_args)]
+    #[allow(clippy::literal_string_with_formatting_args)]
     let prompt = prompt
         .replace("{stats}", stats.unwrap_or(""))
         .replace("{frequency}", frequency.unwrap_or(""))

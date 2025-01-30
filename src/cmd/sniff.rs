@@ -396,6 +396,7 @@ async fn get_file_to_sniff(args: &Args, tmpdir: &tempfile::TempDir) -> CliResult
                 if show_progress {
                     progress.set_style(
                         #[allow(clippy::to_string_in_format_args)]
+                        #[allow(clippy::literal_string_with_formatting_args)]
                         ProgressStyle::default_bar()
                             .template(
                                 "{msg}\n{spinner:.green} [{elapsed_precise}] \
