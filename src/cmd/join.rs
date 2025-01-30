@@ -90,7 +90,7 @@ Common options:
                            Must be a single character. (default: ,)
 "#;
 
-use std::{collections::hash_map::Entry, fmt, io, iter::repeat, mem::swap, str};
+use std::{collections::hash_map::Entry, fmt, io, iter::repeat_n, mem::swap, str};
 
 use ahash::AHashMap;
 use byteorder::{BigEndian, WriteBytesExt};
@@ -324,7 +324,7 @@ impl<R: io::Read + io::Seek, W: io::Write> IoState<R, W> {
             ValueIndex::new(self.rdr2, &self.sel2, self.casei, self.zerosi, self.nulls)?;
 
         // Keep track of which rows we've written from rdr2.
-        let mut rdr2_written: Vec<_> = repeat(false).take(validx.num_rows).collect();
+        let mut rdr2_written: Vec<_> = repeat_n(false, validx.num_rows).collect();
         let mut row1 = csv::ByteRecord::new();
         let mut key;
 
@@ -382,10 +382,7 @@ impl<R: io::Read + io::Seek, W: io::Write> IoState<R, W> {
     fn get_padding(&mut self) -> CliResult<(csv::ByteRecord, csv::ByteRecord)> {
         let len1 = self.rdr1.byte_headers()?.len();
         let len2 = self.rdr2.byte_headers()?.len();
-        Ok((
-            repeat(b"").take(len1).collect(),
-            repeat(b"").take(len2).collect(),
-        ))
+        Ok((repeat_n(b"", len1).collect(), repeat_n(b"", len2).collect()))
     }
 }
 
