@@ -246,6 +246,7 @@ module completions {
     --drop-equal-fields
     --jobs
     --output
+    --delimiter
     --help(-h)                # Print help
   ]
 
@@ -274,13 +275,13 @@ module completions {
     --sheet
     --header-row
     --metadata
+    --table
+    --range
     --error-format
     --flexible
     --trim
     --date-format
     --keep-zero-time
-    --table
-    --range
     --jobs
     --output
     --delimiter
@@ -303,6 +304,7 @@ module completions {
     --dupes-output
     --human-readable
     --memory-limit
+    --temp-dir
     --no-headers
     --delimiter
     --quiet
@@ -401,11 +403,13 @@ module completions {
 
   export extern "qsv fixlengths" [
     --length
+    --remove-empty
     --insert
     --quote
     --escape
     --output
     --delimiter
+    --quiet
     --help(-h)                # Print help
   ]
 
@@ -787,14 +791,18 @@ module completions {
   ]
 
   export extern "qsv join" [
-    --ignore-case
     --left
     --left-anti
     --left-semi
     --right
+    --right-anti
+    --right-semi
     --full
     --cross
     --nulls
+    --keys-output
+    --ignore-case
+    --ignore-leading-zeros
     --output
     --no-headers
     --delimiter
@@ -802,36 +810,45 @@ module completions {
   ]
 
   export extern "qsv joinp" [
-    --ignore-case
     --left
     --left-anti
     --left-semi
     --right
+    --right-anti
+    --right-semi
     --full
     --cross
+    --non-equi
     --coalesce
     --filter-left
     --filter-right
     --validate
+    --maintain-order
     --nulls
     --streaming
     --try-parsedates
     --infer-len
+    --cache-schema
     --low-memory
     --no-optimizations
     --ignore-errors
     --decimal-comma
     --asof
+    --no-sort
     --left_by
     --right_by
     --strategy
     --tolerance
+    --allow-exact-matches
     --sql-filter
     --datetime-format
     --date-format
     --time-format
     --float-precision
     --null-value
+    --ignore-case
+    --ignore-leading-zeros
+    --norm-unicode
     --output
     --delimiter
     --quiet
@@ -1373,11 +1390,20 @@ module completions {
   export extern "qsv template" [
     --template
     --template-file
+    --globals-json
     --outfilename
+    --outsubdir-size
     --customfilter-error
+    --jobs
+    --batch
+    --timeout
+    --cache-dir
+    --ckan-api
+    --ckan-token
     --output
     --no-headers
     --delimiter
+    --progressbar
     --help(-h)                # Print help
   ]
 
@@ -1512,6 +1538,9 @@ module completions {
     --jobs
     --batch
     --timeout
+    --cache-dir
+    --ckan-api
+    --ckan-token
     --no-headers
     --delimiter
     --progressbar

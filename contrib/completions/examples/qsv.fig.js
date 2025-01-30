@@ -603,6 +603,9 @@ const completion: Fig.Spec = {
           name: "--output",
         },
         {
+          name: "--delimiter",
+        },
+        {
           name: ["-h", "--help"],
           description: "Print help",
         },
@@ -678,6 +681,12 @@ const completion: Fig.Spec = {
           name: "--metadata",
         },
         {
+          name: "--table",
+        },
+        {
+          name: "--range",
+        },
+        {
           name: "--error-format",
         },
         {
@@ -691,12 +700,6 @@ const completion: Fig.Spec = {
         },
         {
           name: "--keep-zero-time",
-        },
-        {
-          name: "--table",
-        },
-        {
-          name: "--range",
         },
         {
           name: "--jobs",
@@ -757,6 +760,9 @@ const completion: Fig.Spec = {
         },
         {
           name: "--memory-limit",
+        },
+        {
+          name: "--temp-dir",
         },
         {
           name: "--no-headers",
@@ -1035,6 +1041,9 @@ const completion: Fig.Spec = {
           name: "--length",
         },
         {
+          name: "--remove-empty",
+        },
+        {
           name: "--insert",
         },
         {
@@ -1048,6 +1057,9 @@ const completion: Fig.Spec = {
         },
         {
           name: "--delimiter",
+        },
+        {
+          name: "--quiet",
         },
         {
           name: ["-h", "--help"],
@@ -2064,9 +2076,6 @@ const completion: Fig.Spec = {
       name: "join",
       options: [
         {
-          name: "--ignore-case",
-        },
-        {
           name: "--left",
         },
         {
@@ -2079,6 +2088,12 @@ const completion: Fig.Spec = {
           name: "--right",
         },
         {
+          name: "--right-anti",
+        },
+        {
+          name: "--right-semi",
+        },
+        {
           name: "--full",
         },
         {
@@ -2086,6 +2101,15 @@ const completion: Fig.Spec = {
         },
         {
           name: "--nulls",
+        },
+        {
+          name: "--keys-output",
+        },
+        {
+          name: "--ignore-case",
+        },
+        {
+          name: "--ignore-leading-zeros",
         },
         {
           name: "--output",
@@ -2106,9 +2130,6 @@ const completion: Fig.Spec = {
       name: "joinp",
       options: [
         {
-          name: "--ignore-case",
-        },
-        {
           name: "--left",
         },
         {
@@ -2121,10 +2142,19 @@ const completion: Fig.Spec = {
           name: "--right",
         },
         {
+          name: "--right-anti",
+        },
+        {
+          name: "--right-semi",
+        },
+        {
           name: "--full",
         },
         {
           name: "--cross",
+        },
+        {
+          name: "--non-equi",
         },
         {
           name: "--coalesce",
@@ -2139,6 +2169,9 @@ const completion: Fig.Spec = {
           name: "--validate",
         },
         {
+          name: "--maintain-order",
+        },
+        {
           name: "--nulls",
         },
         {
@@ -2149,6 +2182,9 @@ const completion: Fig.Spec = {
         },
         {
           name: "--infer-len",
+        },
+        {
+          name: "--cache-schema",
         },
         {
           name: "--low-memory",
@@ -2166,6 +2202,9 @@ const completion: Fig.Spec = {
           name: "--asof",
         },
         {
+          name: "--no-sort",
+        },
+        {
           name: "--left_by",
         },
         {
@@ -2176,6 +2215,9 @@ const completion: Fig.Spec = {
         },
         {
           name: "--tolerance",
+        },
+        {
+          name: "--allow-exact-matches",
         },
         {
           name: "--sql-filter",
@@ -2194,6 +2236,15 @@ const completion: Fig.Spec = {
         },
         {
           name: "--null-value",
+        },
+        {
+          name: "--ignore-case",
+        },
+        {
+          name: "--ignore-leading-zeros",
+        },
+        {
+          name: "--norm-unicode",
         },
         {
           name: "--output",
@@ -3597,10 +3648,34 @@ const completion: Fig.Spec = {
           name: "--template-file",
         },
         {
+          name: "--globals-json",
+        },
+        {
           name: "--outfilename",
         },
         {
+          name: "--outsubdir-size",
+        },
+        {
           name: "--customfilter-error",
+        },
+        {
+          name: "--jobs",
+        },
+        {
+          name: "--batch",
+        },
+        {
+          name: "--timeout",
+        },
+        {
+          name: "--cache-dir",
+        },
+        {
+          name: "--ckan-api",
+        },
+        {
+          name: "--ckan-token",
         },
         {
           name: "--output",
@@ -3610,6 +3685,9 @@ const completion: Fig.Spec = {
         },
         {
           name: "--delimiter",
+        },
+        {
+          name: "--progressbar",
         },
         {
           name: ["-h", "--help"],
@@ -3952,6 +4030,15 @@ const completion: Fig.Spec = {
         },
         {
           name: "--timeout",
+        },
+        {
+          name: "--cache-dir",
+        },
+        {
+          name: "--ckan-api",
+        },
+        {
+          name: "--ckan-token",
         },
         {
           name: "--no-headers",

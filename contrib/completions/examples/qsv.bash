@@ -1102,7 +1102,7 @@ _qsv() {
             return 0
             ;;
         qsv__diff)
-            opts="-h --no-headers-left --no-headers-right --no-headers-output --delimiter-left --delimiter-right --delimiter-output --key --sort-columns --drop-equal-fields --jobs --output --help"
+            opts="-h --no-headers-left --no-headers-right --no-headers-output --delimiter-left --delimiter-right --delimiter-output --key --sort-columns --drop-equal-fields --jobs --output --delimiter --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1144,7 +1144,7 @@ _qsv() {
             return 0
             ;;
         qsv__excel)
-            opts="-h --sheet --header-row --metadata --error-format --flexible --trim --date-format --keep-zero-time --table --range --jobs --output --delimiter --quiet --help"
+            opts="-h --sheet --header-row --metadata --table --range --error-format --flexible --trim --date-format --keep-zero-time --jobs --output --delimiter --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1186,7 +1186,7 @@ _qsv() {
             return 0
             ;;
         qsv__extdedup)
-            opts="-h --select --no-output --dupes-output --human-readable --memory-limit --no-headers --delimiter --quiet --help"
+            opts="-h --select --no-output --dupes-output --human-readable --memory-limit --temp-dir --no-headers --delimiter --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1256,7 +1256,7 @@ _qsv() {
             return 0
             ;;
         qsv__fixlengths)
-            opts="-h --length --insert --quote --escape --output --delimiter --help"
+            opts="-h --length --remove-empty --insert --quote --escape --output --delimiter --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -3020,7 +3020,7 @@ _qsv() {
             return 0
             ;;
         qsv__join)
-            opts="-h --ignore-case --left --left-anti --left-semi --right --full --cross --nulls --output --no-headers --delimiter --help"
+            opts="-h --left --left-anti --left-semi --right --right-anti --right-semi --full --cross --nulls --keys-output --ignore-case --ignore-leading-zeros --output --no-headers --delimiter --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -3034,7 +3034,7 @@ _qsv() {
             return 0
             ;;
         qsv__joinp)
-            opts="-h --ignore-case --left --left-anti --left-semi --right --full --cross --coalesce --filter-left --filter-right --validate --nulls --streaming --try-parsedates --infer-len --low-memory --no-optimizations --ignore-errors --decimal-comma --asof --left_by --right_by --strategy --tolerance --sql-filter --datetime-format --date-format --time-format --float-precision --null-value --output --delimiter --quiet --help"
+            opts="-h --left --left-anti --left-semi --right --right-anti --right-semi --full --cross --non-equi --coalesce --filter-left --filter-right --validate --maintain-order --nulls --streaming --try-parsedates --infer-len --cache-schema --low-memory --no-optimizations --ignore-errors --decimal-comma --asof --no-sort --left_by --right_by --strategy --tolerance --allow-exact-matches --sql-filter --datetime-format --date-format --time-format --float-precision --null-value --ignore-case --ignore-leading-zeros --norm-unicode --output --delimiter --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -3818,7 +3818,7 @@ _qsv() {
             return 0
             ;;
         qsv__template)
-            opts="-h --template --template-file --outfilename --customfilter-error --output --no-headers --delimiter --help"
+            opts="-h --template --template-file --globals-json --outfilename --outsubdir-size --customfilter-error --jobs --batch --timeout --cache-dir --ckan-api --ckan-token --output --no-headers --delimiter --progressbar --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -4014,7 +4014,7 @@ _qsv() {
             return 0
             ;;
         qsv__validate)
-            opts="-h --trim --fail-fast --valid --invalid --json --pretty-json --valid-output --jobs --batch --timeout --no-headers --delimiter --progressbar --quiet --help"
+            opts="-h --trim --fail-fast --valid --invalid --json --pretty-json --valid-output --jobs --batch --timeout --cache-dir --ckan-api --ckan-token --no-headers --delimiter --progressbar --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
