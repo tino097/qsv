@@ -233,7 +233,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         for row in sampled {
             wtr.write_byte_record(&row)?;
         }
-    };
+    }
 
     Ok(wtr.flush()?)
 }

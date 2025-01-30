@@ -872,7 +872,7 @@ fn validate_operations(
                 };
                 if THOUSANDS_POLICY.set(separator_policy).is_err() {
                     return fail!("Cannot initialize Thousands policy.");
-                };
+                }
             },
             Operations::Round => {
                 if ROUND_PLACES
@@ -884,7 +884,7 @@ fn validate_operations(
                     .is_err()
                 {
                     return fail!("Cannot initialize Round precision.");
-                };
+                }
             },
             Operations::Crc32 => {
                 if CRC32.set(crc32fast::Hasher::new()).is_err() {
@@ -965,7 +965,7 @@ fn validate_operations(
              similarity({sim_invokes}), strip({strip_invokes}), and whatlang({whatlang_invokes}) \
              ONCE per operation series."
         );
-    };
+    }
 
     Ok(ops_vec) // no validation errors
 }

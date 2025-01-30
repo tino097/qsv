@@ -127,7 +127,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             if !more_records {
                 wtr.write_byte_record(&record)?;
                 break;
-            };
+            }
             let a = sel.select(&record);
             let b = sel.select(&next_record);
             let comparison = match compare_mode {

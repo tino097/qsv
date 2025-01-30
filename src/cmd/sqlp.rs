@@ -598,7 +598,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     if args.flag_wnull_value == "<empty string>" {
         args.flag_wnull_value.clear();
-    };
+    }
 
     let output_mode: OutputMode = args.flag_format.parse().unwrap_or(OutputMode::Csv);
     let no_output: OutputMode = OutputMode::None;
@@ -632,7 +632,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             | OptFlags::COMM_SUBEXPR_ELIM
             | OptFlags::ROW_ESTIMATE
             | OptFlags::FAST_PROJECTION;
-    };
+    }
 
     optflags.set(OptFlags::STREAMING, args.flag_streaming);
 
@@ -1021,6 +1021,6 @@ pub fn compress_output_if_needed(
                 DEFAULT_WTR_BUFFER_CAPACITY,
             )?;
         }
-    };
+    }
     Ok(())
 }

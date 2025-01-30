@@ -1001,7 +1001,7 @@ async fn sniff_main(mut args: Args) -> CliResult<()> {
                 );
             } else {
                 println!("{}", serde_json::to_string(&processed_results).unwrap());
-            };
+            }
             return Ok(());
         }
         let sniff_error_json = json!({

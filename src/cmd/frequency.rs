@@ -230,7 +230,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             {
                 sorted_counts.rotate_left(1);
             }
-        };
+        }
 
         for (value, count, percentage) in sorted_counts {
             pct_decimal = Decimal::from_f64(percentage).unwrap_or_default();

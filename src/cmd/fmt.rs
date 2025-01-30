@@ -124,7 +124,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             match wtr.into_inner() {
                 Ok(mut writer) => writer.write_all(temp_string.as_bytes())?,
                 Err(e) => return fail_clierror!("Error writing to output: {}", e),
-            };
+            }
             break;
         }
         wtr.write_record(&current_record)?;

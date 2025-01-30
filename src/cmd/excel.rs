@@ -574,7 +574,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                                     }
                                 } else {
                                     unsafenames_vec.push(header.to_string());
-                                };
+                                }
 
                                 // check for duplicate headers/columns
                                 if checkednames_vec.contains(&header) {
@@ -738,7 +738,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 return fail_clierror!(
                     "\"{requested_table}\" table not found. Available tables are {table_names:?}"
                 );
-            };
+            }
             Some(xlsx_wb.table_by_name(&found_table).map_err(Error::Xlsx)?)
         } else {
             return fail_incorrectusage_clierror!("--table is only valid for XLSX files");
@@ -871,7 +871,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         "\"{requested_range}\" named range not found. Available named ranges are \
                          {named_ranges:?}"
                     );
-                };
+                }
                 let range_str = get_requested_range(
                     &found_range,
                     &mut sheet,
@@ -1079,7 +1079,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                                 // safety: we know this is a duration coz we did a is_datetime check
                                 // above & ExcelDataTime only has 2 variants, DateTime & Duration
                                 work_date = edt.as_duration().unwrap().to_string();
-                            };
+                            }
 
                             record.push_field(&work_date);
                         },
@@ -1104,10 +1104,10 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                                     // ErrorFormat::Both
                                     write!(format_buffer, "{e}: ={cell_formula}").unwrap();
                                 }
-                            };
+                            }
                             record.push_field(format_buffer.as_str());
                         },
-                    };
+                    }
                     col_idx += 1;
                 }
 

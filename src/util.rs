@@ -207,7 +207,7 @@ pub fn set_user_agent(user_agent: Option<String>) -> CliResult<String> {
     match HeaderValue::from_str(ua.as_str()) {
         Ok(_) => (),
         Err(e) => return fail_incorrectusage_clierror!("Invalid user-agent value: {e}"),
-    };
+    }
 
     log::info!("set user agent: {ua}");
     Ok(ua)
@@ -242,7 +242,7 @@ pub fn version() -> String {
                 }
             },
             Err(e) => enabled_features.push_str(&format!("Luau - cannot retrieve version: {e};")),
-        };
+        }
     }
     #[cfg(all(feature = "prompt", feature = "feature_capable"))]
     enabled_features.push_str("prompt;");
@@ -952,7 +952,7 @@ Self-update only works with prebuilt binaries released on GitHub https://github.
         }
     } else {
         winfo!("Up to date ({curr_version})... no update required.");
-    };
+    }
 
     if !check_only {
         if let Ok(status_code) =
@@ -1063,7 +1063,7 @@ fn send_hwsurvey(
                 log::warn!("Cannot send hw survey: {e}");
                 status = reqwest::StatusCode::BAD_REQUEST;
             },
-        };
+        }
     }
     if survey_done || dry_run {
         Ok(status)
@@ -1108,7 +1108,7 @@ pub fn safe_header_names(
                 header_name.clone_into(&mut buf_wrk);
             } else {
                 to_lowercase_into(header_name, &mut buf_wrk);
-            };
+            }
             reserved_names_vec
                 .iter()
                 .any(|reserved_name| reserved_name == &buf_wrk)
@@ -2005,7 +2005,7 @@ pub fn get_stats_records(
         // if stdin or StatsMode::None,
         // we're just doing frequency old school w/o cardinality
         return Ok((ByteRecord::new(), Vec::new()));
-    };
+    }
 
     let canonical_input_path = Path::new(args.arg_input.as_ref().unwrap()).canonicalize()?;
     let statsdata_path = canonical_input_path.with_extension("stats.csv.data.jsonl");
@@ -2216,7 +2216,7 @@ pub fn get_stats_records(
                 csv_stats.push(stats);
             }
         }
-    };
+    }
 
     Ok((csv_fields, csv_stats))
 }

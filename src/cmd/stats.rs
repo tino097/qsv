@@ -1452,17 +1452,17 @@ impl Stats {
         let t = self.typ;
         if let Some(v) = self.sum.as_mut() {
             v.add(t, sample);
-        };
+        }
         if let Some(v) = self.minmax.as_mut() {
             if let Some(ts_val) = timestamp_val {
                 v.add(t, itoa::Buffer::new().format(ts_val).as_bytes());
             } else {
                 v.add(t, sample);
             }
-        };
+        }
         if let Some(v) = self.modes.as_mut() {
             v.add(sample.to_vec());
-        };
+        }
         if sample_type == TNull {
             self.nullcount += 1;
         }
@@ -1478,7 +1478,7 @@ impl Stats {
                     if self.which.include_nulls {
                         if let Some(v) = self.online.as_mut() {
                             v.add_null();
-                        };
+                        }
                     }
                 } else {
                     // safety: we know the sample is a valid f64, so we can use unwrap
@@ -1521,7 +1521,7 @@ impl Stats {
                 if self.which.include_nulls {
                     if let Some(v) = self.online.as_mut() {
                         v.add_null();
-                    };
+                    }
                 }
             },
             TDateTime | TDate => {
@@ -1529,7 +1529,7 @@ impl Stats {
                     if self.which.include_nulls {
                         if let Some(v) = self.online.as_mut() {
                             v.add_null();
-                        };
+                        }
                     }
                 // if ts_val.is_some() then we successfully inferred a date from the sample
                 // and the timestamp value is not None

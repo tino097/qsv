@@ -710,7 +710,7 @@ fn dyn_enum_validator_factory<'a>(
                 }
             },
             Err(e) => return fail_validation_error!("Error reading dynamicEnum file - {e}"),
-        };
+        }
     }
 
     Ok(Box::new(DynEnumValidator::new(enum_set)))

@@ -285,7 +285,7 @@ fn count_input(conf: &Config, count_delims_mode: CountDelimsMode) -> CliResult<(
         // and the width of the first record
         if !rdr.read_byte_record(&mut record)? {
             return Ok((0, empty_record_stats));
-        };
+        }
 
         let mut curr_width = record.as_slice().len();
 

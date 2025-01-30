@@ -825,7 +825,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
         if report != ReportKind::None {
             now = time::Instant::now();
-        };
+        }
 
         // construct body per the column-list
         if globals_flag {
@@ -967,7 +967,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         if GET_REDIS_RESPONSE.cache_remove(&key).is_err() && log_enabled!(Warn) {
                             // failure to remove cache keys is non-fatal. Continue, but log it.
                             wwarn!(r#"Cannot remove Redis key "{key}""#);
-                        };
+                        }
                     }
                 },
                 CacheType::None => {
@@ -987,7 +987,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                     was_cached = false;
                 },
             }
-        };
+        }
 
         if final_response.status_code == 200 {
             running_success_count += 1;

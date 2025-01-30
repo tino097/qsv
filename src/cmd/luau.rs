@@ -925,7 +925,7 @@ fn sequential_mode(
 
     if error_count > 0 {
         return fail_clierror!("Luau errors encountered: {error_count}");
-    };
+    }
     Ok(())
 }
 
@@ -1273,7 +1273,7 @@ fn random_access_mode(
 
     if error_count > 0 {
         return fail_clierror!("Luau errors encountered: {error_count}");
-    };
+    }
     Ok(())
 }
 
@@ -1353,7 +1353,7 @@ fn map_computedvalue(
                 "Unexpected value type returned by provided Luau expression. {computed_value:?}"
             );
         },
-    };
+    }
     Ok(())
 }
 
@@ -1430,7 +1430,7 @@ fn create_index(arg_input: Option<&String>) -> Result<bool, CliError> {
         io::BufWriter::with_capacity(DEFAULT_WTR_BUFFER_CAPACITY, fs::File::create(pidx)?);
     if RandomAccessSimple::create(&mut rdr, &mut wtr).is_err() {
         return Ok(false);
-    };
+    }
     if wtr.flush().is_err() {
         return Ok(false);
     }

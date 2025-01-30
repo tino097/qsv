@@ -273,7 +273,7 @@ impl Filler {
                 (true, _) => {},
                 (false, true) => group.memorize_first(&self.select, &record),
                 (false, false) => group.memorize(&self.select, &record),
-            };
+            }
 
             let row = group.fill(&self.select, ByteRecord::from(&record));
 

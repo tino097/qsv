@@ -234,7 +234,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             Err(e) => {
                 return fail_clierror!("Invalid CSV. Last valid row ({idx}): {e}");
             },
-        };
+        }
 
         str_row.clear();
         for field in &row {
@@ -265,7 +265,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         );
                     },
                 }
-            };
+            }
         }
         wtr.write_record(&str_row)?;
         idx += 1;
