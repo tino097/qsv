@@ -462,6 +462,8 @@ impl Args {
         } else if flag_no_trim {
             |field: &[u8], _buf: &mut String| field.to_vec()
         } else {
+            // this is the default hot path, so inline it
+            #[inline]
             |field: &[u8], _buf: &mut String| util::trim_bs_whitespace(field).to_vec()
         };
 
@@ -469,10 +471,17 @@ impl Args {
         for row in it {
             row_buffer.clone_from(&row.unwrap());
             for (i, field) in nsel.select(row_buffer.into_iter()).enumerate() {
+                // safety: all_unique_flag_vec is pre-computed to have exactly nsel_len elements,
+                // which matches the number of selected columns that we iterate over.
+                // i will always be < nsel_len since it comes from enumerate() over the selected
+                // columns
                 if unsafe { *all_unique_flag_vec.get_unchecked(i) } {
                     continue;
                 }
 
+                // safety: freq_tables is pre-allocated with nsel_len elements.
+                // i will always be < nsel_len since it comes from enumerate() over the selected
+                // columns
                 if !field.is_empty() {
                     field_buffer = process_field(field, &mut string_buf);
                     unsafe {
