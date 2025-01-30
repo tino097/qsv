@@ -1544,7 +1544,7 @@ pub async fn download_file(
     #[cfg(any(feature = "feature_capable", feature = "lite"))]
     if show_progress {
         pb.set_style(
-            #[allow(clippy::literal_string_with_formatting_args)]
+            #[allow(clippy::to_string_in_format_args)]
             ProgressStyle::default_bar()
                 .template(if total_size == u64::MAX {
                     // only do a spinner if we don't know the total size
