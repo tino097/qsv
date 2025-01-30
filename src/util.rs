@@ -1977,18 +1977,32 @@ pub fn write_json_record<W: std::io::Write>(
 }
 
 /// trim leading and trailing whitespace from a byte slice
+#[inline(always)]
 pub fn trim_bs_whitespace(bytes: &[u8]) -> &[u8] {
-    #[allow(clippy::unnecessary_lazy_evaluations)]
-    let start = bytes
-        .iter()
-        .position(|&b| !b.is_ascii_whitespace())
-        .unwrap_or_else(|| bytes.len());
-    let end = bytes
-        .iter()
-        .rposition(|&b| !b.is_ascii_whitespace())
-        .map_or_else(|| start, |pos| pos + 1);
+    let mut start = 0;
+    let mut end = bytes.len();
 
-    &bytes[start..end]
+    // safety: use unchecked indexing since we're bounds checking with the while condition
+    // Find start by scanning forward
+    while start < end {
+        let b = unsafe { *bytes.get_unchecked(start) };
+        if !b.is_ascii_whitespace() {
+            break;
+        }
+        start += 1;
+    }
+
+    // Find end by scanning backward
+    while end > start {
+        let b = unsafe { *bytes.get_unchecked(end - 1) };
+        if !b.is_ascii_whitespace() {
+            break;
+        }
+        end -= 1;
+    }
+
+    // safety: This slice is guaranteed to be in bounds due to our index calculations
+    unsafe { bytes.get_unchecked(start..end) }
 }
 
 /// get stats records from stats.csv.data.jsonl file, or if its invalid, by running the stats
