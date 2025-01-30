@@ -249,7 +249,7 @@ use std::{
     default::Default,
     fmt, fs, io,
     io::Write,
-    iter::repeat,
+    iter::repeat_n,
     path::{Path, PathBuf},
     str,
     sync::OnceLock,
@@ -1088,7 +1088,7 @@ impl Args {
         let round_places = self.flag_round;
         let infer_boolean = self.flag_infer_boolean;
         let mut records = Vec::with_capacity(stats.len());
-        records.extend(repeat(csv::StringRecord::new()).take(stats.len()));
+        records.extend(repeat_n(csv::StringRecord::new(), stats.len()));
         let pool = ThreadPool::new(util::njobs(self.flag_jobs));
         let mut results = Vec::with_capacity(stats.len());
         for mut stat in stats {
@@ -1172,8 +1172,8 @@ impl Args {
     #[inline]
     fn new_stats(&self, record_len: usize) -> Vec<Stats> {
         let mut stats: Vec<Stats> = Vec::with_capacity(record_len);
-        stats.extend(
-            repeat(Stats::new(WhichStats {
+        stats.extend(repeat_n(
+            Stats::new(WhichStats {
                 include_nulls: self.flag_nulls,
                 sum:           !self.flag_typesonly,
                 range:         !self.flag_typesonly || self.flag_infer_boolean,
@@ -1184,9 +1184,9 @@ impl Args {
                 quartiles:     self.flag_everything || self.flag_quartiles,
                 mode:          self.flag_everything || self.flag_mode,
                 typesonly:     self.flag_typesonly,
-            }))
-            .take(record_len),
-        );
+            }),
+            record_len,
+        ));
         stats
     }
 
