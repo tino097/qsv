@@ -88,7 +88,7 @@ Compute all statistics for the "nyc311.csv", inferring dates only for columns wi
 In addition, also infer boolean data types for the "nyc311.csv" file:
     $ qsv stats -E --infer-dates --dates-whitelist _date --infer-boolean nyc311.csv
 
-In addition to basis "streaming" stats, also compute the cardinality for the "nyc311.csv" file:
+In addition to basic "streaming" stats, also compute the cardinality for the "nyc311.csv" file:
     $ qsv stats --cardinality nyc311.csv
 
 Prefer DMY format when inferring dates for the "nyc311.csv" file:
@@ -100,12 +100,12 @@ Infer data types only for the "nyc311.csv" file:
 Infer data types only, including boolean and date types for the "nyc311.csv" file:
     $ qsv stats --typesonly --infer-boolean --infer-dates nyc311.csv
 
-Automatically create an index for the "nyc311.csv" file if it's larger than 5MB
-and there is no existing index file:
+Automatically create an index for the "nyc311.csv" file to enable multithreading
+if it's larger than 5MB and there is no existing index file:
     $ qsv stats -E --cache-threshold -5000000 nyc311.csv
 
-Auto-create an index for the "nyc311.csv" file if it's larger than 5MB and delete the index
-and the stats cache file after the stats run:
+Auto-create a temporary index for the "nyc311.csv" file to enable multithreading
+if it's larger than 5MB and delete the index and the stats cache file after the stats run:
     $ qsv stats -E --cache-threshold -5000005 nyc311.csv
 
 Prompt for CSV/TSV/TAB file to compute stats for:
