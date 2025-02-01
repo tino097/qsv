@@ -1909,54 +1909,17 @@ impl Stats {
         let sparsity: f64 = self.nullcount as f64 / *RECORD_COUNT.get().unwrap_or(&1) as f64;
         pieces.push(util::round_num(sparsity, round_places));
 
-        // median
-        let mut existing_median = None;
-        if let Some(v) = self.median.as_mut().and_then(|v| {
-            if let TNull | TString = typ {
-                None
-            } else {
-                existing_median = v.median();
-                existing_median
-            }
-        }) {
-            if typ == TDateTime || typ == TDate {
-                pieces.push(timestamp_ms_to_rfc3339(v as i64, typ));
-            } else {
-                pieces.push(util::round_num(v, round_places));
-            }
-        } else if self.which.median {
-            pieces.push(empty());
-        }
-
-        // median absolute deviation (MAD)
-        if let Some(v) = self.mad.as_mut().and_then(|v| {
-            if let TNull | TString = typ {
-                None
-            } else {
-                v.mad(existing_median)
-            }
-        }) {
-            if typ == TDateTime || typ == TDate {
-                // like stddev, return MAD in days
-                pieces.push(util::round_num(
-                    v / MS_IN_DAY,
-                    u32::max(round_places, DAY_DECIMAL_PLACES),
-                ));
-            } else {
-                pieces.push(util::round_num(v, round_places));
-            }
-        } else if self.which.mad {
-            pieces.push(empty());
-        }
-
         // quartiles
+        // as q2==median, cache and reuse it if the --median or --mad flags are set
+        let mut existing_median = None;
+        let mut quartile_pieces = Vec::with_capacity(9);
         match self.quartiles.as_mut().and_then(|v| match typ {
             TInteger | TFloat | TDate | TDateTime => v.quartiles(),
             _ => None,
         }) {
             None => {
                 if self.which.quartiles {
-                    pieces.extend_from_slice(&[
+                    quartile_pieces.extend_from_slice(&[
                         empty(),
                         empty(),
                         empty(),
@@ -1970,6 +1933,7 @@ impl Stats {
                 }
             },
             Some((q1, q2, q3)) => {
+                existing_median = Some(q2);
                 let iqr = q3 - q1;
 
                 // use fused multiply add (mul_add) when possible
@@ -2000,7 +1964,7 @@ impl Stats {
                     // https://doc.rust-lang.org/reference/expressions/operator-expr.html#numeric-cast
                     // as values larger/smaller than what i64 can handle will automatically
                     // saturate to i64 max/min values.
-                    pieces.extend_from_slice(&[
+                    quartile_pieces.extend_from_slice(&[
                         timestamp_ms_to_rfc3339(lof as i64, typ),
                         timestamp_ms_to_rfc3339(lif as i64, typ),
                         timestamp_ms_to_rfc3339(q1 as i64, typ),
@@ -2015,7 +1979,7 @@ impl Stats {
                         timestamp_ms_to_rfc3339(uof as i64, typ),
                     ]);
                 } else {
-                    pieces.extend_from_slice(&[
+                    quartile_pieces.extend_from_slice(&[
                         util::round_num(lof, round_places),
                         util::round_num(lif, round_places),
                         util::round_num(q1, round_places),
@@ -2026,9 +1990,55 @@ impl Stats {
                         util::round_num(uof, round_places),
                     ]);
                 }
-                pieces.push(util::round_num(skewness, round_places));
+                quartile_pieces.push(util::round_num(skewness, round_places));
             },
         }
+
+        // median
+        if let Some(v) = self.median.as_mut().and_then(|v| {
+            if let TNull | TString = typ {
+                None
+            } else if let Some(existing_median) = existing_median {
+                // if we already calculated the q2 (median) in the quartiles, return it
+                Some(existing_median)
+            } else {
+                // otherwise, calculate the median
+                v.median()
+            }
+        }) {
+            if typ == TDateTime || typ == TDate {
+                pieces.push(timestamp_ms_to_rfc3339(v as i64, typ));
+            } else {
+                pieces.push(util::round_num(v, round_places));
+            }
+        } else if self.which.median {
+            pieces.push(empty());
+        }
+
+        // median absolute deviation (MAD)
+        if let Some(v) = self.mad.as_mut().and_then(|v| {
+            if let TNull | TString = typ {
+                None
+            } else {
+                v.mad(existing_median)
+            }
+        }) {
+            if typ == TDateTime || typ == TDate {
+                // like stddev, return MAD in days when the type is a date or datetime
+                pieces.push(util::round_num(
+                    v / MS_IN_DAY,
+                    u32::max(round_places, DAY_DECIMAL_PLACES),
+                ));
+            } else {
+                pieces.push(util::round_num(v, round_places));
+            }
+        } else if self.which.mad {
+            pieces.push(empty());
+        }
+
+        // quartiles
+        // append it here to preserve legacy ordering of columns
+        pieces.extend_from_slice(&quartile_pieces);
 
         // mode/modes/antimodes & cardinality
         // append it here to preserve legacy ordering of columns
