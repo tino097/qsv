@@ -1647,17 +1647,17 @@ impl Stats {
                             ],
                         );
                     } else {
+                        let (
+                            (modes_result, modes_count, mode_occurrences),
+                            (antimodes_result, antimodes_count, antimode_occurrences),
+                        ) = v.modes_antimodes();
                         // mode/s ============
-                        let (modes_result, modes_count, mode_occurrences) = v.modes();
                         let modes_list = modes_result
                             .iter()
                             .map(|c| String::from_utf8_lossy(c))
                             .join(modes_separator);
 
                         // antimode/s ============
-                        let (antimodes_result, antimodes_count, antimode_occurrences) =
-                            v.antimodes();
-
                         let antimodes_len = ANTIMODES_LEN.get_or_init(|| {
                             std::env::var("QSV_ANTIMODES_LEN")
                                 .map(|val| {
