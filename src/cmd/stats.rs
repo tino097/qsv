@@ -1609,7 +1609,14 @@ impl Stats {
                     mc_pieces.push(empty());
                 }
                 if self.which.mode {
-                    mc_pieces.extend_from_slice(&[empty(), empty(), empty(), empty()]);
+                    mc_pieces.extend_from_slice(&[
+                        empty(),
+                        empty(),
+                        empty(),
+                        empty(),
+                        empty(),
+                        empty(),
+                    ]);
                 }
             },
             Some(ref mut v) => {
@@ -1624,33 +1631,30 @@ impl Stats {
                             .unwrap_or_else(|_| DEFAULT_MODES_SEPARATOR.to_string())
                     });
 
-                    // mode/s
+                    // mode/s & antimode/s
                     if cardinality == record_count {
-                        // all values unique, short-circuit modes calculation as there is none
-                        mc_pieces.extend_from_slice(&[empty(), "0".to_string(), "0".to_string()]);
+                        // all values unique
+                        mc_pieces.extend_from_slice(
+                            // modes - short-circuit modes calculation as there is none
+                            &[
+                                empty(),
+                                "0".to_string(),
+                                "0".to_string(),
+                                // antimodes - instead of returning everything, just say *ALL
+                                "*ALL".to_string(),
+                                "0".to_string(),
+                                "1".to_string(),
+                            ],
+                        );
                     } else {
+                        // mode/s ============
                         let (modes_result, modes_count, mode_occurrences) = v.modes();
                         let modes_list = modes_result
                             .iter()
                             .map(|c| String::from_utf8_lossy(c))
                             .join(modes_separator);
-                        mc_pieces.extend_from_slice(&[
-                            modes_list,
-                            modes_count.to_string(),
-                            mode_occurrences.to_string(),
-                        ]);
-                    }
 
-                    // antimode/s
-                    if cardinality == record_count {
-                        // all the values are unique
-                        // so instead of returning everything, just say *ALL
-                        mc_pieces.extend_from_slice(&[
-                            "*ALL".to_string(),
-                            "0".to_string(),
-                            "1".to_string(),
-                        ]);
-                    } else {
+                        // antimode/s ============
                         let (antimodes_result, antimodes_count, antimode_occurrences) =
                             v.antimodes();
 
@@ -1696,6 +1700,11 @@ impl Stats {
                         }
 
                         mc_pieces.extend_from_slice(&[
+                            // mode/s
+                            modes_list,
+                            modes_count.to_string(),
+                            mode_occurrences.to_string(),
+                            // antimode/s
                             antimodes_list,
                             antimodes_count.to_string(),
                             antimode_occurrences.to_string(),
