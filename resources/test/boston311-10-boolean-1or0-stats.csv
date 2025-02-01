@@ -13,8 +13,8 @@ reason,String,true,,Administrative & General Requests,Street Cleaning,,Unsorted,
 type,String,true,,CE Collection,Unsatisfactory Utilities - Electrical  Plumbing,,Unsorted,13,47,240,24,11.619,135,0.4841,,,,,,,,0,,0,8,
 queue,String,true,,BTDT_Parking Enforcement,PWDx_Snow Cases,,Unsorted,15,46,272,27.2,10.1272,102.56,0.3723,,,,,,,,0,,0,7,
 department,String,true,,BTDT,PWDx,,Unsorted,3,4,38,3.8,0.4,0.16,0.1053,,,,,,,,0,,0,5,
-submittedphoto,NULL,,,,,,,0,0,,,,,,,,,,,,,10,,1,1,
-closedphoto,NULL,,,,,,,0,0,,,,,,,,,,,,,10,,1,1,
+submittedphoto,NULL,,,,,,,,,,,,,,,,,,,,,10,,1,1,
+closedphoto,NULL,,,,,,,,,,,,,,,,,,,,,10,,1,1,
 location,String,true,, ,850 South St  Roslindale  MA  02131,,Unsorted,1,40,309,30.9,10.4062,108.29,0.3368,,,,,,,,0,,0,10,
 fire_district,String,true,, ,9,,Unsorted,1,1,10,1,0,0,0,,,,,,,,0,,0,4,
 pwd_district,String,true,, ,1C,,Unsorted,1,2,19,1.9,0.3,0.09,0.1579,,,,,,,,0,,0,6,
@@ -32,4 +32,4 @@ source,String,true,,City Worker App,Constituent Call,,Unsorted,15,16,157,15.7,0.
 qsv__rowcount,,,,,,,,,,,,,,,,,,,,,,,,,,10
 qsv__columncount,,,,,,,,,,,,,,,,,,,,,,,,,,30
 qsv__filesize_bytes,,,,,,,,,,,,,,,,,,,,,,,,,,3887
-qsv__fingerprint_hash,,,,,,,,,,,,,,,,,,,,,,,,,,5b59e645c01b1cb065213223394fb3cf4176e1256d9ac21827ab0a2e1997d544
+qsv__fingerprint_hash,,,,,,,,,,,,,,,,,,,,,,,,,,c68663e33baa4ab6ad8719ee9d15dc1b84423ea08bf9aafeba4b1c0b18eb3de2

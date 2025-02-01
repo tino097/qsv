@@ -1764,9 +1764,8 @@ impl Stats {
         pieces.extend_from_slice(&minmax_range_sortorder_pieces);
 
         // min/max/sum/avg/stddev/variance/cv length
-        if typ == FieldType::TDate || typ == FieldType::TDateTime {
-            // returning min/max length for dates doesn't make sense
-            // especially since we convert the date stats to rfc3339 format
+        // we only show string length stats for String type
+        if typ != FieldType::TString {
             pieces.extend_from_slice(&[
                 empty(),
                 empty(),
@@ -1777,41 +1776,35 @@ impl Stats {
                 empty(),
             ]);
         } else if let Some(mm) = self.minmax.as_ref().and_then(TypedMinMax::len_range) {
+            // we have a min/max length
             pieces.extend_from_slice(&[mm.0, mm.1]);
-            // we have a sum_length
-            if stotlen > 0 {
-                if stotlen < u64::MAX {
-                    // so we can compute avg_length
-                    pieces.push(itoa::Buffer::new().format(stotlen).to_owned());
-                    #[allow(clippy::cast_precision_loss)]
-                    let avg_len = stotlen as f64 / record_count as f64;
-                    pieces.push(util::round_num(avg_len, round_places));
+            if stotlen < u64::MAX {
+                pieces.push(itoa::Buffer::new().format(stotlen).to_owned());
+                #[allow(clippy::cast_precision_loss)]
+                let avg_len = stotlen as f64 / record_count as f64;
+                pieces.push(util::round_num(avg_len, round_places));
 
-                    // Add stddev_length/variance_length for strings
-                    if let Some(vl) = self.online_len.as_ref() {
-                        let vlen_stddev = vl.stddev();
-                        let vlen_variance = vl.variance();
-                        pieces.push(util::round_num(vlen_stddev, round_places));
-                        pieces.push(util::round_num(vlen_variance, round_places));
-                        pieces.push(util::round_num(vlen_stddev / avg_len, round_places));
-                    } else {
-                        pieces.push(empty());
-                        pieces.push(empty());
-                        pieces.push(empty());
-                    }
+                if let Some(vl) = self.online_len.as_ref() {
+                    let vlen_stddev = vl.stddev();
+                    let vlen_variance = vl.variance();
+                    pieces.push(util::round_num(vlen_stddev, round_places));
+                    pieces.push(util::round_num(vlen_variance, round_places));
+                    pieces.push(util::round_num(vlen_stddev / avg_len, round_places));
                 } else {
-                    // however, we saturated the sum, it means we had an overflow
-                    // so we return OVERFLOW_STRING for sum,avg,stddev,variance length
-                    pieces.extend_from_slice(&[
-                        OVERFLOW_STRING.to_string(),
-                        OVERFLOW_STRING.to_string(),
-                        OVERFLOW_STRING.to_string(),
-                        OVERFLOW_STRING.to_string(),
-                        OVERFLOW_STRING.to_string(),
-                    ]);
+                    pieces.push(empty());
+                    pieces.push(empty());
+                    pieces.push(empty());
                 }
             } else {
-                pieces.extend_from_slice(&[empty(), empty(), empty(), empty(), empty()]);
+                // we saturated the sum of string lengths, it means we had an overflow
+                // so we return OVERFLOW_STRING for sum,avg,stddev,variance length
+                pieces.extend_from_slice(&[
+                    OVERFLOW_STRING.to_string(),
+                    OVERFLOW_STRING.to_string(),
+                    OVERFLOW_STRING.to_string(),
+                    OVERFLOW_STRING.to_string(),
+                    OVERFLOW_STRING.to_string(),
+                ]);
             }
         } else {
             pieces.extend_from_slice(&[
@@ -2205,9 +2198,9 @@ impl fmt::Debug for FieldType {
 /// It also counts the total length of strings.
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq)]
 struct TypedSum {
+    float:   Option<f64>,
     integer: i64,
     stotlen: u64, // sum of the total length of strings
-    float:   Option<f64>,
 }
 
 impl TypedSum {
@@ -2219,7 +2212,6 @@ impl TypedSum {
         #[allow(clippy::cast_precision_loss)]
         match typ {
             TFloat => {
-                self.stotlen = self.stotlen.saturating_add(sample.len() as u64);
                 if let Ok(float_sample) = fast_float2::parse::<f64, &[u8]>(sample) {
                     if let Some(ref mut f) = self.float {
                         *f += float_sample;
@@ -2229,7 +2221,6 @@ impl TypedSum {
                 }
             },
             TInteger => {
-                self.stotlen = self.stotlen.saturating_add(sample.len() as u64);
                 if let Some(ref mut float) = self.float {
                     // safety: we know that the sample is a valid f64
                     *float += fast_float2::parse::<f64, &[u8]>(sample).unwrap();
@@ -2294,11 +2285,11 @@ impl Commute for TypedSum {
 /// where min/max/range/sort_order makes sense.
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq)]
 struct TypedMinMax {
+    floats:   MinMax<f64>,
+    integers: MinMax<i64>,
+    dates:    MinMax<i64>,
     strings:  MinMax<Vec<u8>>,
     str_len:  MinMax<usize>,
-    integers: MinMax<i64>,
-    floats:   MinMax<f64>,
-    dates:    MinMax<i64>,
 }
 
 impl TypedMinMax {
@@ -2425,10 +2416,10 @@ impl TypedMinMax {
 impl Commute for TypedMinMax {
     #[inline]
     fn merge(&mut self, other: TypedMinMax) {
+        self.floats.merge(other.floats);
+        self.integers.merge(other.integers);
+        self.dates.merge(other.dates);
         self.strings.merge(other.strings);
         self.str_len.merge(other.str_len);
-        self.integers.merge(other.integers);
-        self.floats.merge(other.floats);
-        self.dates.merge(other.dates);
     }
 }
