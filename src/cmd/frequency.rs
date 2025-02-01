@@ -455,7 +455,7 @@ impl Args {
                         util::to_lowercase_into(s.trim(), buf);
                         buf.as_bytes().to_vec()
                     } else {
-                        util::trim_bs_whitespace(field).to_vec()
+                        trim_bs_whitespace(field).to_vec()
                     }
                 }
             }
@@ -464,7 +464,7 @@ impl Args {
         } else {
             // this is the default hot path, so inline it
             #[inline]
-            |field: &[u8], _buf: &mut String| util::trim_bs_whitespace(field).to_vec()
+            |field: &[u8], _buf: &mut String| trim_bs_whitespace(field).to_vec()
         };
 
         let mut string_buf = String::with_capacity(100);
@@ -591,4 +591,34 @@ impl Args {
         let sel = self.rconfig().selection(headers)?;
         Ok((sel.select(headers).map(<[u8]>::to_vec).collect(), sel))
     }
+}
+
+/// trim leading and trailing whitespace from a byte slice
+#[allow(clippy::inline_always)]
+#[inline(always)]
+fn trim_bs_whitespace(bytes: &[u8]) -> &[u8] {
+    let mut start = 0;
+    let mut end = bytes.len();
+
+    // safety: use unchecked indexing since we're bounds checking with the while condition
+    // Find start by scanning forward
+    while start < end {
+        let b = unsafe { *bytes.get_unchecked(start) };
+        if !b.is_ascii_whitespace() {
+            break;
+        }
+        start += 1;
+    }
+
+    // Find end by scanning backward
+    while end > start {
+        let b = unsafe { *bytes.get_unchecked(end - 1) };
+        if !b.is_ascii_whitespace() {
+            break;
+        }
+        end -= 1;
+    }
+
+    // safety: This slice is guaranteed to be in bounds due to our index calculations
+    unsafe { bytes.get_unchecked(start..end) }
 }

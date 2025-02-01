@@ -1976,35 +1976,6 @@ pub fn write_json_record<W: std::io::Write>(
     Ok(write!(json_wtr, "}}")?)
 }
 
-/// trim leading and trailing whitespace from a byte slice
-#[inline(always)]
-pub fn trim_bs_whitespace(bytes: &[u8]) -> &[u8] {
-    let mut start = 0;
-    let mut end = bytes.len();
-
-    // safety: use unchecked indexing since we're bounds checking with the while condition
-    // Find start by scanning forward
-    while start < end {
-        let b = unsafe { *bytes.get_unchecked(start) };
-        if !b.is_ascii_whitespace() {
-            break;
-        }
-        start += 1;
-    }
-
-    // Find end by scanning backward
-    while end > start {
-        let b = unsafe { *bytes.get_unchecked(end - 1) };
-        if !b.is_ascii_whitespace() {
-            break;
-        }
-        end -= 1;
-    }
-
-    // safety: This slice is guaranteed to be in bounds due to our index calculations
-    unsafe { bytes.get_unchecked(start..end) }
-}
-
 /// get stats records from stats.csv.data.jsonl file, or if its invalid, by running the stats
 /// command returns tuple (`csv_fields`, `csv_stats`, `stats_col_index_map`)
 pub fn get_stats_records(
