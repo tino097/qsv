@@ -2198,9 +2198,9 @@ impl fmt::Debug for FieldType {
 /// It also counts the total length of strings.
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq)]
 struct TypedSum {
+    float:   Option<f64>,
     integer: i64,
     stotlen: u64, // sum of the total length of strings
-    float:   Option<f64>,
 }
 
 impl TypedSum {
@@ -2285,11 +2285,11 @@ impl Commute for TypedSum {
 /// where min/max/range/sort_order makes sense.
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq)]
 struct TypedMinMax {
+    floats:   MinMax<f64>,
+    integers: MinMax<i64>,
+    dates:    MinMax<i64>,
     strings:  MinMax<Vec<u8>>,
     str_len:  MinMax<usize>,
-    integers: MinMax<i64>,
-    floats:   MinMax<f64>,
-    dates:    MinMax<i64>,
 }
 
 impl TypedMinMax {
@@ -2416,10 +2416,10 @@ impl TypedMinMax {
 impl Commute for TypedMinMax {
     #[inline]
     fn merge(&mut self, other: TypedMinMax) {
+        self.floats.merge(other.floats);
+        self.integers.merge(other.integers);
+        self.dates.merge(other.dates);
         self.strings.merge(other.strings);
         self.str_len.merge(other.str_len);
-        self.integers.merge(other.integers);
-        self.floats.merge(other.floats);
-        self.dates.merge(other.dates);
     }
 }
