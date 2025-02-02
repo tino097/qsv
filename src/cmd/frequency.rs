@@ -421,7 +421,7 @@ impl Args {
 
         #[allow(unused_assignments)]
         // amortize allocations
-        let mut field_buffer: Vec<u8> = Vec::with_capacity(nsel_len);
+        let mut field_buffer: Vec<u8> = Vec::with_capacity(1024);
         let mut row_buffer: csv::ByteRecord = csv::ByteRecord::with_capacity(200, nsel_len);
 
         let all_unique_headers = UNIQUE_COLUMNS.get().unwrap();
