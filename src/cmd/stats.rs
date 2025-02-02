@@ -1057,7 +1057,7 @@ impl Args {
         let nchunks = util::num_of_chunks(idx_count as usize, chunk_size);
 
         let pool = ThreadPool::new(njobs);
-        let (send, recv) = crossbeam_channel::bounded(0);
+        let (send, recv) = crossbeam_channel::bounded(nchunks);
         for i in 0..nchunks {
             let (send, args, sel) = (send.clone(), self.clone(), sel.clone());
             pool.execute(move || {
