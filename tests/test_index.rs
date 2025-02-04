@@ -73,6 +73,7 @@ fn index_outdated_stats() {
             "max",
             "range",
             "sort_order",
+            "sortiness",
             "min_length",
             "max_length",
             "sum_length",
@@ -103,6 +104,7 @@ fn index_outdated_stats() {
             "Ascending",
             "1",
             "1",
+            "1",
             "3",
             "1",
             "0",
@@ -129,6 +131,7 @@ fn index_outdated_stats() {
             "3",
             "2",
             "Descending",
+            "-1",
             "",
             "",
             "",
@@ -150,6 +153,7 @@ fn index_outdated_stats() {
         ],
         svec![
             "qsv__rowcount",
+            "",
             "",
             "",
             "",
@@ -202,10 +206,12 @@ fn index_outdated_stats() {
             "",
             "",
             "",
+            "",
             "2"
         ],
         svec![
             "qsv__filesize_bytes",
+            "",
             "",
             "",
             "",
@@ -258,7 +264,8 @@ fn index_outdated_stats() {
             "",
             "",
             "",
-            "dcbb915759b3be9b3e8918f8dfaa3c84472c93cded28ab42b20d6092b5667cbe"
+            "",
+            "544903bb86bbdfdbbd119d5db5316048887046c24d7b6a4e757a2cf88543006f"
         ],
     ];
 
