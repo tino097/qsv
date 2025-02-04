@@ -5,14 +5,14 @@ Compute summary statistics & infers data types for each column in a CSV.
 UTF-8 encoded. If you encounter problems generating stats, use `qsv validate` to confirm the
 input CSV is valid.
 
-Summary statistics includes sum, min/max/range, sort order, min/max/sum/avg/stddev/variance/cv length,
+Summary statistics includes sum, min/max/range, sort order/sortiness, min/max/sum/avg/stddev/variance/cv length,
 mean, standard error of the mean (SEM), geometric mean, harmonic mean, stddev, variance, coefficient
 of variation (CV), nullcount, max_precision, sparsity, Median Absolute Deviation (MAD), quartiles,
 interquartile range (IQR), lower/upper fences, skewness, median, cardinality, mode/s & "antimode/s".
 Note that some stats require loading the entire file into memory, so they must be enabled explicitly. 
 
 By default, the following "streaming" statistics are reported for *every* column:
-  sum, min/max/range values, sort order, min/max/sum/avg/stddev/variance/cv length, mean, sem,
+  sum, min/max/range values, sort order/sortiness, min/max/sum/avg/stddev/variance/cv length, mean, sem,
   geometric_mean, harmonic_mean,stddev, variance, cv, nullcount, max_precision & sparsity.
 
 The default set of statistics corresponds to ones that can be computed efficiently on a stream of data
@@ -1201,7 +1201,7 @@ impl Args {
 
         // these are the standard stats columns that are always output
         // the "streaming" stats that are always included in stats output
-        // aka the 26 FINGERPRINT_HASH_COLUMNS
+        // aka the FINGERPRINT_HASH_COLUMNS
         fields.extend_from_slice(&[
             "field",
             "type",
@@ -1580,7 +1580,6 @@ impl Stats {
         let mut minval_lower: char = '\0';
         let mut maxval_lower: char = '\0';
         let mut column_sorted = false;
-        // let mut sortiness = 0_f64;
         if let Some(mm) = self
             .minmax
             .as_ref()
