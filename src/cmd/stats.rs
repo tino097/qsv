@@ -450,6 +450,7 @@ const STATSDATA_TYPES_ARRAY: [JsonTypes; MAX_STAT_COLUMNS] = [
     JsonTypes::String, //max
     JsonTypes::Float,  //range
     JsonTypes::String, //sort_order
+    JsonTypes::Float,  //sortiness
     JsonTypes::Int,    //min_length
     JsonTypes::Int,    //max_length
     JsonTypes::Int,    //sum_length
@@ -504,10 +505,10 @@ const MS_IN_DAY_INT: i64 = 86_400_000;
 const DAY_DECIMAL_PLACES: u32 = 5;
 
 // maximum number of output columns
-const MAX_STAT_COLUMNS: usize = 42;
+const MAX_STAT_COLUMNS: usize = 43;
 
 // the first N columns are fingerprint hash columns
-const FINGERPRINT_HASH_COLUMNS: usize = 25;
+const FINGERPRINT_HASH_COLUMNS: usize = 26;
 
 // maximum number of antimodes to display
 const MAX_ANTIMODES: usize = 10;
@@ -1200,7 +1201,7 @@ impl Args {
 
         // these are the standard stats columns that are always output
         // the "streaming" stats that are always included in stats output
-        // aka the 25 FINGERPRINT_HASH_COLUMNS
+        // aka the 26 FINGERPRINT_HASH_COLUMNS
         fields.extend_from_slice(&[
             "field",
             "type",
@@ -1210,6 +1211,7 @@ impl Args {
             "max",
             "range",
             "sort_order",
+            "sortiness",
             "min_length",
             "max_length",
             "sum_length",
@@ -1569,15 +1571,16 @@ impl Stats {
 
         let empty = String::new;
 
-        // min/max/range/sort_order
+        // min/max/range/sort_order/sortiness
         // we do this first as we want to get the sort_order, so we can skip sorting if not
         // required. We also need to do this before --infer-boolean because we need to know
         // the min/max values to determine if the range is equal to the supported boolean
         // ranges (0/1, f/t, n/y)
-        let mut minmax_range_sortorder_pieces = Vec::with_capacity(4);
+        let mut minmax_range_sortorder_pieces = Vec::with_capacity(5);
         let mut minval_lower: char = '\0';
         let mut maxval_lower: char = '\0';
         let mut column_sorted = false;
+        // let mut sortiness = 0_f64;
         if let Some(mm) = self
             .minmax
             .as_ref()
@@ -1589,9 +1592,15 @@ impl Stats {
             if mm.3.starts_with("Ascending") {
                 column_sorted = true;
             }
-            minmax_range_sortorder_pieces.extend_from_slice(&[mm.0, mm.1, mm.2, mm.3]);
+            minmax_range_sortorder_pieces.extend_from_slice(&[mm.0, mm.1, mm.2, mm.3, mm.4]);
         } else {
-            minmax_range_sortorder_pieces.extend_from_slice(&[empty(), empty(), empty(), empty()]);
+            minmax_range_sortorder_pieces.extend_from_slice(&[
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+            ]);
         }
 
         let record_count = *RECORD_COUNT.get().unwrap_or(&1);
@@ -2341,59 +2350,72 @@ impl TypedMinMax {
     }
 
     #[inline]
-    fn show(&self, typ: FieldType, round_places: u32) -> Option<(String, String, String, String)> {
+    fn show(
+        &self,
+        typ: FieldType,
+        round_places: u32,
+    ) -> Option<(String, String, String, String, String)> {
         match typ {
             TNull => None,
             TString => {
-                if let (Some(min), Some(max), sort_order) = (
+                if let (Some(min), Some(max), sort_order, sortiness) = (
                     self.strings.min(),
                     self.strings.max(),
                     self.strings.sort_order(),
+                    self.strings.sortiness(),
                 ) {
                     let min = String::from_utf8_lossy(min).to_string();
                     let max = String::from_utf8_lossy(max).to_string();
                     let sort_order = sort_order.to_string();
-                    Some((min, max, String::new(), sort_order))
+                    let sortiness = util::round_num(sortiness, round_places);
+                    Some((min, max, String::new(), sort_order, sortiness))
                 } else {
                     None
                 }
             },
             TInteger => {
-                if let (Some(min), Some(max), sort_order) = (
+                if let (Some(min), Some(max), sort_order, sortiness) = (
                     self.integers.min(),
                     self.integers.max(),
                     self.integers.sort_order(),
+                    self.integers.sortiness(),
                 ) {
                     Some((
                         itoa::Buffer::new().format(*min).to_owned(),
                         itoa::Buffer::new().format(*max).to_owned(),
                         itoa::Buffer::new().format(*max - *min).to_owned(),
                         sort_order.to_string(),
+                        util::round_num(sortiness, round_places),
                     ))
                 } else {
                     None
                 }
             },
             TFloat => {
-                if let (Some(min), Some(max), sort_order) = (
+                if let (Some(min), Some(max), sort_order, sortiness) = (
                     self.floats.min(),
                     self.floats.max(),
                     self.floats.sort_order(),
+                    self.floats.sortiness(),
                 ) {
                     Some((
                         ryu::Buffer::new().format(*min).to_owned(),
                         ryu::Buffer::new().format(*max).to_owned(),
                         util::round_num(*max - *min, round_places),
                         sort_order.to_string(),
+                        util::round_num(sortiness, round_places),
                     ))
                 } else {
                     None
                 }
             },
             TDateTime | TDate => {
-                if let (Some(min), Some(max), sort_order) =
-                    (self.dates.min(), self.dates.max(), self.dates.sort_order())
-                {
+                if let (Some(min), Some(max), sort_order, sortiness) = (
+                    self.dates.min(),
+                    self.dates.max(),
+                    self.dates.sort_order(),
+                    self.dates.sortiness(),
+                ) {
                     Some((
                         timestamp_ms_to_rfc3339(*min, typ),
                         timestamp_ms_to_rfc3339(*max, typ),
@@ -2404,6 +2426,7 @@ impl TypedMinMax {
                             u32::max(round_places, 5),
                         ),
                         sort_order.to_string(),
+                        util::round_num(sortiness, round_places),
                     ))
                 } else {
                     None
