@@ -1419,7 +1419,7 @@ fn get_response(
                 // we multiply reset_secs by 1001 instead of 1000 to give the server a teeny bit
                 // more breathing room before we hit it again
                 let pause_time =
-                    (reset_secs * 1001) + (retries as u64 * rand::thread_rng().gen_range(10..30));
+                    (reset_secs * 1001) + (retries as u64 * rand::rng().random_range(10..30));
 
                 debug!(
                     "sleeping for {pause_time} ms until ratelimit is reset/retry_after has elapsed"
