@@ -108,6 +108,85 @@ const QSV_POLARS_REV: &str = match option_env!("QSV_POLARS_REV") {
     None => "",
 };
 
+// Add constant for whitespace visualization
+// the whitespace markers as as defined in
+// https://doc.rust-lang.org/reference/whitespace.html
+const WHITESPACE_MARKERS: &[(char, &str)] = &[
+    // common whitespace markers other than space
+    ('\t', "《→》"), // tab
+    ('\n', "《¶》"), // newline
+    ('\r', "《⏎》"), // carriage return
+    // more obscure whitespace markers
+    ('\u{000B}', "《⋮》"), // vertical tab
+    ('\u{000C}', "《␌》"), // form feed
+    ('\u{0009}', "《↹》"), // horizontal tab
+    ('\u{0085}', "《␤》"), // next line
+    ('\u{200E}', "《␎》"), // left-to-right mark
+    ('\u{200F}', "《␏》"), // right-to-left mark
+    ('\u{2028}', "《␊》"), // line separator
+    ('\u{2029}', "《␍》"), // paragraph separator
+    // additional common whitespace markers beyond
+    // https://doc.rust-lang.org/reference/whitespace.html
+    ('\u{00A0}', "《⍽》"),     // non-breaking space
+    ('\u{2003}', "《emsp》"),  // em space
+    ('\u{2007}', "《figsp》"), // figure space
+    ('\u{200B}', "《zwsp》"),  // zero width space
+];
+
+/// Visualizes whitespace characters in a string by replacing them with visible markers
+///
+/// This function takes a string and returns a new string where whitespace characters
+/// are replaced with visible Unicode markers to make them easier to see.
+///
+/// # Arguments
+///
+/// * `s` - The input string to visualize whitespace in
+///
+/// # Returns
+///
+/// A new String with whitespace characters replaced by visible markers
+///
+/// # Behavior
+///
+/// - If the input string contains only spaces, each space is replaced with "《_》"
+/// - For other whitespace characters (tab, newline, etc), uses markers defined in
+///   WHITESPACE_MARKERS
+/// - Non-whitespace characters are left unchanged
+/// - For strings with mixed content, single spaces are preserved as-is
+///
+/// # Examples
+///
+/// ```
+/// let s = "hello\tworld\n";
+/// let vis = visualize_whitespace(s);
+/// assert_eq!(vis, "hello《→》world《¶》");
+///
+/// let spaces = "   ";
+/// let vis = visualize_whitespace(spaces);
+/// assert_eq!(vis, "《_》《_》《_》");
+/// ```
+pub fn visualize_whitespace(s: &str) -> String {
+    // Check if string is all spaces
+    let is_all_spaces = s.chars().all(|c| c == ' ');
+
+    let mut result = String::with_capacity(s.len() * 3);
+    for c in s.chars() {
+        if c == ' ' {
+            if is_all_spaces {
+                // Only use space marker if entire string is spaces
+                result.push_str("《_》");
+            } else {
+                result.push(c);
+            }
+        } else if let Some((_, replacement)) = WHITESPACE_MARKERS.iter().find(|(ws, _)| *ws == c) {
+            result.push_str(replacement);
+        } else {
+            result.push(c);
+        }
+    }
+    result
+}
+
 pub fn qsv_custom_panic() {
     setup_panic!(
         human_panic::Metadata::new(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
@@ -2075,6 +2154,7 @@ pub fn get_stats_records(
             flag_no_headers:      args.flag_no_headers,
             flag_delimiter:       args.flag_delimiter,
             flag_memcheck:        args.flag_memcheck,
+            flag_vis_whitespace:  false,
         };
 
         let tempfile = tempfile::Builder::new()

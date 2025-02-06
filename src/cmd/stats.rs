@@ -210,6 +210,7 @@ stats options:
                                   file and the stats cache file after the stats run. Otherwise,
                                   the index file and the cache files are kept.
                               [default: 5000]
+    --vis-whitespace          Visualize whitespace characters in the output.
 
 Common options:
     -h, --help             Display this message
@@ -298,6 +299,7 @@ pub struct Args {
     pub flag_no_headers:      bool,
     pub flag_delimiter:       Option<Delimiter>,
     pub flag_memcheck:        bool,
+    pub flag_vis_whitespace:  bool,
 }
 
 // this struct is used to serialize/deserialize the stats to
@@ -803,7 +805,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 },
             }?;
 
-            let stats_sr_vec = args.stats_to_records(stats);
+            let stats_sr_vec = args.stats_to_records(stats, args.flag_vis_whitespace);
             let mut work_br;
 
             // vec we use to compute dataset-level fingerprint hash
@@ -1085,7 +1087,7 @@ impl Args {
         Ok((headers, merge_all(recv.iter()).unwrap_or_default()))
     }
 
-    fn stats_to_records(&self, stats: Vec<Stats>) -> Vec<csv::StringRecord> {
+    fn stats_to_records(&self, stats: Vec<Stats>, visualize_ws: bool) -> Vec<csv::StringRecord> {
         let round_places = self.flag_round;
         let infer_boolean = self.flag_infer_boolean;
         let mut records = Vec::with_capacity(stats.len());
@@ -1098,7 +1100,7 @@ impl Args {
             pool.execute(move || {
                 // safety: this will only return an Error if the channel has been disconnected
                 // which will not happen in this case
-                send.send(stat.to_record(round_places, infer_boolean))
+                send.send(stat.to_record(round_places, infer_boolean, visualize_ws))
                     .unwrap();
             });
         }
@@ -1558,7 +1560,12 @@ impl Stats {
     }
 
     #[allow(clippy::wrong_self_convention)]
-    pub fn to_record(&mut self, round_places: u32, infer_boolean: bool) -> csv::StringRecord {
+    pub fn to_record(
+        &mut self,
+        round_places: u32,
+        infer_boolean: bool,
+        visualize_ws: bool,
+    ) -> csv::StringRecord {
         // we're doing typesonly and not inferring boolean, just return the type
         if self.which.typesonly && !infer_boolean {
             return csv::StringRecord::from(vec![self.typ.to_string()]);
@@ -1583,7 +1590,7 @@ impl Stats {
         if let Some(mm) = self
             .minmax
             .as_ref()
-            .and_then(|mm| mm.show(typ, round_places))
+            .and_then(|mm| mm.show(typ, round_places, visualize_ws))
         {
             // get first character of min/max values
             minval_lower = mm.0.chars().next().unwrap_or_default().to_ascii_lowercase();
@@ -1660,10 +1667,17 @@ impl Stats {
                             (antimodes_result, antimodes_count, antimode_occurrences),
                         ) = v.modes_antimodes();
                         // mode/s ============
-                        let modes_list = modes_result
-                            .iter()
-                            .map(|c| String::from_utf8_lossy(c))
-                            .join(modes_separator);
+                        let modes_list = if visualize_ws {
+                            modes_result
+                                .iter()
+                                .map(|c| util::visualize_whitespace(&String::from_utf8_lossy(c)))
+                                .join(modes_separator)
+                        } else {
+                            modes_result
+                                .iter()
+                                .map(|c| String::from_utf8_lossy(c))
+                                .join(modes_separator)
+                        };
 
                         // antimode/s ============
                         let antimodes_len = ANTIMODES_LEN.get_or_init(|| {
@@ -1713,7 +1727,11 @@ impl Stats {
                             modes_count.to_string(),
                             mode_occurrences.to_string(),
                             // antimode/s
-                            antimodes_list,
+                            if visualize_ws {
+                                util::visualize_whitespace(&antimodes_list)
+                            } else {
+                                antimodes_list
+                            },
                             antimodes_count.to_string(),
                             antimode_occurrences.to_string(),
                         ]);
@@ -2353,6 +2371,7 @@ impl TypedMinMax {
         &self,
         typ: FieldType,
         round_places: u32,
+        visualize_ws: bool,
     ) -> Option<(String, String, String, String, String)> {
         match typ {
             TNull => None,
@@ -2363,11 +2382,23 @@ impl TypedMinMax {
                     self.strings.sort_order(),
                     self.strings.sortiness(),
                 ) {
-                    let min = String::from_utf8_lossy(min).to_string();
-                    let max = String::from_utf8_lossy(max).to_string();
-                    let sort_order = sort_order.to_string();
-                    let sortiness = util::round_num(sortiness, round_places);
-                    Some((min, max, String::new(), sort_order, sortiness))
+                    let min_str = String::from_utf8_lossy(min).to_string();
+                    let max_str = String::from_utf8_lossy(max).to_string();
+                    let (min_display, max_display) = if visualize_ws {
+                        (
+                            util::visualize_whitespace(&min_str),
+                            util::visualize_whitespace(&max_str),
+                        )
+                    } else {
+                        (min_str, max_str)
+                    };
+                    Some((
+                        min_display,
+                        max_display,
+                        String::new(),
+                        sort_order.to_string(),
+                        util::round_num(sortiness, round_places),
+                    ))
                 } else {
                     None
                 }
