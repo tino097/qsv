@@ -282,17 +282,17 @@ fn test_select_random_seeded() {
 
     let expected = vec![
         svec![
-            "Bob", "Đan", "Élise", "Héctor", "Günther", "Jürgen", "İbrahim", "Fátima", "Çemil",
-            "Alice"
+            "Jürgen", "İbrahim", "Đan", "Çemil", "Alice", "Héctor", "Élise", "Bob", "Fátima",
+            "Günther"
         ],
         svec![
-            "value8", "value4", "value10", "value6", "value1", "value9", "value7", "value5",
-            "value3", "value2"
+            "value9", "value7", "value4", "value3", "value2", "value6", "value10", "value8",
+            "value5", "value1"
         ],
-        svec!["8", "4", "10", "6", "1", "9", "7", "5", "3", "2"],
+        svec!["9", "7", "4", "3", "2", "6", "10", "8", "5", "1"],
         svec![
-            "value3", "value7", "value1", "value5", "value10", "value2", "value4", "value6",
-            "value8", "value9"
+            "value2", "value4", "value7", "value8", "value9", "value5", "value1", "value3",
+            "value6", "value10"
         ],
     ];
     assert_eq!(got, expected);
@@ -310,10 +310,10 @@ fn test_select_random_seeded_subset() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
 
     let expected = vec![
-        svec!["Jürgen", "İbrahim", "Đan", "Bob"],
-        svec!["value9", "value7", "value4", "value8"],
-        svec!["9", "7", "4", "8"],
-        svec!["value2", "value4", "value7", "value3"],
+        svec!["İbrahim", "Đan", "Jürgen", "Bob"],
+        svec!["value7", "value4", "value9", "value8"],
+        svec!["7", "4", "9", "8"],
+        svec!["value4", "value7", "value2", "value3"],
     ];
     assert_eq!(got, expected);
 }

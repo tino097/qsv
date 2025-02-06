@@ -436,12 +436,12 @@ fn sort_random() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
-        svec!["1", "b"],
         svec!["5", "f"],
-        svec!["6", "e"],
+        svec!["1", "b"],
+        svec!["4", "c"],
         svec!["3", "d"],
         svec!["2", "a"],
-        svec!["4", "c"],
+        svec!["6", "e"],
     ];
     assert_eq!(got, expected);
 }
@@ -471,12 +471,12 @@ fn sort_random_faster() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
-        svec!["5", "f"],
-        svec!["3", "d"],
+        svec!["1", "b"],
         svec!["4", "c"],
         svec!["6", "e"],
         svec!["2", "a"],
-        svec!["1", "b"],
+        svec!["5", "f"],
+        svec!["3", "d"],
     ];
     assert_eq!(got, expected);
 }
@@ -506,12 +506,12 @@ fn sort_random_secure() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
-        svec!["3", "d"],
-        svec!["5", "f"],
         svec!["2", "a"],
+        svec!["3", "d"],
         svec!["6", "e"],
-        svec!["4", "c"],
         svec!["1", "b"],
+        svec!["4", "c"],
+        svec!["5", "f"],
     ];
     assert_eq!(got, expected);
 }
