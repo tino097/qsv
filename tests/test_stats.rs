@@ -1716,7 +1716,7 @@ fn stats_vis_whitespace() {
             "false",
             "",
             "no_whitespace",
-            "z obscure whitespace 《⋮》 《␌》 《→》 《␤》 《␎》 《␏》 《␊》 《␍》 are also visible",
+            r#"z obscure whitespace 《⋮》 《␌》 《→》 《␤》 《␎》 《␏》 《␊》 《␍》 are also visible"#,
             "",
             "Unsorted",
             "0.3333",
@@ -1751,8 +1751,7 @@ fn stats_vis_whitespace() {
             "value《¶》",
             "1",
             "2",
-            "no_whitespace|the spaces in this field are visible as normal \
-             spaces|value《→》|value《⏎》|z obscure whitespa...",
+            r#"no_whitespace|the spaces in this field are visible as normal spaces|value《→》|value《⏎》|z obscure whitespa..."#,
             "5",
             "1",
             ""
@@ -1798,7 +1797,7 @@ fn stats_vis_whitespace() {
             "《¶》value",
             "1",
             "2",
-            "NULL|《→》value|《⏎》value|    |also_none",
+            r#"NULL|《→》value|《⏎》value|    |also_none"#,
             "5",
             "1",
             ""
@@ -1844,8 +1843,7 @@ fn stats_vis_whitespace() {
             "《¶》value《¶》",
             "1",
             "2",
-            "《→》value《→》|《⏎》value《⏎》|          |clean|the trailing spaces are left alone  \
-              ",
+            r#"《→》value《→》|《⏎》value《⏎》|          |clean|the trailing spaces are left alone   "#,
             "5",
             "1",
             ""
