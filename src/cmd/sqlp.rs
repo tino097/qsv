@@ -631,7 +631,8 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             | OptFlags::COMM_SUBPLAN_ELIM
             | OptFlags::COMM_SUBEXPR_ELIM
             | OptFlags::ROW_ESTIMATE
-            | OptFlags::FAST_PROJECTION;
+            | OptFlags::FAST_PROJECTION
+            | OptFlags::COLLAPSE_JOINS;
     }
 
     optflags.set(OptFlags::STREAMING, args.flag_streaming);
