@@ -99,6 +99,7 @@ frequency options:
                             [default: auto]
    --all-unique-text <arg>  The text to use for the "<ALL_UNIQUE>" category.
                             [default: <ALL_UNIQUE>]
+    --vis-whitespace        Visualize whitespace characters in the output.
     -j, --jobs <arg>        The number of jobs to run in parallel.
                             This works much faster when the given CSV data has
                             an index already created. Note that a file handle
@@ -159,6 +160,7 @@ pub struct Args {
     pub flag_no_headers:      bool,
     pub flag_delimiter:       Option<Delimiter>,
     pub flag_memcheck:        bool,
+    pub flag_vis_whitespace:  bool,
 }
 
 const NULL_VAL: &[u8] = b"(NULL)";
@@ -232,6 +234,8 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             }
         }
 
+        #[allow(unused_assignments)]
+        let mut value_str = String::with_capacity(100);
         for (value, count, percentage) in sorted_counts {
             pct_decimal = Decimal::from_f64(percentage).unwrap_or_default();
             pct_scale = if args.flag_pct_dec_places < 0 {
@@ -260,7 +264,12 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             };
             row = vec![
                 &*header_vec,
-                &*value,
+                if args.flag_vis_whitespace {
+                    value_str = util::visualize_whitespace(&String::from_utf8_lossy(&value));
+                    value_str.as_bytes()
+                } else {
+                    &value
+                },
                 itoa_buffer.format(count).as_bytes(),
                 pct_string.as_bytes(),
             ];
