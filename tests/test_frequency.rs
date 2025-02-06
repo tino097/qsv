@@ -778,3 +778,146 @@ fn assert_eq_ftables(got: &FTables, expected: &FTables) -> bool {
     }
     true
 }
+
+#[test]
+fn frequency_vis_whitespace() {
+    let wrk = Workdir::new("frequency_vis_whitespace");
+
+    // Create test data with various types of whitespace
+    let rows = vec![
+        svec!["header"],
+        svec!["value\t"],       // trailing tab
+        svec!["\tvalue"],       // leading tab
+        svec!["value\r"],       // trailing CR
+        svec!["\rvalue"],       // leading CR
+        svec!["value\n"],       // trailing LF
+        svec!["\nvalue"],       // leading LF
+        svec!["value "],        // trailing space
+        svec![" value"],        // leading space
+        svec!["      "],        // all spaces
+        svec!["value\u{00A0}"], // trailing non-breaking space
+        svec!["\u{00A0}value"], // leading non-breaking space
+        svec!["value\u{2003}"], // trailing em space
+        svec!["\u{2003}value"], // leading em space
+        svec!["value\u{2007}"], // trailing figure space
+        svec!["\u{2007}value"], // leading figure space
+        svec!["value\u{200B}"], // trailing zero width space
+        svec!["\u{200B}value"], // leading zero width space
+        svec!["no_whitespace"],
+    ];
+
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("frequency");
+    cmd.arg("in.csv")
+        .args(["--limit", "0"])
+        .arg("--vis-whitespace");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["field", "value", "count", "percentage"],
+        svec!["header", "value", "8", "44.44444"],
+        svec!["header", "(NULL)", "1", "5.55556"],
+        svec!["header", "no_whitespace", "1", "5.55556"],
+        svec!["header", "value《⍽》", "1", "5.55556"],
+        svec!["header", "value《emsp》", "1", "5.55556"],
+        svec!["header", "value《figsp》", "1", "5.55556"],
+        svec!["header", "value《zwsp》", "1", "5.55556"],
+        svec!["header", "《⍽》value", "1", "5.55556"],
+        svec!["header", "《emsp》value", "1", "5.55556"],
+        svec!["header", "《figsp》value", "1", "5.55556"],
+        svec!["header", "《zwsp》value", "1", "5.55556"],
+    ];
+
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn frequency_vis_whitespace_no_trim() {
+    let wrk = Workdir::new("frequency_vis_whitespace_no_trim");
+
+    // Create test data with multiple occurrences of same whitespace patterns
+    let rows = vec![
+        svec!["header"],
+        svec!["value\t"], // trailing tab
+        svec!["value\t"], // trailing tab (duplicate)
+        svec!["\tvalue"], // leading tab
+        svec!["\tvalue"], // leading tab (duplicate)
+        svec!["value "],  // trailing space
+        svec!["value "],  // trailing space (duplicate)
+        svec![" value"],  // leading space
+        svec![" value"],  // leading space (duplicate)
+        svec!["      "],  // all spaces
+        svec!["      "],  // all spaces (duplicate)
+        svec!["no_whitespace"],
+    ];
+
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("frequency");
+    cmd.arg("in.csv")
+        .args(["--limit", "0"])
+        .arg("--vis-whitespace")
+        .arg("--no-trim");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["field", "value", "count", "percentage"],
+        svec!["header", "《→》value", "2", "18.18182"],
+        svec!["header", "《_》《_》《_》《_》《_》《_》", "2", "18.18182"],
+        svec!["header", " value", "2", "18.18182"],
+        svec!["header", "value《→》", "2", "18.18182"],
+        svec!["header", "value ", "2", "18.18182"],
+        svec!["header", "no_whitespace", "1", "9.09091"],
+    ];
+
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn frequency_vis_whitespace_ignore_case() {
+    let wrk = Workdir::new("frequency_vis_whitespace_ignore_case");
+
+    // Create test data with whitespace and mixed case
+    let rows = vec![
+        svec!["header"],
+        svec!["Value\t"],       // trailing tab
+        svec!["\tVALUE"],       // leading tab
+        svec!["value "],        // trailing space
+        svec!["value\u{000B}"], // vertical tab
+        svec!["value\u{000C}"], // form feed
+        svec!["value\u{0085}"], // next line
+        svec!["value\u{200E}"], // left-to-right mark
+        svec!["value\u{200F}"], // right-to-left mark
+        svec!["value\u{2028}"], // line separator
+        svec!["value\u{2029}"], // paragraph separator
+        svec!["value\u{00A0}"], // non-breaking space
+        svec!["value\u{2003}"], // em space
+        svec!["value\u{2007}"], // figure space
+        svec!["value\u{200B}"], // zero width space
+        svec![" VALUE"],        // leading space
+        svec!["no_whitespace"],
+        svec!["      "], // all spaces
+    ];
+
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("frequency");
+    cmd.arg("in.csv")
+        .args(["--limit", "0"])
+        .arg("--vis-whitespace")
+        .arg("--ignore-case");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["field", "value", "count", "percentage"],
+        svec!["header", "value", "12", "70.58824"],
+        svec!["header", "(NULL)", "1", "5.88235"],
+        svec!["header", "no_whitespace", "1", "5.88235"],
+        svec!["header", "value《zwsp》", "1", "5.88235"],
+        svec!["header", "value《␎》", "1", "5.88235"],
+        svec!["header", "value《␏》", "1", "5.88235"],
+    ];
+
+    assert_eq!(got, expected);
+}
