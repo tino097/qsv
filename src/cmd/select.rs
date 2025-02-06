@@ -132,7 +132,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             // cryptographic security in this context.
             rand::rngs::StdRng::seed_from_u64(seed) // DevSkim: ignore DS148264
         } else {
-            rand::rngs::StdRng::from_entropy()
+            rand::rngs::StdRng::from_os_rng()
         };
 
         let initial_selection = rconfig.selection(&headers)?;

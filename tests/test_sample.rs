@@ -24,8 +24,8 @@ fn sample_seed() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
-        svec!["1", "b"],
-        svec!["2", "a"],
+        svec!["6", "e"],
+        svec!["8", "h"],
         svec!["3", "d"],
         svec!["7", "i"],
         svec!["5", "f"],
@@ -58,8 +58,8 @@ fn sample_seed_delimiter() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R|S"],
-        svec!["1|b"],
-        svec!["2|a"],
+        svec!["6|e"],
+        svec!["8|h"],
         svec!["3|d"],
         svec!["7|i"],
         svec!["5|f"],
@@ -94,9 +94,9 @@ fn sample_seed_faster() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
-        svec!["6", "e"],
-        svec!["2", "a"],
         svec!["8", "h"],
+        svec!["2", "a"],
+        svec!["7", "i"],
         svec!["4", "c"],
         svec!["5", "f"],
     ];
@@ -130,11 +130,11 @@ fn sample_seed_secure() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
-        svec!["8", "h"],
-        svec!["7", "i"],
+        svec!["1", "b"],
+        svec!["6", "e"],
         svec!["3", "d"],
         svec!["4", "c"],
-        svec!["5", "f"],
+        svec!["8", "h"],
     ];
     assert_eq!(got, expected);
 }
@@ -153,13 +153,20 @@ fn sample_seed_url() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         ["position", "title"],
-        ["Q107145064", "embajador de España en Macedonia del Norte"],
-        ["Q107133795", "ambassadrice d'Espagne aux Palaos"],
-        ["Q107126367", "ambassador to Mali"],
-        ["Q106807027", "Minister of Industry, Trade and Tourism"],
+        ["Q107058011", "ambassador to Mauritania"],
         [
-            "Q105325251",
-            "Consejero de Sanidad, Trabajo y Seguridad Social",
+            "Q100797227",
+            "Minister of Family and Social Services of the Government of the Balearic Islands",
+        ],
+        [
+            "Q106968387",
+            "Minister of Research and Universities of the Government of Catalonia",
+        ],
+        ["Q106918017", "conseller d'Obres Públiques i Urbanisme"],
+        [
+            "Q106162142",
+            "Conseiller aux Infrastructures, au Territoire et à l'Environnement de la Généralité \
+             valencienne",
         ],
     ];
     assert_eq!(got, expected);
@@ -194,11 +201,11 @@ fn sample_percentage_seed_no_index_percentage() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
+        svec!["6", "e"],
         svec!["8", "h"],
-        svec!["2", "a"],
         svec!["3", "d"],
         svec!["7", "i"],
-        svec!["5", "f"],
+        svec!["8", "h"],
     ];
     assert_eq!(got, expected);
 }
@@ -228,9 +235,9 @@ fn sample_percentage_seed_indexed() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
-        svec!["6", "e"],
-        svec!["3", "d"],
+        svec!["8", "h"],
         svec!["7", "i"],
+        svec!["4", "c"],
     ];
     assert_eq!(got, expected);
 }
@@ -263,9 +270,9 @@ fn sample_percentage_seed_indexed_faster() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
-        svec!["4", "c"],
+        svec!["1", "b"],
+        svec!["8", "h"],
         svec!["6", "e"],
-        svec!["7", "i"],
     ];
     assert_eq!(got, expected);
 }
@@ -298,9 +305,9 @@ fn sample_percentage_seed_indexed_secure() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
+        svec!["6", "e"],
         svec!["3", "d"],
         svec!["5", "f"],
-        svec!["8", "h"],
     ];
     assert_eq!(got, expected);
 }
@@ -347,10 +354,10 @@ fn sample_indexed_random_access() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
-        svec!["23", "w"],
+        svec!["18", "r"],
         svec!["17", "q"],
-        svec!["24", "x"],
-        svec!["16", "p"],
+        svec!["14", "n"],
+        svec!["3", "d"],
     ];
     assert_eq!(got, expected);
 }
@@ -400,10 +407,10 @@ fn sample_indexed_random_access_faster() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
-        svec!["4", "c"],
-        svec!["19", "s"],
-        svec!["16", "p"],
-        svec!["15", "o"],
+        svec!["22", "v"],
+        svec!["26", "z"],
+        svec!["23", "w"],
+        svec!["10", "j"],
     ];
     assert_eq!(got, expected);
 }
@@ -453,10 +460,10 @@ fn sample_indexed_random_access_secure() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
-        svec!["24", "x"],
-        svec!["10", "j"],
-        svec!["26", "z"],
-        svec!["6", "e"],
+        svec!["22", "v"],
+        svec!["23", "w"],
+        svec!["5", "f"],
+        svec!["12", "l"],
     ];
     assert_eq!(got, expected);
 }

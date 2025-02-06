@@ -197,7 +197,7 @@ impl Drop for ExtDedupCache {
 
 #[cfg(test)]
 mod tests {
-    use rand::{distributions::Alphanumeric, thread_rng, Rng};
+    use rand::{distr::Alphanumeric, rng, Rng};
 
     use super::*;
 
@@ -224,7 +224,7 @@ mod tests {
     }
 
     fn rand_string(len: usize) -> String {
-        thread_rng()
+        rng()
             .sample_iter(&Alphanumeric)
             .take(len)
             .map(char::from)

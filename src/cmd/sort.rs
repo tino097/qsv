@@ -158,20 +158,20 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         let mut rng = StdRng::seed_from_u64(val); //DevSkim: ignore DS148264
                         all.shuffle(&mut rng); //DevSkim: ignore DS148264
                     } else {
-                        let mut rng = ::rand::thread_rng();
+                        let mut rng = ::rand::rng();
                         all.shuffle(&mut rng); //DevSkim: ignore DS148264
                     }
                 },
                 RngKind::Faster => {
                     let mut rng = match args.flag_seed {
-                        None => Xoshiro256Plus::from_rng(rand::thread_rng()).unwrap(),
+                        None => Xoshiro256Plus::from_os_rng(),
                         Some(sd) => Xoshiro256Plus::seed_from_u64(sd), // DevSkim: ignore DS148264
                     };
                     SliceRandom::shuffle(&mut *all, &mut rng); //DevSkim: ignore DS148264
                 },
                 RngKind::Cryptosecure => {
                     let seed_32 = match args.flag_seed {
-                        None => rand::thread_rng().gen::<[u8; 32]>(),
+                        None => rand::rng().random::<[u8; 32]>(),
                         Some(seed) => {
                             let seed_u8 = seed.to_le_bytes();
                             let mut seed_32 = [0u8; 32];
@@ -180,7 +180,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         },
                     };
                     let mut rng: Hc128Rng = match args.flag_seed {
-                        None => Hc128Rng::from_rng(rand::thread_rng()).unwrap(),
+                        None => Hc128Rng::from_os_rng(),
                         Some(_) => Hc128Rng::from_seed(seed_32),
                     };
                     SliceRandom::shuffle(&mut *all, &mut rng);

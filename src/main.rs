@@ -263,8 +263,8 @@ fn main() -> QsvExitCode {
             );
 
             // if no command is specified, auto-check for updates 50% of the time
-            let mut rng = rand::thread_rng(); //DevSkim: ignore DS148264
-            if rng.gen_range(0..2) == 0 {
+            let mut rng = rand::rng(); //DevSkim: ignore DS148264
+            if rng.random_range(0..2) == 0 {
                 _ = util::qsv_check_for_update(true, false);
             }
             util::log_end(qsv_args, now);

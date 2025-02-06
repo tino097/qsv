@@ -10,7 +10,7 @@ extern crate stats;
 use std::{env, fmt, mem::transmute, ops};
 
 use quickcheck::{Arbitrary, Gen, QuickCheck, Testable};
-use rand::{thread_rng, Rng};
+use rand::Rng;
 
 macro_rules! svec[
     ($($x:expr),*) => (
@@ -252,9 +252,9 @@ impl ops::Deref for CsvData {
 impl Arbitrary for CsvData {
     fn arbitrary(g: &mut Gen) -> CsvData {
         let record_len = g.size();
-        let mut rng = thread_rng();
+        let mut rng = rand::rng();
 
-        let num_records: usize = rng.gen_range(0..100);
+        let num_records: usize = rng.random_range(0..100);
         let mut d = CsvData {
             data: (0..num_records)
                 .map(|_| CsvRecord((0..record_len).map(|_| Arbitrary::arbitrary(g)).collect()))

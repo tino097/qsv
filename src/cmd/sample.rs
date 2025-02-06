@@ -175,40 +175,30 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                     args.flag_seed
                 );
                 let mut rng: StdRng = match args.flag_seed {
-                    None => StdRng::from_rng(rand::thread_rng()).unwrap(),
-                    Some(seed) => StdRng::seed_from_u64(seed), //DevSkim: ignore DS148264
+                    None => StdRng::from_os_rng(),
+                    Some(seed) => StdRng::seed_from_u64(seed), // DevSkim: ignore DS148264
                 };
-                SliceRandom::shuffle(&mut *all_indices, &mut rng); //DevSkim: ignore DS148264
+                SliceRandom::shuffle(&mut *all_indices, &mut rng);
             },
             RngKind::Faster => {
                 log::info!(
                     "doing --faster sample_random_access. Seed: {:?}",
                     args.flag_seed
                 );
-
                 let mut rng = match args.flag_seed {
-                    None => Xoshiro256Plus::from_rng(rand::thread_rng()).unwrap(),
-                    Some(seed) => Xoshiro256Plus::seed_from_u64(seed), //DevSkim: ignore DS148264
+                    None => Xoshiro256Plus::from_os_rng(),
+                    Some(seed) => Xoshiro256Plus::seed_from_u64(seed), // DevSkim: ignore DS148264
                 };
-                SliceRandom::shuffle(&mut *all_indices, &mut rng); //DevSkim: ignore DS148264
+                SliceRandom::shuffle(&mut *all_indices, &mut rng);
             },
             RngKind::Cryptosecure => {
                 log::info!(
-                    "doing cryptosecure sample_random_access. Seed: {:?}",
+                    "doing --cryptosecure sample_random_access. Seed: {:?}",
                     args.flag_seed
                 );
-                let seed_32 = match args.flag_seed {
-                    None => rand::thread_rng().gen::<[u8; 32]>(),
-                    Some(seed) => {
-                        let seed_u8 = seed.to_le_bytes();
-                        let mut seed_32 = [0u8; 32];
-                        seed_32[..8].copy_from_slice(&seed_u8);
-                        seed_32
-                    },
-                };
-                let mut rng: Hc128Rng = match args.flag_seed {
-                    None => Hc128Rng::from_rng(rand::thread_rng()).unwrap(),
-                    Some(_) => Hc128Rng::from_seed(seed_32),
+                let mut rng = match args.flag_seed {
+                    None => Hc128Rng::from_os_rng(),
+                    Some(seed) => Hc128Rng::seed_from_u64(seed), // DevSkim: ignore DS148264
                 };
                 SliceRandom::shuffle(&mut *all_indices, &mut rng);
             },
@@ -256,16 +246,14 @@ fn sample_reservoir<R: io::Read>(
         RngKind::Standard => {
             log::info!("doing standard sample_random_access. Seed: {seed:?}",);
             let mut rng: StdRng = match seed {
-                None => StdRng::from_rng(rand::thread_rng()).unwrap(),
-                // the non-cryptographic seed_from_u64 is sufficient for our use case
-                // as we're optimizing for performance
-                Some(seed) => StdRng::seed_from_u64(seed), //DevSkim: ignore DS148264
+                None => StdRng::from_os_rng(),
+                Some(seed) => StdRng::seed_from_u64(seed), // DevSkim: ignore DS148264
             };
 
             let mut random: usize;
             // Now do the sampling.
             for (i, row) in records {
-                random = rng.gen_range(0..=i);
+                random = rng.random_range(0..=i);
                 if random < sample_size as usize {
                     reservoir[random] = row?;
                 }
@@ -275,52 +263,29 @@ fn sample_reservoir<R: io::Read>(
             log::info!("doing --faster sample_random_access. Seed: {seed:?}",);
 
             let mut rng = match seed {
-                None => Xoshiro256Plus::from_rng(rand::thread_rng()).unwrap(),
-                // the non-cryptographic seed_from_u64 is sufficient for our use case
-                // as we're optimizing for performance
-                Some(seed) => Xoshiro256Plus::seed_from_u64(seed), //DevSkim: ignore DS148264
+                None => Xoshiro256Plus::from_os_rng(),
+                Some(seed) => Xoshiro256Plus::seed_from_u64(seed), // DevSkim: ignore DS148264
             };
 
             let mut random: usize;
             // Now do the sampling.
             for (i, row) in records {
-                random = rng.gen_range(0..=i);
+                random = rng.random_range(0..=i);
                 if random < sample_size as usize {
                     reservoir[random] = row?;
                 }
             }
-
-            // if let Some(seed) = seed {
-            //     fastrand::seed(seed); //DevSkim: ignore DS148264
-            // }
-
-            // let mut random: usize;
-            // for (i, row) in records {
-            //     random = fastrand::usize(0..=i); //DevSkim: ignore DS148264
-            //     if random < sample_size as usize {
-            //         reservoir[random] = row?;
-            //     }
-            // }
         },
         RngKind::Cryptosecure => {
-            log::info!("doing cryptosecure sample_random_access. Seed: {seed:?}",);
+            log::info!("doing --cryptosecure sample_random_access. Seed: {seed:?}",);
 
-            let seed_32 = match seed {
-                None => rand::thread_rng().gen::<[u8; 32]>(),
-                Some(seed) => {
-                    let seed_u8 = seed.to_le_bytes();
-                    let mut seed_32 = [0u8; 32];
-                    seed_32[..8].copy_from_slice(&seed_u8);
-                    seed_32
-                },
-            };
             let mut rng: Hc128Rng = match seed {
-                None => Hc128Rng::from_rng(rand::thread_rng()).unwrap(),
-                Some(_) => Hc128Rng::from_seed(seed_32),
+                None => Hc128Rng::from_os_rng(),
+                Some(seed) => Hc128Rng::seed_from_u64(seed), // DevSkim: ignore DS148264
             };
 
             for (i, row) in records {
-                let random = rng.gen_range(0..=i);
+                let random = rng.random_range(0..=i);
                 if random < sample_size as usize {
                     reservoir[random] = row?;
                 }
