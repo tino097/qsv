@@ -488,6 +488,7 @@ fn get_unique_values(
         flag_no_headers:      args.flag_no_headers,
         flag_delimiter:       args.flag_delimiter,
         flag_memcheck:        args.flag_memcheck,
+        flag_vis_whitespace:  false,
     };
 
     let (headers, ftables) = match freq_args.rconfig().indexed()? {
