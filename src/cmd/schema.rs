@@ -8,15 +8,16 @@ https://json-schema.org/draft/2020-12/json-schema-validation.html
 Running `validate` command on original input CSV with generated schema 
 should not flag any invalid records.
 
-The intended workflow is to use `schema` command to generate a schema file from
-representative CSV data, fine-tune the schema file as needed, and then use `validate`
-command to validate other CSV data with the same structure using the generated schema.
+The intended workflow is to use the `schema` command to generate a JSON schema file
+from representative CSV data, fine-tune the JSON schema file as needed, and then use
+the `validate` command to validate other CSV data with the same structure using the
+generated JSON schema.
 
-Generated schema file has `.schema.json` suffix appended. For example, 
-for input `mydata.csv`, schema file would be `mydata.csv.schema.json`.
+The generated JSON schema file has `.schema.json` suffix appended. For example, 
+for input `mydata.csv`, the generated JSON schema is `mydata.csv.schema.json`.
 
-If piped from stdin, then schema file would be `stdin.csv.schema.json` and
-a `stdin.csv` file will created with stdin's contents as well.
+If piped from stdin, the schema file will be `stdin.csv.schema.json` and
+a `stdin.csv` file will be created with stdin's contents as well.
 
 Note that `stdin.csv` will be overwritten if it already exists.
 
