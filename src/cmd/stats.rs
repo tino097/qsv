@@ -64,10 +64,10 @@ The arguments used to generate the cached stats are saved in <FILESTEM>.stats.cs
 If stats have already been computed for the input file with similar arguments and the file
 hasn't changed, the stats will be loaded from the cache instead of recomputing it.
 
-These cached stats are also used by other qsv commands (currently `schema` & `tojsonl`) to
-load the stats into memory faster. If the cached stats are not current (i.e., the input file
-is newer than the cached stats), the cached stats will be ignored and recomputed. For example,
-see the "boston311" test files in 
+These cached stats are also used by other qsv commands (currently `describegpt`, `frequency`,
+`joinp`, `pivotp`, `schema`, `sqlp` & `tojsonl`) to work smarter & faster.
+If the cached stats are not current (i.e., the input file is newer than the cached stats),
+the cached stats will be ignored and recomputed. For example, see the "boston311" test files in 
 https://github.com/dathere/qsv/blob/4529d51273218347fef6aca15ac24e22b85b2ec4/tests/test_stats.rs#L608.
 
 Examples:
@@ -194,7 +194,7 @@ stats options:
     --stats-jsonl             Also write the stats in JSONL format. 
                               If set, the stats will be written to <FILESTEM>.stats.csv.data.jsonl.
                               Note that this option used internally by other qsv commands
-                              (currently frequency, joinp, pivotp, schema, tojsonl & sqlp)
+                              (currently describegpt, frequency, joinp, pivotp, schema, sqlp & tojsonl)
                               to load cached stats. You can preemptively create the stats-jsonl
                               file by using this option BEFORE running the commands listed above
                               and they will automatically use it.
