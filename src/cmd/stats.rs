@@ -79,16 +79,17 @@ Compute all statistics for the "nyc311.csv" file:
     $ qsv stats --everything nyc311.csv
     $ qsv stats -E nyc311.csv
 
-Compute all statistics for the "nyc311.csv", inferring dates using default date column name patterns:
+Compute all statistics for "nyc311.csv", inferring dates using default date column name patterns:
     $ qsv stats -E --infer-dates nyc311.csv
 
-Compute all statistics for the "nyc311.csv", inferring dates only for columns with "_date" & "_dte":
+Compute all statistics for "nyc311.csv", inferring dates only for columns with "_date" & "_dte"
+in the column names:
     $ qsv stats -E --infer-dates --dates-whitelist _date,_dte nyc311.csv
 
-In addition, also infer boolean data types for the "nyc311.csv" file:
+In addition, also infer boolean data types for "nyc311.csv" file:
     $ qsv stats -E --infer-dates --dates-whitelist _date --infer-boolean nyc311.csv
 
-In addition to basic "streaming" stats, also compute the cardinality for the "nyc311.csv" file:
+In addition to basic "streaming" stats, also compute cardinality for the "nyc311.csv" file:
     $ qsv stats --cardinality nyc311.csv
 
 Prefer DMY format when inferring dates for the "nyc311.csv" file:
@@ -104,7 +105,7 @@ Automatically create an index for the "nyc311.csv" file to enable multithreading
 if it's larger than 5MB and there is no existing index file:
     $ qsv stats -E --cache-threshold -5000000 nyc311.csv
 
-Auto-create a temporary index for the "nyc311.csv" file to enable multithreading
+Auto-create a TEMPORARY index for the "nyc311.csv" file to enable multithreading
 if it's larger than 5MB and delete the index and the stats cache file after the stats run:
     $ qsv stats -E --cache-threshold -5000005 nyc311.csv
 
@@ -133,8 +134,8 @@ stats options:
                               into 'qsv stats' will prevent the use of indexing.
     -E, --everything          Compute all statistics available.
     --typesonly               Infer data types only and do not compute statistics.
-                              Note that if you want to infer dates, you'll still need to use
-                              the --infer-dates and --dates-whitelist options.
+                              Note that if you want to infer dates and boolean types, you'll still
+                              need to use the --infer-dates & --infer-boolean options.
     --infer-boolean           Infer boolean data type. This automatically enables
                               the --cardinality option. When a column's cardinality is 2,
                               and the 2 values' first characters are 0/1, t/f & y/n
@@ -161,12 +162,13 @@ stats options:
                               [default: 4]
     --nulls                   Include NULLs in the population size for computing
                               mean and standard deviation.
-    --infer-dates             Infer date/datetime datatypes. This is an expensive
+
+    --infer-dates             Infer date/datetime data types. This is an expensive
                               option and should only be used when you know there
                               are date/datetime fields.
                               Also, if timezone is not specified in the data, it'll
                               be set to UTC.
-    --dates-whitelist <list>  The case-insensitive patterns to look for when 
+    --dates-whitelist <list>  The comma-separated, case-insensitive patterns to look for when 
                               shortlisting fields for date inferencing.
                               i.e. if the field's name has any of these patterns,
                               it is shortlisted for date inferencing.
@@ -184,6 +186,7 @@ stats options:
                               [default: date,time,due,open,close,created]
     --prefer-dmy              Parse dates in dmy format. Otherwise, use mdy format.
                               Ignored if --infer-dates is false.
+
     --force                   Force recomputing stats even if valid precomputed stats
                               cache exists.
     -j, --jobs <arg>          The number of jobs to run in parallel.
@@ -211,6 +214,8 @@ stats options:
                                   the index file and the cache files are kept.
                               [default: 5000]
     --vis-whitespace          Visualize whitespace characters in the output.
+                              See https://github.com/dathere/qsv/wiki/Supplemental#whitespace-markers
+                              for the list of whitespace markers.
 
 Common options:
     -h, --help             Display this message
