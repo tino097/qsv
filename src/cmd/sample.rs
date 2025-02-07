@@ -174,26 +174,17 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
         match rng_kind {
             RngKind::Standard => {
-                log::info!(
-                    "doing standard sample_random_access. Seed: {:?}",
-                    args.flag_seed
-                );
+                log::info!("doing standard INDEXED sampling...");
                 let mut rng = create_rng::<StdRng>(args.flag_seed);
                 SliceRandom::shuffle(&mut *all_indices, &mut rng);
             },
             RngKind::Faster => {
-                log::info!(
-                    "doing --faster sample_random_access. Seed: {:?}",
-                    args.flag_seed
-                );
+                log::info!("doing --faster INDEXED sampling...");
                 let mut rng = create_rng::<Xoshiro256Plus>(args.flag_seed);
                 SliceRandom::shuffle(&mut *all_indices, &mut rng);
             },
             RngKind::Cryptosecure => {
-                log::info!(
-                    "doing --cryptosecure sample_random_access. Seed: {:?}",
-                    args.flag_seed
-                );
+                log::info!("doing --cryptosecure INDEXED sampling...");
                 let mut rng = create_rng::<Hc128Rng>(args.flag_seed);
                 SliceRandom::shuffle(&mut *all_indices, &mut rng);
             },
@@ -229,52 +220,50 @@ fn sample_reservoir<R: io::Read>(
     seed: Option<u64>,
     rng_kind: &RngKind,
 ) -> CliResult<Vec<csv::ByteRecord>> {
-    // The following algorithm has been adapted from:
-    // https://en.wikipedia.org/wiki/Reservoir_sampling
     let mut reservoir = Vec::with_capacity(sample_size as usize);
     let mut records = rdr.byte_records().enumerate();
     for (_, row) in records.by_ref().take(reservoir.capacity()) {
         reservoir.push(row?);
     }
 
-    // safety: we know that reservoir has at least sample_size elements
-    // because we push sample_size elements into it in the loop above
-    match *rng_kind {
-        RngKind::Standard => {
-            log::info!("doing standard sample_random_access. Seed: {seed:?}");
-            let mut rng = create_rng::<StdRng>(seed);
-            let mut random: usize;
-
-            for (i, row) in records {
-                random = rng.random_range(0..=i);
-                if random < sample_size as usize {
-                    unsafe { *reservoir.get_unchecked_mut(random) = row? };
-                }
+    fn sample_with_rng<T: Rng + SeedableRng>(
+        records: &mut impl Iterator<Item = (usize, Result<csv::ByteRecord, csv::Error>)>,
+        reservoir: &mut Vec<csv::ByteRecord>,
+        sample_size: u64,
+        seed: Option<u64>,
+    ) -> CliResult<()> {
+        let mut rng = create_rng::<T>(seed);
+        let mut random: usize;
+        for (i, row) in records {
+            random = rng.random_range(0..=i);
+            // the following "if" is NOT for safety reasons, its an integral part of the
+            // reservoir sampling algorithm. - https://en.wikipedia.org/wiki/Reservoir_sampling
+            //
+            // If the random number is less than the sample size, we replace the
+            // element at the random index with the current element.
+            // This ensures that each element is selected with equal probability
+            if random < sample_size as usize {
+                // safety: we know that reservoir has at least sample_size elements
+                // because we push sample_size elements into it in the loop at the
+                // beginning of the `sample_reservoir` function
+                unsafe { *reservoir.get_unchecked_mut(random) = row? };
             }
+        }
+        Ok(())
+    }
+
+    match rng_kind {
+        RngKind::Standard => {
+            log::info!("doing standard RESERVOIR sampling...");
+            sample_with_rng::<StdRng>(&mut records, &mut reservoir, sample_size, seed)?;
         },
         RngKind::Faster => {
-            log::info!("doing --faster sample_random_access. Seed: {seed:?}",);
-            let mut rng = create_rng::<Xoshiro256Plus>(seed);
-            let mut random: usize;
-
-            for (i, row) in records {
-                random = rng.random_range(0..=i);
-                if random < sample_size as usize {
-                    unsafe { *reservoir.get_unchecked_mut(random) = row? };
-                }
-            }
+            log::info!("doing --faster RESERVOIR sampling...");
+            sample_with_rng::<Xoshiro256Plus>(&mut records, &mut reservoir, sample_size, seed)?;
         },
         RngKind::Cryptosecure => {
-            log::info!("doing --cryptosecure sample_random_access. Seed: {seed:?}",);
-            let mut rng = create_rng::<Hc128Rng>(seed);
-            let mut random: usize;
-
-            for (i, row) in records {
-                random = rng.random_range(0..=i);
-                if random < sample_size as usize {
-                    unsafe { *reservoir.get_unchecked_mut(random) = row? };
-                }
-            }
+            log::info!("doing --cryptosecure RESERVOIR sampling...");
+            sample_with_rng::<Hc128Rng>(&mut records, &mut reservoir, sample_size, seed)?;
         },
     }
 
