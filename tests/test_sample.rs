@@ -235,9 +235,9 @@ fn sample_percentage_seed_indexed() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
-        svec!["8", "h"],
-        svec!["7", "i"],
         svec!["4", "c"],
+        svec!["5", "f"],
+        svec!["6", "e"],
     ];
     assert_eq!(got, expected);
 }
@@ -270,9 +270,9 @@ fn sample_percentage_seed_indexed_faster() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
-        svec!["1", "b"],
+        svec!["5", "f"],
         svec!["8", "h"],
-        svec!["6", "e"],
+        svec!["8", "h"],
     ];
     assert_eq!(got, expected);
 }
@@ -305,9 +305,9 @@ fn sample_percentage_seed_indexed_secure() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
-        svec!["6", "e"],
+        svec!["1", "b"],
         svec!["3", "d"],
-        svec!["5", "f"],
+        svec!["8", "h"],
     ];
     assert_eq!(got, expected);
 }
@@ -354,10 +354,10 @@ fn sample_indexed_random_access() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
-        svec!["18", "r"],
-        svec!["17", "q"],
-        svec!["14", "n"],
-        svec!["3", "d"],
+        svec!["7", "i"],
+        svec!["19", "s"],
+        svec!["22", "v"],
+        svec!["24", "x"],
     ];
     assert_eq!(got, expected);
 }
@@ -407,10 +407,10 @@ fn sample_indexed_random_access_faster() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
+        svec!["11", "k"],
+        svec!["15", "o"],
+        svec!["21", "u"],
         svec!["22", "v"],
-        svec!["26", "z"],
-        svec!["23", "w"],
-        svec!["10", "j"],
     ];
     assert_eq!(got, expected);
 }
@@ -460,10 +460,10 @@ fn sample_indexed_random_access_secure() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
-        svec!["22", "v"],
-        svec!["23", "w"],
-        svec!["5", "f"],
-        svec!["12", "l"],
+        svec!["1", "b"],
+        svec!["3", "d"],
+        svec!["7", "i"],
+        svec!["10", "j"],
     ];
     assert_eq!(got, expected);
 }
@@ -490,5 +490,128 @@ fn sample_percentage_negative_sample_size_error() {
     let mut cmd = wrk.command("sample");
     cmd.args(["--seed", "42"]).arg("-5").arg("in.csv");
 
+    wrk.assert_err(&mut cmd);
+}
+
+#[test]
+fn sample_poisson_seed() {
+    let wrk = Workdir::new("sample_poisson_seed");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["R", "S"],
+            svec!["1", "b"],
+            svec!["2", "a"],
+            svec!["3", "d"],
+            svec!["4", "c"],
+            svec!["5", "f"],
+            svec!["6", "e"],
+            svec!["7", "i"],
+            svec!["8", "h"],
+        ],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--poisson"])
+        .args(["--seed", "42"])
+        .arg("0.5")
+        .arg("in.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["R", "S"],
+        svec!["4", "c"],
+        svec!["5", "f"],
+        svec!["6", "e"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn sample_poisson_seed_faster() {
+    let wrk = Workdir::new("sample_poisson_seed_faster");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["R", "S"],
+            svec!["1", "b"],
+            svec!["2", "a"],
+            svec!["3", "d"],
+            svec!["4", "c"],
+            svec!["5", "f"],
+            svec!["6", "e"],
+            svec!["7", "i"],
+            svec!["8", "h"],
+        ],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--poisson"])
+        .args(["--rng", "faster"])
+        .args(["--seed", "76"])
+        .arg("0.45")
+        .arg("in.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["R", "S"],
+        svec!["1", "b"],
+        svec!["2", "a"],
+        svec!["4", "c"],
+        svec!["6", "e"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn sample_poisson_seed_secure() {
+    let wrk = Workdir::new("sample_poisson_seed_secure");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["R", "S"],
+            svec!["1", "b"],
+            svec!["2", "a"],
+            svec!["3", "d"],
+            svec!["4", "c"],
+            svec!["5", "f"],
+            svec!["6", "e"],
+            svec!["7", "i"],
+            svec!["8", "h"],
+        ],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--poisson"])
+        .args(["--rng", "cryptosecure"])
+        .args(["--seed", "42"])
+        .arg("0.5")
+        .arg("in.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![svec!["R", "S"], svec!["3", "d"]];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn sample_poisson_invalid_probability() {
+    let wrk = Workdir::new("sample_poisson_invalid");
+    wrk.create(
+        "in.csv",
+        vec![svec!["R", "S"], svec!["1", "b"], svec!["2", "a"]],
+    );
+
+    // Test probability > 1.0
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--poisson"]).arg("1.5").arg("in.csv");
+    wrk.assert_err(&mut cmd);
+
+    // Test probability <= 0.0
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--poisson"]).arg("0.0").arg("in.csv");
+    wrk.assert_err(&mut cmd);
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--poisson"]).arg("-0.5").arg("in.csv");
     wrk.assert_err(&mut cmd);
 }
