@@ -1,16 +1,24 @@
 static USAGE: &str = r#"
-Randomly samples CSV data uniformly using memory proportional to the size of
-the sample if no index is present, or constant memory if an index is present.
+Randomly samples CSV data.
 
-When an index is present, this command will use random indexing.
-This allows for efficient sampling such that the entire CSV file is not parsed.
+It supports three sampling methods:
+- INDEXED: the default sampling method when an index is present.
+  Uses random I/O to sample efficiently, as it only visits records selected
+  by random indexing, using CONSTANT memory proportional to the <sample-size>.
+  The number of records in the output is exactly equal to the <sample-size>.
 
-Otherwise, if no index is present, it will visit every CSV record exactly once,
-which is necessary to provide a uniform random sample (reservoir sampling).
-If you wish to limit the number of records visited, use the 'qsv slice' command
-to pipe into 'qsv sample'.
+- RESERVOIR: the default sampling method when NO INDEX is present.
+  Visits every CSV record exactly once, using memory proportional to <sample-size>.
+  The number of records in the output is exactly equal to the <sample-size>.
 
-Also supports sampling from CSVs on remote URLs.
+- POISSON: the sampling method when the --poisson option is specified.
+  Visits every CSV record exactly once and selects records with a given probability
+  as specified by the <sample-size> argument.
+  It uses memory proportional to <sample-size>.
+  The number of records in the output is NOT GUARANTEED to be exactly equal to
+  the <sample-size> * number of records in the input, but will be close.
+
+Supports sampling from CSVs on remote URLs.
 
 This command is intended to provide a means to sample from a CSV data set that
 is too big to fit into memory (for example, for use with commands like
@@ -25,18 +33,14 @@ Usage:
 sample arguments:
     <input>                The CSV file to sample. This can be a local file,
                            stdin, or a URL (http and https schemes supported).
-    <sample-size>          The number of records to sample. If this is between
-                           0 and 1 exclusive, it is treated as a percentage of
-                           the CSV to sample (e.g. 0.20 is 20 percent).
 
-                           If an index is present, this command will
-                           use random indexing to sample efficiently. Otherwise,
-                           it will use reservoir sampling, which requires
-                           visiting every record in the CSV.
+    <sample-size>          When using INDEXED or RESERVOIR sampling, the number of records to sample.
+                           When using POISSON sampling, the probability of selecting each record
+                           (between 0 and 1).
 
 sample options:
     --seed <number>        Random Number Generator (RNG) seed.
-    --rng <kind>           The RNG algorithm to use.
+    --rng <kind>           The Random Number Generator (RNG) algorithm to use.
                            Three RNGs are supported:
                             - standard: Use the standard RNG.
                               1.5 GB/s throughput.
@@ -46,6 +50,9 @@ sample options:
                               Recommended by eSTREAM (https://www.ecrypt.eu.org/stream/).
                               2.1 GB/s throughput though slow initialization.
                            [default: standard]
+    --poisson              Use Poisson sampling instead of indexed or reservoir sampling.
+                           When this flag is set, the sample-size must be between
+                           0 and 1 and represents the probability of selecting each record.
 
                            REMOTE FILE OPTIONS:
     --user-agent <agent>   Specify custom user agent to use when the input is a URL.
@@ -73,7 +80,11 @@ Common options:
 
 use std::{io, str::FromStr};
 
-use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
+use rand::{
+    distr::{Bernoulli, Distribution},
+    rngs::StdRng,
+    Rng, SeedableRng,
+};
 use rand_hc::Hc128Rng;
 use rand_xoshiro::Xoshiro256Plus;
 use serde::Deserialize;
@@ -98,6 +109,7 @@ struct Args {
     flag_user_agent: Option<String>,
     flag_timeout:    Option<u16>,
     flag_max_size:   Option<u64>,
+    flag_poisson:    bool,
 }
 
 #[derive(Debug, EnumString, PartialEq)]
@@ -108,12 +120,46 @@ enum RngKind {
     Cryptosecure,
 }
 
-// rng helper function
-fn create_rng<T: SeedableRng>(seed: Option<u64>) -> T {
-    if let Some(seed) = seed {
-        T::seed_from_u64(seed) // DevSkim: ignore DS148264
-    } else {
-        T::from_os_rng()
+// trait to handle different RNG types
+trait RngProvider: Sized {
+    type RngType: Rng + SeedableRng;
+
+    fn get_name() -> &'static str;
+
+    fn create(seed: Option<u64>) -> Self::RngType {
+        if let Some(seed) = seed {
+            Self::RngType::seed_from_u64(seed) // DevSkim: ignore DS148264
+        } else {
+            Self::RngType::from_os_rng()
+        }
+    }
+}
+
+// Implement for each RNG type
+struct StandardRng;
+impl RngProvider for StandardRng {
+    type RngType = StdRng;
+
+    fn get_name() -> &'static str {
+        "standard"
+    }
+}
+
+struct FasterRng;
+impl RngProvider for FasterRng {
+    type RngType = Xoshiro256Plus;
+
+    fn get_name() -> &'static str {
+        "faster"
+    }
+}
+
+struct CryptoRng;
+impl RngProvider for CryptoRng {
+    type RngType = Hc128Rng;
+
+    fn get_name() -> &'static str {
+        "cryptosecure"
     }
 }
 
@@ -162,40 +208,56 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         .delimiter(args.flag_delimiter)
         .writer()?;
 
-    if let Some(mut idx) = rconfig.indexed()? {
-        // the index is present, so we can use random indexing
+    if args.flag_poisson {
+        if sample_size >= 1.0 || sample_size <= 0.0 {
+            return fail_incorrectusage_clierror!(
+                "Poisson sampling requires a probability between 0 and 1"
+            );
+        }
+
+        let mut rdr = rconfig.reader()?;
+        rconfig.write_headers(&mut rdr, &mut wtr)?;
+        sample_poisson(&mut rdr, &mut wtr, sample_size, args.flag_seed, &rng_kind)?;
+    } else if let Some(mut idx) = rconfig.indexed()? {
+        // an index is present, so use random indexing
         #[allow(clippy::cast_precision_loss)]
         if sample_size < 1.0 {
             sample_size *= idx.count() as f64;
         }
         rconfig.write_headers(&mut *idx, &mut wtr)?;
 
-        let mut all_indices = (0..idx.count()).collect::<Vec<_>>();
+        let sample_count = sample_size as usize;
+        let total_count = idx.count().try_into().unwrap();
 
         match rng_kind {
             RngKind::Standard => {
                 log::info!("doing standard INDEXED sampling...");
-                let mut rng = create_rng::<StdRng>(args.flag_seed);
-                SliceRandom::shuffle(&mut *all_indices, &mut rng);
+                let mut rng = StandardRng::create(args.flag_seed);
+                sample_indices(&mut rng, total_count, sample_count, |i| {
+                    idx.seek(i as u64)?;
+                    Ok(wtr.write_byte_record(&idx.byte_records().next().unwrap()?)?)
+                })?;
             },
             RngKind::Faster => {
                 log::info!("doing --faster INDEXED sampling...");
-                let mut rng = create_rng::<Xoshiro256Plus>(args.flag_seed);
-                SliceRandom::shuffle(&mut *all_indices, &mut rng);
+                let mut rng = FasterRng::create(args.flag_seed);
+                sample_indices(&mut rng, total_count, sample_count, |i| {
+                    idx.seek(i as u64)?;
+                    Ok(wtr.write_byte_record(&idx.byte_records().next().unwrap()?)?)
+                })?;
             },
             RngKind::Cryptosecure => {
                 log::info!("doing --cryptosecure INDEXED sampling...");
-                let mut rng = create_rng::<Hc128Rng>(args.flag_seed);
-                SliceRandom::shuffle(&mut *all_indices, &mut rng);
+                let mut rng = CryptoRng::create(args.flag_seed);
+                sample_indices(&mut rng, total_count, sample_count, |i| {
+                    idx.seek(i as u64)?;
+                    Ok(wtr.write_byte_record(&idx.byte_records().next().unwrap()?)?)
+                })?;
             },
         }
-
-        for i in all_indices.into_iter().take(sample_size as usize) {
-            idx.seek(i)?;
-            wtr.write_byte_record(&idx.byte_records().next().unwrap()?)?;
-        }
     } else {
-        // the index is not present, so we have to do reservoir sampling
+        // poisson sampling is not specified nor is an index present
+        // so we do reservoir sampling
         #[allow(clippy::cast_precision_loss)]
         if sample_size < 1.0 {
             let Ok(row_count) = util::count_rows(&rconfig) else {
@@ -205,67 +267,157 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         }
         let mut rdr = rconfig.reader()?;
         rconfig.write_headers(&mut rdr, &mut wtr)?;
-        let sampled = sample_reservoir(&mut rdr, sample_size as u64, args.flag_seed, &rng_kind)?;
-        for row in sampled {
-            wtr.write_byte_record(&row)?;
-        }
+
+        sample_reservoir(
+            &mut rdr,
+            &mut wtr,
+            sample_size as u64,
+            args.flag_seed,
+            &rng_kind,
+        )?;
     }
 
     Ok(wtr.flush()?)
 }
 
-fn sample_reservoir<R: io::Read>(
+fn sample_reservoir<R: io::Read, W: io::Write>(
     rdr: &mut csv::Reader<R>,
+    wtr: &mut csv::Writer<W>,
     sample_size: u64,
     seed: Option<u64>,
     rng_kind: &RngKind,
-) -> CliResult<Vec<csv::ByteRecord>> {
+) -> CliResult<()> {
     let mut reservoir = Vec::with_capacity(sample_size as usize);
     let mut records = rdr.byte_records().enumerate();
-    for (_, row) in records.by_ref().take(reservoir.capacity()) {
-        reservoir.push(row?);
-    }
 
-    fn sample_with_rng<T: Rng + SeedableRng>(
-        records: &mut impl Iterator<Item = (usize, Result<csv::ByteRecord, csv::Error>)>,
-        reservoir: &mut Vec<csv::ByteRecord>,
-        sample_size: u64,
-        seed: Option<u64>,
-    ) -> CliResult<()> {
-        let mut rng = create_rng::<T>(seed);
-        let mut random: usize;
-        for (i, row) in records {
-            random = rng.random_range(0..=i);
-            // the following "if" is NOT for safety reasons, its an integral part of the
-            // reservoir sampling algorithm. - https://en.wikipedia.org/wiki/Reservoir_sampling
-            //
-            // If the random number is less than the sample size, we replace the
-            // element at the random index with the current element.
-            // This ensures that each element is selected with equal probability
-            if random < sample_size as usize {
-                // safety: we know that reservoir has at least sample_size elements
-                // because we push sample_size elements into it in the loop at the
-                // beginning of the `sample_reservoir` function
-                unsafe { *reservoir.get_unchecked_mut(random) = row? };
-            }
-        }
-        Ok(())
+    // Pre-fill reservoir
+    // Note that we use by_ref() to avoid consuming the iterator
+    // and we only take the first sample_size records
+    for (_, row) in records.by_ref().take(sample_size as usize) {
+        reservoir.push(row?);
     }
 
     match rng_kind {
         RngKind::Standard => {
-            log::info!("doing standard RESERVOIR sampling...");
-            sample_with_rng::<StdRng>(&mut records, &mut reservoir, sample_size, seed)?;
+            do_reservoir_sampling::<StandardRng>(&mut records, &mut reservoir, sample_size, seed)
         },
         RngKind::Faster => {
-            log::info!("doing --faster RESERVOIR sampling...");
-            sample_with_rng::<Xoshiro256Plus>(&mut records, &mut reservoir, sample_size, seed)?;
+            do_reservoir_sampling::<FasterRng>(&mut records, &mut reservoir, sample_size, seed)
         },
         RngKind::Cryptosecure => {
-            log::info!("doing --cryptosecure RESERVOIR sampling...");
-            sample_with_rng::<Hc128Rng>(&mut records, &mut reservoir, sample_size, seed)?;
+            do_reservoir_sampling::<CryptoRng>(&mut records, &mut reservoir, sample_size, seed)
         },
+    }?;
+
+    // Write the reservoir to output
+    for record in reservoir {
+        wtr.write_byte_record(&record)?;
     }
 
-    Ok(reservoir)
+    Ok(())
+}
+
+// Generic reservoir sampling implementation using constant memory
+fn do_reservoir_sampling<T: RngProvider>(
+    records: &mut impl Iterator<Item = (usize, Result<csv::ByteRecord, csv::Error>)>,
+    reservoir: &mut [csv::ByteRecord],
+    sample_size: u64,
+    seed: Option<u64>,
+) -> CliResult<()> {
+    log::info!("doing {} RESERVOIR sampling...", T::get_name());
+    let mut rng = T::create(seed);
+    let mut random_idx: usize;
+
+    // Process remaining records using Algorithm R (Robert Floyd)
+    for (i, row) in records {
+        random_idx = rng.random_range(0..=i);
+        if random_idx < sample_size as usize {
+            unsafe {
+                *reservoir.get_unchecked_mut(random_idx) = row?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn sample_poisson<R: io::Read, W: io::Write>(
+    rdr: &mut csv::Reader<R>,
+    wtr: &mut csv::Writer<W>,
+    probability: f64,
+    seed: Option<u64>,
+    rng_kind: &RngKind,
+) -> CliResult<()> {
+    let mut records = rdr.byte_records();
+
+    match rng_kind {
+        RngKind::Standard => {
+            do_poisson_sampling::<StandardRng>(&mut records, wtr, probability, seed)
+        },
+        RngKind::Faster => do_poisson_sampling::<FasterRng>(&mut records, wtr, probability, seed),
+        RngKind::Cryptosecure => {
+            do_poisson_sampling::<CryptoRng>(&mut records, wtr, probability, seed)
+        },
+    }
+}
+
+// Generic poisson sampling implementation using constant memory
+fn do_poisson_sampling<T: RngProvider>(
+    records: &mut impl Iterator<Item = Result<csv::ByteRecord, csv::Error>>,
+    wtr: &mut csv::Writer<impl io::Write>,
+    probability: f64,
+    seed: Option<u64>,
+) -> CliResult<()> {
+    log::info!("doing {} POISSON sampling...", T::get_name());
+    let mut rng = T::create(seed);
+
+    let dist =
+        Bernoulli::new(probability).map_err(|_| "probability must be between 0.0 and 1.0")?;
+
+    for row in records {
+        if dist.sample(&mut rng) {
+            wtr.write_byte_record(&row?)?;
+        }
+    }
+    Ok(())
+}
+
+// Helper function to sample indices using constant memory
+fn sample_indices<F>(
+    rng: &mut impl Rng,
+    total_count: usize,
+    sample_count: usize,
+    mut process_index: F,
+) -> CliResult<()>
+where
+    F: FnMut(usize) -> CliResult<()>,
+{
+    use rayon::prelude::ParallelSliceMut;
+
+    if sample_count > total_count {
+        return fail!("Sample size cannot be larger than population size");
+    }
+
+    // Store selected indices in a sorted vec of size k
+    let mut selected = Vec::with_capacity(sample_count);
+
+    // Fill first k positions
+    for i in 0..sample_count {
+        selected.push(i);
+    }
+
+    // Process remaining positions using reservoir sampling
+    for i in sample_count..total_count {
+        let j = rng.random_range(0..=i);
+        if j < sample_count {
+            unsafe { *selected.get_unchecked_mut(j) = i };
+        }
+    }
+
+    // Process indices in order to avoid seeking back and forth
+    selected.par_sort_unstable();
+    for idx in selected {
+        process_index(idx)?;
+    }
+
+    Ok(())
 }
