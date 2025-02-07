@@ -85,9 +85,11 @@ frequency options:
                             The default is to trim leading and trailing whitespaces.
     --no-nulls              Don't include NULLs in the frequency table.
     -i, --ignore-case       Ignore case when computing frequencies.
-    --stats-mode <arg>      The stats mode to use when computing frequencies with cardinalities.
+    --stats-mode <arg>      The stats mode to use when computing frequencies with cardinality info.
                             Having column cardinalities short-circuits frequency compilation and
-                            eliminates memory usage for columns with all unique values.
+                            eliminates memory usage for columns with all unique values (ID columns),
+                            making the command not only faster, but also making it possible to compute
+                            frequencies for larger-than-memory datasets.
                             There are three modes:
                               auto: use stats cache if it already exists to get column cardinalities.
                                     For columns with all unique values, "<ALL_UNIQUE>" will be used.
