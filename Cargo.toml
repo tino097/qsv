@@ -216,7 +216,7 @@ rand = "0.9"
 rand_hc = "0.4"
 rand_xoshiro = "0.7"
 rayon = "1.10"
-redis = { version = "=0.27", features = [
+redis = { version = "0.28", features = [
     "ahash",
     "tcp_nodelay",
 ], default-features = false, optional = true }
@@ -307,8 +307,8 @@ csv       = { git = "https://github.com/dathere/rust-csv", branch = "qsv-optimiz
 csv-core  = { git = "https://github.com/dathere/rust-csv", branch = "qsv-optimized-non-allocating-byterecord-trim" }
 csv-index = { git = "https://github.com/dathere/rust-csv", branch = "qsv-optimized-non-allocating-byterecord-trim" }
 
-# use cached with bumped redis using 0.27
-cached = { git = "https://github.com/jaemk/cached", rev = "bbf457e" }
+# use cached with bumped redis using 0.28
+cached = { git = "https://github.com/jqnatividad/cached", branch = "bump-redis-to-0.28" }
 
 # use our calamine fork with unreleased fixes, an upgraded quick-xml, and accelerated int/float parsing
 calamine = { git = "https://github.com/jqnatividad/calamine", branch = "qsv-2-optimized" }

@@ -1078,7 +1078,7 @@ dependencies = [
 [[package]]
 name = "cached"
 version = "0.54.0"
-source = "git+https://github.com/jaemk/cached?rev=bbf457e#bbf457e8f9f386d2da105f553a08ff60669f4cdb"
+source = "git+https://github.com/jqnatividad/cached?branch=bump-redis-to-0.28#a48dcc69d272a9dbcdd262baab8dd8190e373306"
 dependencies = [
  "ahash",
  "cached_proc_macro",
@@ -1099,7 +1099,7 @@ dependencies = [
 [[package]]
 name = "cached_proc_macro"
 version = "0.23.0"
-source = "git+https://github.com/jaemk/cached?rev=bbf457e#bbf457e8f9f386d2da105f553a08ff60669f4cdb"
+source = "git+https://github.com/jqnatividad/cached?branch=bump-redis-to-0.28#a48dcc69d272a9dbcdd262baab8dd8190e373306"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -1110,7 +1110,7 @@ dependencies = [
 [[package]]
 name = "cached_proc_macro_types"
 version = "0.1.1"
-source = "git+https://github.com/jaemk/cached?rev=bbf457e#bbf457e8f9f386d2da105f553a08ff60669f4cdb"
+source = "git+https://github.com/jqnatividad/cached?branch=bump-redis-to-0.28#a48dcc69d272a9dbcdd262baab8dd8190e373306"
 
 [[package]]
 name = "calamine"
@@ -5665,14 +5665,13 @@ dependencies = [
 
 [[package]]
 name = "redis"
-version = "0.27.6"
+version = "0.28.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09d8f99a4090c89cc489a94833c901ead69bfbf3877b4867d5482e321ee875bc"
+checksum = "e37ec3fd44bea2ec947ba6cc7634d7999a6590aca7c35827c250bc0de502bda6"
 dependencies = [
  "ahash",
  "arc-swap",
  "combine",
- "itertools 0.13.0",
  "itoa",
  "num-bigint",
  "percent-encoding",
