@@ -100,6 +100,8 @@ frequency options:
    --all-unique-text <arg>  The text to use for the "<ALL_UNIQUE>" category.
                             [default: <ALL_UNIQUE>]
     --vis-whitespace        Visualize whitespace characters in the output.
+                            See https://github.com/dathere/qsv/wiki/Supplemental#whitespace-markers
+                            for the list of whitespace markers.
     -j, --jobs <arg>        The number of jobs to run in parallel.
                             This works much faster when the given CSV data has
                             an index already created. Note that a file handle
