@@ -10,13 +10,14 @@ It supports three sampling methods:
 - RESERVOIR: the default sampling method when NO INDEX is present.
   Visits every CSV record exactly once, using memory proportional to <sample-size>.
   The number of records in the output is exactly equal to the <sample-size>.
+  https://en.wikipedia.org/wiki/Reservoir_sampling
 
-- POISSON: the sampling method when the --poisson option is specified.
+- BERNOULLI: the sampling method when the --bernoulli option is specified.
   Visits every CSV record exactly once and selects records with a given probability
-  as specified by the <sample-size> argument.
-  It uses memory proportional to <sample-size>.
-  The number of records in the output is NOT GUARANTEED to be exactly equal to
-  the <sample-size> * number of records in the input, but will be close.
+  as specified by the <sample-size> argument. It uses constant memory.
+  The number of records in the output follows a binomial distribution with
+  parameters n (input size) and p (sample-size as probability).
+  https://en.wikipedia.org/wiki/Bernoulli_sampling
 
 Supports sampling from CSVs on remote URLs.
 
@@ -35,7 +36,7 @@ sample arguments:
                            stdin, or a URL (http and https schemes supported).
 
     <sample-size>          When using INDEXED or RESERVOIR sampling, the number of records to sample.
-                           When using POISSON sampling, the probability of selecting each record
+                           When using BERNOULLI sampling, the probability of selecting each record
                            (between 0 and 1).
 
 sample options:
@@ -50,7 +51,7 @@ sample options:
                               Recommended by eSTREAM (https://www.ecrypt.eu.org/stream/).
                               2.1 GB/s throughput though slow initialization.
                            [default: standard]
-    --poisson              Use Poisson sampling instead of indexed or reservoir sampling.
+    --bernoulli            Use Bernoulli sampling instead of indexed or reservoir sampling.
                            When this flag is set, the sample-size must be between
                            0 and 1 and represents the probability of selecting each record.
 
@@ -109,7 +110,7 @@ struct Args {
     flag_user_agent: Option<String>,
     flag_timeout:    Option<u16>,
     flag_max_size:   Option<u64>,
-    flag_poisson:    bool,
+    flag_bernoulli:  bool,
 }
 
 #[derive(Debug, EnumString, PartialEq)]
@@ -208,16 +209,16 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         .delimiter(args.flag_delimiter)
         .writer()?;
 
-    if args.flag_poisson {
+    if args.flag_bernoulli {
         if sample_size >= 1.0 || sample_size <= 0.0 {
             return fail_incorrectusage_clierror!(
-                "Poisson sampling requires a probability between 0 and 1"
+                "Bernoulli sampling requires a probability between 0 and 1"
             );
         }
 
         let mut rdr = rconfig.reader()?;
         rconfig.write_headers(&mut rdr, &mut wtr)?;
-        sample_poisson(&mut rdr, &mut wtr, sample_size, args.flag_seed, &rng_kind)?;
+        sample_bernoulli(&mut rdr, &mut wtr, sample_size, args.flag_seed, &rng_kind)?;
     } else if let Some(mut idx) = rconfig.indexed()? {
         // an index is present, so use random indexing
         #[allow(clippy::cast_precision_loss)]
@@ -256,7 +257,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             },
         }
     } else {
-        // poisson sampling is not specified nor is an index present
+        // bernoulli sampling is not specified nor is an index present
         // so we do reservoir sampling
         #[allow(clippy::cast_precision_loss)]
         if sample_size < 1.0 {
@@ -340,7 +341,7 @@ fn do_reservoir_sampling<T: RngProvider>(
     Ok(())
 }
 
-fn sample_poisson<R: io::Read, W: io::Write>(
+fn sample_bernoulli<R: io::Read, W: io::Write>(
     rdr: &mut csv::Reader<R>,
     wtr: &mut csv::Writer<W>,
     probability: f64,
@@ -351,23 +352,23 @@ fn sample_poisson<R: io::Read, W: io::Write>(
 
     match rng_kind {
         RngKind::Standard => {
-            do_poisson_sampling::<StandardRng>(&mut records, wtr, probability, seed)
+            do_bernoulli_sampling::<StandardRng>(&mut records, wtr, probability, seed)
         },
-        RngKind::Faster => do_poisson_sampling::<FasterRng>(&mut records, wtr, probability, seed),
+        RngKind::Faster => do_bernoulli_sampling::<FasterRng>(&mut records, wtr, probability, seed),
         RngKind::Cryptosecure => {
-            do_poisson_sampling::<CryptoRng>(&mut records, wtr, probability, seed)
+            do_bernoulli_sampling::<CryptoRng>(&mut records, wtr, probability, seed)
         },
     }
 }
 
-// Generic poisson sampling implementation using constant memory
-fn do_poisson_sampling<T: RngProvider>(
+// Generic bernoulli sampling implementation using constant memory
+fn do_bernoulli_sampling<T: RngProvider>(
     records: &mut impl Iterator<Item = Result<csv::ByteRecord, csv::Error>>,
     wtr: &mut csv::Writer<impl io::Write>,
     probability: f64,
     seed: Option<u64>,
 ) -> CliResult<()> {
-    log::info!("doing {} POISSON sampling...", T::get_name());
+    log::info!("doing {} BERNOULLI sampling...", T::get_name());
     let mut rng = T::create(seed);
 
     let dist =
