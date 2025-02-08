@@ -494,8 +494,8 @@ fn sample_percentage_negative_sample_size_error() {
 }
 
 #[test]
-fn sample_poisson_seed() {
-    let wrk = Workdir::new("sample_poisson_seed");
+fn sample_bernoulli_seed() {
+    let wrk = Workdir::new("sample_bernoulli_seed");
     wrk.create(
         "in.csv",
         vec![
@@ -512,7 +512,7 @@ fn sample_poisson_seed() {
     );
 
     let mut cmd = wrk.command("sample");
-    cmd.args(["--poisson"])
+    cmd.args(["--bernoulli"])
         .args(["--seed", "42"])
         .arg("0.5")
         .arg("in.csv");
@@ -528,8 +528,8 @@ fn sample_poisson_seed() {
 }
 
 #[test]
-fn sample_poisson_seed_faster() {
-    let wrk = Workdir::new("sample_poisson_seed_faster");
+fn sample_bernoulli_seed_faster() {
+    let wrk = Workdir::new("sample_bernoulli_seed_faster");
     wrk.create(
         "in.csv",
         vec![
@@ -546,7 +546,7 @@ fn sample_poisson_seed_faster() {
     );
 
     let mut cmd = wrk.command("sample");
-    cmd.args(["--poisson"])
+    cmd.args(["--bernoulli"])
         .args(["--rng", "faster"])
         .args(["--seed", "76"])
         .arg("0.45")
@@ -564,8 +564,8 @@ fn sample_poisson_seed_faster() {
 }
 
 #[test]
-fn sample_poisson_seed_secure() {
-    let wrk = Workdir::new("sample_poisson_seed_secure");
+fn sample_bernoulli_seed_secure() {
+    let wrk = Workdir::new("sample_bernoulli_seed_secure");
     wrk.create(
         "in.csv",
         vec![
@@ -582,7 +582,7 @@ fn sample_poisson_seed_secure() {
     );
 
     let mut cmd = wrk.command("sample");
-    cmd.args(["--poisson"])
+    cmd.args(["--bernoulli"])
         .args(["--rng", "cryptosecure"])
         .args(["--seed", "42"])
         .arg("0.5")
@@ -594,8 +594,8 @@ fn sample_poisson_seed_secure() {
 }
 
 #[test]
-fn sample_poisson_invalid_probability() {
-    let wrk = Workdir::new("sample_poisson_invalid");
+fn sample_bernoulli_invalid_probability() {
+    let wrk = Workdir::new("sample_bernoulli_invalid");
     wrk.create(
         "in.csv",
         vec![svec!["R", "S"], svec!["1", "b"], svec!["2", "a"]],
@@ -603,15 +603,15 @@ fn sample_poisson_invalid_probability() {
 
     // Test probability > 1.0
     let mut cmd = wrk.command("sample");
-    cmd.args(["--poisson"]).arg("1.5").arg("in.csv");
+    cmd.args(["--bernoulli"]).arg("1.5").arg("in.csv");
     wrk.assert_err(&mut cmd);
 
     // Test probability <= 0.0
     let mut cmd = wrk.command("sample");
-    cmd.args(["--poisson"]).arg("0.0").arg("in.csv");
+    cmd.args(["--bernoulli"]).arg("0.0").arg("in.csv");
     wrk.assert_err(&mut cmd);
 
     let mut cmd = wrk.command("sample");
-    cmd.args(["--poisson"]).arg("-0.5").arg("in.csv");
+    cmd.args(["--bernoulli"]).arg("-0.5").arg("in.csv");
     wrk.assert_err(&mut cmd);
 }
