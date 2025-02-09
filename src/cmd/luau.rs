@@ -526,7 +526,8 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
         // set LUAU_PATH to include the luadate library
         let mut luau_path = args.flag_luau_path.clone();
-        write!(luau_path, ";{}", luadate_path.as_os_str().to_string_lossy())?;
+        // safety: safe to unwrap as we're just using it to append to luau_path
+        write!(luau_path, ";{}", luadate_path.as_os_str().to_string_lossy()).unwrap();
         env::set_var("LUAU_PATH", luau_path.clone());
         info!(r#"set LUAU_PATH to "{luau_path}""#);
     }
