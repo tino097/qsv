@@ -100,7 +100,7 @@ pub fn rename_headers_all_generic(num_of_cols: usize) -> String {
             result.push(',');
         }
         // safety: safe to unwrap as we're just using it to append to result string
-        write!(result, "_col_{}", i).unwrap();
+        write!(result, "_col_{i}").unwrap();
     }
     result
 }
