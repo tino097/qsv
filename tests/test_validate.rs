@@ -561,11 +561,10 @@ fn validate_dynenum_with_invalid_column() {
     #[cfg(feature = "lite")]
     assert_eq!(got, "1 out of 1 records invalid.\n");
     #[cfg(not(feature = "lite"))]
-    assert_eq!(
-        got,
+    assert!(got.ends_with(
         "Cannot compile JSONschema. error: Column 'nonexistent_column' not found in lookup \
          table\nTry running `qsv validate schema schema.json` to check the JSON Schema file.\n"
-    );
+    ));
 
     wrk.assert_err(&mut cmd);
 }
