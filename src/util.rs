@@ -4,7 +4,9 @@ use std::borrow::Cow;
 use std::os::unix::process::ExitStatusExt;
 use std::{
     cmp::min,
-    env, fs,
+    env,
+    fmt::Write as _,
+    fs,
     fs::File,
     io::{BufRead, BufReader, BufWriter, Read, Write},
     path::{Path, PathBuf},
@@ -314,13 +316,16 @@ pub fn version() -> String {
                     if string_val == "Luau" {
                         enabled_features.push_str("Luau - version not specified;");
                     } else {
-                        enabled_features.push_str(&format!("{string_val};"));
+                        // safety: safe to unwrap as we're just using it to append to
+                        // enabled_features
+                        write!(enabled_features, "{string_val};").unwrap();
                     }
                 } else {
                     enabled_features.push_str("Luau - ?;");
                 }
             },
-            Err(e) => enabled_features.push_str(&format!("Luau - cannot retrieve version: {e};")),
+            // safety: safe to unwrap as we're just using it to append to enabled_features
+            Err(e) => write!(enabled_features, "Luau - cannot retrieve version: {e};").unwrap(),
         }
     }
     #[cfg(all(feature = "prompt", feature = "feature_capable"))]

@@ -238,7 +238,9 @@ Common options:
 use std::{
     cell::RefCell,
     collections::HashMap,
-    env, fs, io,
+    env,
+    fmt::Write as _,
+    fs, io,
     io::Write,
     path::Path,
     sync::atomic::{AtomicBool, AtomicI8, AtomicU16, Ordering},
@@ -524,7 +526,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
         // set LUAU_PATH to include the luadate library
         let mut luau_path = args.flag_luau_path.clone();
-        luau_path.push_str(&format!(";{}", luadate_path.as_os_str().to_string_lossy()));
+        write!(luau_path, ";{}", luadate_path.as_os_str().to_string_lossy())?;
         env::set_var("LUAU_PATH", luau_path.clone());
         info!(r#"set LUAU_PATH to "{luau_path}""#);
     }

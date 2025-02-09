@@ -170,9 +170,7 @@ fn sort_csv(
         }
         let idx_position = curr_row.position().unwrap();
 
-        sort_key.push_str(&format!("|{:01$}", idx_position.line(), width));
-
-        writeln!(line_wtr, "{sort_key}")?;
+        writeln!(line_wtr, "{sort_key}|{:01$}", idx_position.line(), width)?;
     }
     line_wtr.flush()?;
 

@@ -118,6 +118,7 @@ Common options:
 "#;
 
 use std::{
+    fmt::Write as _,
     fs,
     io::{BufWriter, Write},
     path::PathBuf,
@@ -384,15 +385,16 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         let re = regex::Regex::new(r"register_lookup\([^)]+\)")?;
 
         // Extract all register_lookup statements into a temporary template
-        let mut temp_template = String::new();
-        for cap in re.find_iter(&template_content) {
-            temp_template.push_str("{% if not ");
-            temp_template.push_str(cap.as_str());
-            temp_template.push_str(&format!(
-                r#" %}}LOOKUP REGISTRATION ERROR: "{}"\n{{% endif %}}"#,
-                cap.as_str()
-            ));
-        }
+        // safety: safe to unwrap for write! as we're just using it to append to a String
+        let temp_template = re.find_iter(&template_content)
+            .fold(String::new(), |mut acc, cap| {
+                write!(
+                    acc,
+                    r#"{{% if not {cap_str} %}}LOOKUP REGISTRATION ERROR: "{cap_str}"\n{{% endif %}}"#,
+                    cap_str = cap.as_str(),
+                ).unwrap();
+                acc
+            });
 
         // Create a temporary environment just for parsing
         let temp_env = env.clone();
