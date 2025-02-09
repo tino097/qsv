@@ -517,6 +517,8 @@ fn sample_bernoulli_seed() {
         .arg("0.5")
         .arg("in.csv");
 
+    wrk.assert_success(&mut cmd);
+
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["R", "S"],
@@ -613,5 +615,473 @@ fn sample_bernoulli_invalid_probability() {
 
     let mut cmd = wrk.command("sample");
     cmd.args(["--bernoulli"]).arg("-0.5").arg("in.csv");
+    wrk.assert_err(&mut cmd);
+}
+
+#[test]
+fn sample_systematic() {
+    let wrk = Workdir::new("sample_systematic");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["R", "S"],
+            svec!["1", "b"],
+            svec!["2", "a"],
+            svec!["3", "d"],
+            svec!["4", "c"],
+            svec!["5", "f"],
+            svec!["6", "e"],
+            svec!["7", "i"],
+            svec!["8", "h"],
+            svec!["9", "g"],
+            svec!["10", "j"],
+        ],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--systematic", "first"]).arg("3").arg("in.csv");
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["R", "S"],
+        svec!["1", "b"],
+        svec!["4", "c"],
+        svec!["7", "i"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn sample_stratified() {
+    let wrk = Workdir::new("sample_stratified");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["Group", "Value"],
+            svec!["A", "1"],
+            svec!["A", "2"],
+            svec!["A", "3"],
+            svec!["B", "4"],
+            svec!["B", "5"],
+            svec!["B", "6"],
+            svec!["C", "7"],
+            svec!["C", "8"],
+            svec!["C", "9"],
+            svec!["C", "10"],
+            svec!["C", "11"],
+            svec!["D", "12"],
+        ],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--stratified", "Group"])
+        .args(["--seed", "42"])
+        .arg("2")
+        .arg("in.csv");
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["Group", "Value"],
+        svec!["A", "3"],
+        svec!["A", "2"],
+        svec!["B", "4"],
+        svec!["B", "6"],
+        svec!["C", "9"],
+        svec!["C", "8"],
+        svec!["D", "12"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn sample_stratified_large_sample_size() {
+    let wrk = Workdir::new("sample_stratified_large_sample_size");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["Group", "Value"],
+            svec!["A", "1"],
+            svec!["A", "2"],
+            svec!["A", "3"],
+            svec!["B", "4"],
+            svec!["B", "5"],
+            svec!["B", "6"],
+            svec!["C", "7"],
+            svec!["C", "8"],
+            svec!["C", "9"],
+            svec!["C", "10"],
+            svec!["C", "11"],
+            svec!["D", "12"],
+        ],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--stratified", "Group"])
+        .args(["--seed", "42"])
+        .arg("100")
+        .arg("in.csv");
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["Group", "Value"],
+        svec!["A", "1"],
+        svec!["A", "2"],
+        svec!["A", "3"],
+        svec!["B", "4"],
+        svec!["B", "5"],
+        svec!["B", "6"],
+        svec!["C", "7"],
+        svec!["C", "8"],
+        svec!["C", "9"],
+        svec!["C", "10"],
+        svec!["C", "11"],
+        svec!["D", "12"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn sample_weighted() {
+    let wrk = Workdir::new("sample_weighted");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["ID", "Weight"],
+            svec!["1", "10"],
+            svec!["2", "20"],
+            svec!["3", "30"],
+            svec!["4", "40"],
+            svec!["5", "50"],
+            svec!["6", "60"],
+            svec!["7", "70"],
+            svec!["8", "80"],
+            svec!["9", "90"],
+            svec!["10", "100"],
+        ],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--weighted", "ID"])
+        .args(["--seed", "42"])
+        .arg("4")
+        .arg("in.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["ID", "Weight"],
+        svec!["5", "50"],
+        svec!["6", "60"],
+        svec!["9", "90"],
+        svec!["10", "100"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn sample_cluster() {
+    let wrk = Workdir::new("sample_cluster");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["Household", "Person", "Age"],
+            svec!["H1", "P1", "25"],
+            svec!["H1", "P2", "30"],
+            svec!["H1", "P3", "35"],
+            svec!["H2", "P3", "45"],
+            svec!["H2", "P4", "50"],
+            svec!["H2", "P5", "55"],
+            svec!["H3", "P5", "35"],
+            svec!["H3", "P6", "40"],
+            svec!["H3", "P7", "45"],
+            svec!["H4", "P7", "28"],
+            svec!["H4", "P8", "32"],
+            svec!["H4", "P9", "36"],
+            svec!["H4", "P10", "40"],
+            svec!["H5", "P11", "44"],
+            svec!["H5", "P12", "48"],
+        ],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--cluster", "Household"])
+        .args(["--seed", "42"])
+        .arg("2")
+        .arg("in.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["Household", "Person", "Age"],
+        svec!["H1", "P1", "25"],
+        svec!["H1", "P2", "30"],
+        svec!["H1", "P3", "35"],
+        svec!["H3", "P5", "35"],
+        svec!["H3", "P6", "40"],
+        svec!["H3", "P7", "45"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn sample_stratified_invalid_column() {
+    let wrk = Workdir::new("sample_stratified_invalid");
+    wrk.create(
+        "in.csv",
+        vec![svec!["Group", "Value"], svec!["A", "1"], svec!["B", "2"]],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--stratified", "999"]).arg("1").arg("in.csv");
+
+    wrk.assert_err(&mut cmd);
+}
+
+#[test]
+fn sample_weighted_negative_weights() {
+    let wrk = Workdir::new("sample_weighted_negative");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["ID", "Weight"],
+            svec!["1", "-10"],
+            svec!["2", "20"],
+            svec!["3", "30"],
+            svec!["4", "40"],
+            svec!["5", "-50"],
+        ],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--weighted", "1"]).arg("1").arg("in.csv");
+
+    wrk.assert_err(&mut cmd);
+}
+
+#[test]
+fn sample_stratified_empty_stratum() {
+    let wrk = Workdir::new("sample_stratified_empty");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["Group", "Value"],
+            svec!["A", "1"],
+            svec!["", "2"], // empty stratum
+            svec!["A", "3"],
+            svec!["B", "4"],
+            svec!["", "5"], // another empty stratum
+        ],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--stratified", "Group"])
+        .args(["--seed", "42"])
+        .arg("2")
+        .arg("in.csv");
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["Group", "Value"],
+        svec!["", "2"],
+        svec!["", "5"],
+        svec!["A", "1"],
+        svec!["A", "3"],
+        svec!["B", "4"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn sample_weighted_zero_weights() {
+    let wrk = Workdir::new("sample_weighted_zero");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["ID", "Weight"],
+            svec!["1", "0"],
+            svec!["2", "0"],
+            svec!["3", "30"],
+            svec!["4", "0"],
+            svec!["5", "50"],
+        ],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--weighted", "Weight"])
+        .args(["--seed", "42"])
+        .arg("2")
+        .arg("in.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![svec!["ID", "Weight"], svec!["3", "30"], svec!["5", "50"]];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn sample_cluster_single_record() {
+    let wrk = Workdir::new("sample_cluster_single");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["Cluster", "Value"],
+            svec!["A", "1"], // single record cluster
+            svec!["B", "2"],
+            svec!["B", "3"],
+            svec!["C", "4"], // single record cluster
+        ],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--cluster", "Cluster"])
+        .args(["--seed", "42"])
+        .arg("2")
+        .arg("in.csv");
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["Cluster", "Value"],
+        svec!["A", "1"],
+        svec!["B", "2"],
+        svec!["B", "3"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn sample_systematic_with_headers() {
+    let wrk = Workdir::new("sample_systematic_headers");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["Header1", "Header2"], // should be preserved
+            svec!["1", "a"],
+            svec!["2", "b"],
+            svec!["3", "c"],
+            svec!["4", "d"],
+            svec!["5", "e"],
+            svec!["6", "f"],
+            svec!["7", "g"],
+            svec!["8", "h"],
+            svec!["9", "i"],
+        ],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--systematic", "first"]).arg("3").arg("in.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["Header1", "Header2"],
+        svec!["1", "a"],
+        svec!["4", "d"],
+        svec!["7", "g"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn sample_systematic_with_headers_random_with_seed() {
+    let wrk = Workdir::new("sample_systematic_headers_random_with_seed");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["Header1", "Header2"], // should be preserved
+            svec!["1", "a"],
+            svec!["2", "b"],
+            svec!["3", "c"],
+            svec!["4", "d"],
+            svec!["5", "e"],
+            svec!["6", "f"],
+            svec!["7", "g"],
+            svec!["8", "h"],
+            svec!["9", "i"],
+            svec!["10", "j"],
+        ],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--systematic", "random", "--seed", "65"])
+        .arg("4")
+        .arg("in.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["Header1", "Header2"],
+        svec!["5", "e"],
+        svec!["9", "i"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn sample_systematic_no_headers() {
+    let wrk = Workdir::new("sample_systematic_no_headers");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["1", "a"],
+            svec!["2", "b"],
+            svec!["3", "c"],
+            svec!["4", "d"],
+            svec!["5", "e"],
+            svec!["6", "f"],
+            svec!["7", "g"],
+            svec!["8", "h"],
+            svec!["9", "i"],
+            svec!["10", "j"],
+        ],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--systematic", "first", "--no-headers"])
+        .arg("3")
+        .arg("in.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![svec!["1", "a"], svec!["4", "d"], svec!["7", "g"]];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn sample_multiple_methods_error() {
+    let wrk = Workdir::new("sample_multiple_methods");
+    wrk.create(
+        "in.csv",
+        vec![svec!["ID", "Value"], svec!["1", "a"], svec!["2", "b"]],
+    );
+
+    // Test combining bernoulli with systematic
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--bernoulli", "--systematic", "first"])
+        .arg("0.5")
+        .arg("in.csv");
+    wrk.assert_err(&mut cmd);
+
+    // Test combining weighted with stratified
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--weighted", "ID", "--stratified", "ID"])
+        .arg("1")
+        .arg("in.csv");
+    wrk.assert_err(&mut cmd);
+}
+
+#[test]
+fn sample_invalid_rng() {
+    let wrk = Workdir::new("sample_invalid_rng");
+    wrk.create(
+        "in.csv",
+        vec![svec!["ID", "Value"], svec!["1", "a"], svec!["2", "b"]],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--rng", "invalid_rng"]).arg("1").arg("in.csv");
     wrk.assert_err(&mut cmd);
 }
