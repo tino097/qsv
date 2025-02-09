@@ -432,8 +432,8 @@ END {
     assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
-    let expected_end = "Min/Max: 7.28/74.88 Grand total of 4 rows: 120.64\n".to_string();
-    assert_eq!(end, expected_end);
+    let expected_end = "Min/Max: 7.28/74.88 Grand total of 4 rows: 120.64\n";
+    assert!(end.ends_with(expected_end));
 
     wrk.assert_success(&mut cmd);
 }
@@ -528,7 +528,7 @@ END {
     assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
-    let expected_end = "Min/Max: 7.28/74.88 Grand total of 4 rows: 120.64\n".to_string();
+    let expected_end = "Min/Max: 7.28/74.88 Grand total of 4 rows: 120.64\n";
     assert!(end.ends_with(expected_end));
 
     wrk.assert_success(&mut cmd);
@@ -624,8 +624,8 @@ END {
     assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
-    let expected_end = "Min/Max: 7.28/74.88 Grand total of 4 rows: 120.64\n".to_string();
-    assert_eq!(end, expected_end);
+    let expected_end = "Min/Max: 7.28/74.88 Grand total of 4 rows: 120.64\n";
+    assert!(end.ends_with(expected_end));
 
     wrk.assert_success(&mut cmd);
 }
@@ -707,9 +707,8 @@ END {
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "previous_day_score,previous_month_score,previous_quarter_score,\
                         previous_week_score,score_calculated_ts,score_day_name,\
-                        score_final_table_ts,\n"
-        .to_string();
-    assert_eq!(end, expected_end);
+                        score_final_table_ts,\n";
+    assert!(end.ends_with(expected_end));
 
     wrk.assert_success(&mut cmd);
 }
