@@ -417,6 +417,13 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         String::from("return ")
     };
 
+    let debug_enabled = log_enabled!(log::Level::Debug) || log_enabled!(log::Level::Trace);
+
+    // add performance optimizations compiler directives if debug is off
+    if !debug_enabled {
+        main_script = format!("--!optimize 2\n--!native\n--!strict\n{}", main_script);
+    }
+
     main_script.push_str(luau_script.trim());
     debug!("MAIN script: {main_script:?}");
 
@@ -540,7 +547,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     luau.sandbox(true)?;
 
     // see Compiler settings here: https://docs.rs/mlua/latest/mlua/struct.Compiler.html#
-    let luau_compiler = if log_enabled!(log::Level::Debug) || log_enabled!(log::Level::Trace) {
+    let luau_compiler = if debug_enabled {
         // debugging is on, set more debugging friendly compiler settings
         // so we can see more error details in the logfile
         mlua::Compiler::new()
@@ -553,6 +560,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             .set_optimization_level(2)
             .set_debug_level(1)
             .set_coverage_level(0)
+            .set_type_info_level(1)
     };
     // set default Luau compiler
     luau.set_compiler(luau_compiler.clone());
@@ -783,7 +791,19 @@ fn sequential_mode(
         // if debug is enabled, we eval the script as string instead of precompiled bytecode
         // so we can get more detailed error messages with line numbers
         computed_result = if debug_enabled {
-            luau.load(main_script).eval()
+            // Enhanced error reporting in debug mode
+            match luau.load(main_script).eval() {
+                Ok(result) => Ok(result),
+                Err(e) => {
+                    // Extract line number if available
+                    let error_msg = if let Some(line) = e.to_string().find("line") {
+                        format!("Error at {}: {}", &e.to_string()[line..], e)
+                    } else {
+                        e.to_string()
+                    };
+                    Err(mlua::Error::RuntimeError(error_msg))
+                },
+            }
         } else {
             luau.load(&main_bytecode).eval()
         };
@@ -829,7 +849,7 @@ fn sequential_mode(
                     create_insertrecord(&insertrecord_table, &mut insertrecord, headers_count)?;
 
                     if QSV_SKIP.load(Ordering::Relaxed) {
-                        if log_enabled!(log::Level::Debug) {
+                        if debug_enabled {
                             debug!("Skipping record {idx} because _QSV_SKIP is set to true");
                         }
                         QSV_SKIP.store(false, Ordering::Relaxed);
@@ -1175,7 +1195,7 @@ fn random_access_mode(
                     create_insertrecord(&insertrecord_table, &mut insertrecord, headers_count)?;
 
                     if QSV_SKIP.load(Ordering::Relaxed) {
-                        if log_enabled!(log::Level::Debug) {
+                        if !debug_enabled {
                             debug!(
                                 "Skipping record {curr_record} because _QSV_SKIP is set to true"
                             );
