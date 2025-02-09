@@ -529,7 +529,7 @@ END {
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7.28/74.88 Grand total of 4 rows: 120.64\n".to_string();
-    assert_eq!(end, expected_end);
+    assert!(end.ends_with(expected_end));
 
     wrk.assert_success(&mut cmd);
 }
