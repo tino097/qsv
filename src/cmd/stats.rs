@@ -1463,10 +1463,10 @@ impl Stats {
             v.add(t, sample);
         }
         if let Some(v) = self.minmax.as_mut() {
-            if let Some(ts_val) = timestamp_val {
-                v.add(t, itoa::Buffer::new().format(ts_val).as_bytes());
-            } else {
+            if timestamp_val == 0 {
                 v.add(t, sample);
+            } else {
+                v.add(t, itoa::Buffer::new().format(timestamp_val).as_bytes());
             }
         }
         if let Some(v) = self.modes.as_mut() {
@@ -1540,13 +1540,12 @@ impl Stats {
                             v.add_null();
                         }
                     }
-                // if ts_val.is_some() then we successfully inferred a date from the sample
-                // and the timestamp value is not None
-                } else if let Some(ts_val) = timestamp_val {
+                // if timestamp_val != 0, then we successfully inferred a date from the sample
+                } else if timestamp_val != 0 {
                     // calculate date statistics by adding date samples as timestamps to
                     // millisecond precision.
                     #[allow(clippy::cast_precision_loss)]
-                    let n = ts_val as f64;
+                    let n = timestamp_val as f64;
                     if let Some(v) = self.median.as_mut() {
                         v.add(n);
                     }
@@ -2115,42 +2114,42 @@ impl FieldType {
     /// infer_dates signals if date inference should be attempted
     /// returns the inferred type and if infer_dates is true,
     /// the date in ms since the epoch if the type is a date or datetime
-    /// otherwise, None
+    /// otherwise, 0
     #[inline]
     pub fn from_sample(
         infer_dates: bool,
         prefer_dmy: bool,
         sample: &[u8],
         current_type: FieldType,
-    ) -> (FieldType, Option<i64>) {
+    ) -> (FieldType, i64) {
         // faster than sample.len() == 0 or sample.is_empty() per microbenchmarks
         if b"" == sample {
-            return (FieldType::TNull, None);
+            return (FieldType::TNull, 0);
         }
 
         // no need to do type checking if current_type is already a String
         if current_type == FieldType::TString {
-            return (FieldType::TString, None);
+            return (FieldType::TString, 0);
         }
 
         if let Ok(samp_int) = atoi_simd::parse::<i64>(sample) {
             // Check for integer, with leading zero check for strings like zip codes
             // safety: we know sample is not null as we checked earlier
             if samp_int == 0 || unsafe { *sample.get_unchecked(0) != b'0' } {
-                return (FieldType::TInteger, None);
+                return (FieldType::TInteger, 0);
             }
             // If starts with '0' and a valid integer != 0, it's a string with a leading zero
-            return (FieldType::TString, None);
+            return (FieldType::TString, 0);
         }
 
         // Check for float
         if fast_float2::parse::<f64, &[u8]>(sample).is_ok() {
-            return (FieldType::TFloat, None);
+            return (FieldType::TFloat, 0);
         }
 
         // Only attempt UTF-8 validation and date parsing if infer_dates is true
         if !infer_dates {
-            return (FieldType::TString, None);
+            return (FieldType::TString, 0);
         }
 
         // Check if valid UTF-8 first, return early if not
@@ -2159,18 +2158,20 @@ impl FieldType {
             if let Ok(parsed_date) = parse_with_preference(s, prefer_dmy) {
                 let ts_val = parsed_date.timestamp_millis();
                 return if ts_val % MS_IN_DAY_INT == 0 {
-                    (FieldType::TDate, Some(ts_val))
+                    // if the date is a whole number of days, return as a date
+                    (FieldType::TDate, ts_val)
                 } else {
-                    (FieldType::TDateTime, Some(ts_val))
+                    // otherwise, return as a datetime
+                    (FieldType::TDateTime, ts_val)
                 };
             }
         } else {
             // If not valid UTF-8, it's a binary string, return as TString
-            return (FieldType::TString, None);
+            return (FieldType::TString, 0);
         }
 
         // Default to TString if none of the above conditions are met
-        (FieldType::TString, None)
+        (FieldType::TString, 0)
     }
 }
 
