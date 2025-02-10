@@ -649,6 +649,7 @@ fn sample_systematic() {
         svec!["1", "b"],
         svec!["4", "c"],
         svec!["7", "i"],
+        svec!["10", "j"],
     ];
     assert_eq!(got, expected);
 }
@@ -1009,7 +1010,7 @@ fn sample_systematic_with_headers_random_with_seed() {
 
     let mut cmd = wrk.command("sample");
     cmd.args(["--systematic", "random", "--seed", "65"])
-        .arg("4")
+        .arg("4.5")
         .arg("in.csv");
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
@@ -1042,7 +1043,7 @@ fn sample_systematic_no_headers() {
 
     let mut cmd = wrk.command("sample");
     cmd.args(["--systematic", "first", "--no-headers"])
-        .arg("3")
+        .arg("3.3")
         .arg("in.csv");
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
