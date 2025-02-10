@@ -1,7 +1,16 @@
 static USAGE: &str = r#"
 Find the difference between two CSVs with ludicrous speed.
 
-Note that diff does not support stdin. A file path is required for both arguments.
+NOTE: diff does not support stdin. A file path is required for both arguments.
+      Further, PRIMARY KEY VALUES MUST BE UNIQUE WITHIN EACH CSV.
+      Otherwise, diff will produce an incorrect result.
+
+      To check if a CSV has unique primary key values, use `qsv extdedup`
+      with the same key columns using the `--select` option:
+
+         qsv extdedup --select keycol data.csv --no-output
+
+      The duplicate count will be printed to stderr.
 
 Examples:
 
