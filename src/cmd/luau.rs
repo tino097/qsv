@@ -121,7 +121,7 @@ When developing Luau scripts, be sure to take advantage of the "qsv_log" functio
 debug your script. It will log messages at the level (INFO, WARN, ERROR, DEBUG, TRACE)
 specified by the QSV_LOG_LEVEL environment variable (see docs/Logging.md for details).
 
-At the DEBUG level, the log messages will be more verbose to faciitate debugging.
+At the DEBUG level, the log messages will be more verbose to facilitate debugging.
 It will also skip precompiling the MAIN script to bytecode so you can see more
 detailed error messages with line numbers.
 
@@ -175,7 +175,7 @@ Luau arguments:
 Luau options:
   -g, --no-globals        Don't create Luau global variables for each column,
                           only `col`. Useful when some column names mask standard
-                          Luau globals and a bit more performance.
+                          Luau globals and to increase PERFORMANCE.
                           Note: access to Luau globals thru _G remains even with -g.
   --colindex              Create a 1-based column index. Useful when some column names
                           mask standard Luau globals. Automatically enabled with --no-headers.
@@ -733,7 +733,7 @@ fn sequential_mode(
         luau_compiler.compile(main_script)?
     };
 
-    let mut record = csv::StringRecord::new();
+    let mut record = csv::StringRecord::with_capacity(256, headers_count);
     let mut idx = 0_u64;
     let mut error_count = 0_usize;
 
@@ -742,7 +742,7 @@ fn sequential_mode(
 
     let mut computed_value;
     let mut must_keep_row;
-    let col = luau.create_table_with_capacity(record.len(), 1)?;
+    let col = luau.create_table_with_capacity(headers_count, 1)?;
     col.set_safeenv(true);
 
     let flag_no_globals = args.flag_no_globals;
@@ -1071,7 +1071,7 @@ fn random_access_mode(
     } else {
         luau_compiler.compile(main_script)?
     };
-    let mut record = csv::StringRecord::new();
+    let mut record = csv::StringRecord::with_capacity(256, headers_count);
     let mut error_count = 0_usize;
     let mut processed_count = 0_usize;
 
@@ -1108,7 +1108,7 @@ fn random_access_mode(
 
     let mut computed_value;
     let mut must_keep_row;
-    let col = luau.create_table_with_capacity(record.len(), 1)?;
+    let col = luau.create_table_with_capacity(headers_count, 1)?;
 
     let flag_no_globals = args.flag_no_globals;
     let flag_remap = args.flag_remap;
