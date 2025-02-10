@@ -42,7 +42,7 @@
 arg_pat="$1"
 
 # the version of this script
-bm_version=6.1.2
+bm_version=6.2.0
 
 # CONFIGURABLE VARIABLES ---------------------------------------
 # change as needed to reflect your environment/workloads
@@ -576,6 +576,11 @@ run --index sample_100000_index "$qsv_bin" sample 100000 "$data"
 run sample_100000_seeded "$qsv_bin" sample 100000 --seed 42 "$data"
 run sample_100000_seeded_faster "$qsv_bin" sample 100000 --rng faster --seed 42 "$data"
 run sample_100000_seeded_secure "$qsv_bin" sample 100000 --rng cryptosecure --seed 42 "$data"
+run sample_bernoulli "$qsv_bin" sample --bernoulli 0.25 --seed 42 "$data"
+run sample_1000_systematic "$qsv_bin" sample 1000 --systematic random --seed 42 "$data"
+run sample_1000_stratified "$qsv_bin" sample 1000 --stratified "Agency" --seed 42 "$data"
+run sample_1000_weighted "$qsv_bin" sample 1000 --weighted "Incident Zip" --seed 42 "$data"
+run sample_1000_cluster "$qsv_bin" sample 1000 --cluster "Incident Zip" --seed 42 "$data"
 run --index sample_100000_seeded_index "$qsv_bin" sample --seed 42 100000 "$data"
 run --index sample_100000_seeded_index_faster "$qsv_bin" sample --rng faster --seed 42 100000 "$data"
 run --index sample_100000_seeded_index_secure "$qsv_bin" sample --rng cryptosecure --seed 42 100000 "$data"
