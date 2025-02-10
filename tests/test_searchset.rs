@@ -349,7 +349,7 @@ fn searchset_invert_match_no_headers() {
 #[test]
 fn searchset_flag() {
     let wrk = Workdir::new("searchset_flag");
-    wrk.create("data.csv", data(false));
+    wrk.create("data.csv", data(true));
     wrk.create("regexset.txt", regexset_file());
     let mut cmd = wrk.command("searchset");
     cmd.arg("regexset.txt")
@@ -358,7 +358,8 @@ fn searchset_flag() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
-        svec!["foobar", "barfoo", "flagged"],
+        svec!["h1", "h2", "flagged"],
+        svec!["foobar", "barfoo", "1;1,2"],
         svec!["a", "b", "0"],
         svec!["barfoo", "foobar", "3;1,2"],
         svec!["is waldo here", "spot", "4;3"],
@@ -373,7 +374,7 @@ fn searchset_flag() {
 fn searchset_flag_invert_match() {
     let wrk = Workdir::new("searchset_flag");
     wrk.create("regexset.txt", regexset_file());
-    wrk.create("data.csv", data(false));
+    wrk.create("data.csv", data(true));
     let mut cmd = wrk.command("searchset");
     cmd.arg("regexset.txt")
         .arg("data.csv")
@@ -382,7 +383,8 @@ fn searchset_flag_invert_match() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
-        svec!["foobar", "barfoo", "flagged"],
+        svec!["h1", "h2", "flagged"],
+        svec!["foobar", "barfoo", "0"],
         svec!["a", "b", "2"],
         svec!["barfoo", "foobar", "0"],
         svec!["is waldo here", "spot", "0"],

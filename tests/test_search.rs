@@ -67,7 +67,7 @@ fn search_matchonly_json() {
         .args(["--flag", "M"]);
 
     let got: String = wrk.stdout(&mut cmd);
-    let expected = r#"[{"M":"2"},{"M":"4"}]"#;
+    let expected = r#"[{"M":"1"},{"M":"3"}]"#;
     assert_eq!(got, expected);
     wrk.assert_success(&mut cmd);
 }
@@ -472,13 +472,14 @@ fn search_invert_match_no_headers_count() {
 #[test]
 fn search_flag() {
     let wrk = Workdir::new("search_flag");
-    wrk.create("data.csv", data(false));
+    wrk.create("data.csv", data(true));
     let mut cmd = wrk.command("search");
     cmd.arg("^foo").arg("data.csv").args(["--flag", "flagged"]);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
-        svec!["foobar", "barfoo", "flagged"],
+        svec!["h1", "h2", "flagged"],
+        svec!["foobar", "barfoo", "1"],
         svec!["a", "b", "0"],
         svec!["barfoo", "foobar", "3"],
         svec!["Ḟooƀar", "ḃarḟoo", "0"],
@@ -490,12 +491,12 @@ fn search_flag() {
 #[test]
 fn search_flag_match_only() {
     let wrk = Workdir::new("search_flag_match_only");
-    wrk.create("data.csv", data(false));
+    wrk.create("data.csv", data(true));
     let mut cmd = wrk.command("search");
     cmd.arg("^foo").arg("data.csv").args(["--flag", "M"]);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-    let expected = vec![svec!["M"], svec!["3"]];
+    let expected = vec![svec!["M"], svec!["1"], svec!["3"]];
     assert_eq!(got, expected);
     wrk.assert_success(&mut cmd);
 }
@@ -503,14 +504,15 @@ fn search_flag_match_only() {
 #[test]
 fn search_flag_invert_match() {
     let wrk = Workdir::new("search_flag");
-    wrk.create("data.csv", data(false));
+    wrk.create("data.csv", data(true));
     let mut cmd = wrk.command("search");
     cmd.arg("^foo").arg("data.csv").args(["--flag", "flagged"]);
     cmd.arg("--invert-match");
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
-        svec!["foobar", "barfoo", "flagged"],
+        svec!["h1", "h2", "flagged"],
+        svec!["foobar", "barfoo", "0"],
         svec!["a", "b", "2"],
         svec!["barfoo", "foobar", "0"],
         svec!["Ḟooƀar", "ḃarḟoo", "4"],
@@ -523,7 +525,7 @@ fn search_flag_invert_match() {
 #[test]
 fn search_flag_invert_match_matchonly() {
     let wrk = Workdir::new("search_flag_invert_match_matchonly");
-    wrk.create("data.csv", data(false));
+    wrk.create("data.csv", data(true));
     let mut cmd = wrk.command("search");
     cmd.arg("^foo").arg("data.csv").args(["--flag", "M"]);
     cmd.arg("--invert-match");
@@ -538,7 +540,7 @@ fn search_flag_invert_match_matchonly() {
 #[test]
 fn search_flag_invert_match_count() {
     let wrk = Workdir::new("search_flag");
-    wrk.create("data.csv", data(false));
+    wrk.create("data.csv", data(true));
     let mut cmd = wrk.command("search");
     cmd.arg("^foo")
         .arg("--count")
@@ -548,7 +550,8 @@ fn search_flag_invert_match_count() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
-        svec!["foobar", "barfoo", "flagged"],
+        svec!["h1", "h2", "flagged"],
+        svec!["foobar", "barfoo", "0"],
         svec!["a", "b", "2"],
         svec!["barfoo", "foobar", "0"],
         svec!["Ḟooƀar", "ḃarḟoo", "4"],
@@ -564,7 +567,7 @@ fn search_flag_invert_match_count() {
 #[test]
 fn search_flag_invert_matchonly_count() {
     let wrk = Workdir::new("search_flag_invert_matchonly_count");
-    wrk.create("data.csv", data(false));
+    wrk.create("data.csv", data(true));
     let mut cmd = wrk.command("search");
     cmd.arg("^foo")
         .arg("--count")
