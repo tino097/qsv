@@ -220,7 +220,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     }
 
     let mut record = csv::ByteRecord::new();
-    let mut flag_rowi: u64 = 1;
+    let mut flag_rowi: u64 = 0;
     let mut match_row_ctr: u64 = 0;
     let mut total_matches: u64 = 0;
     let mut row_ctr: u64 = 0;
