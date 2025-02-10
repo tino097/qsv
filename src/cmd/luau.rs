@@ -421,7 +421,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     // add performance optimizations compiler directives if debug is off
     if !debug_enabled {
-        main_script = format!("--!optimize 2\n--!native\n--!strict\n{}", main_script);
+        main_script = format!("--!optimize 2\n--!native\n{main_script}");
     }
 
     main_script.push_str(luau_script.trim());
