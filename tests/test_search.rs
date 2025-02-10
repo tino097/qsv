@@ -489,6 +489,25 @@ fn search_flag() {
 }
 
 #[test]
+fn search_flag_no_headers() {
+    let wrk = Workdir::new("search_flag_no_headers");
+    wrk.create("data.csv", data(false));
+    let mut cmd = wrk.command("search");
+    cmd.arg("^foo").arg("data.csv").args(["--flag", "flagged"]);
+    cmd.arg("--no-headers");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["foobar", "barfoo", "1"],
+        svec!["a", "b", "0"],
+        svec!["barfoo", "foobar", "3"],
+        svec!["Ḟooƀar", "ḃarḟoo", "0"],
+    ];
+    assert_eq!(got, expected);
+    wrk.assert_success(&mut cmd);
+}
+
+#[test]
 fn search_flag_match_only() {
     let wrk = Workdir::new("search_flag_match_only");
     wrk.create("data.csv", data(true));
@@ -497,6 +516,22 @@ fn search_flag_match_only() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![svec!["M"], svec!["1"], svec!["3"]];
+    assert_eq!(got, expected);
+    wrk.assert_success(&mut cmd);
+}
+
+#[test]
+fn search_flag_match_only_no_headers() {
+    let wrk = Workdir::new("search_flag_match_only_no_headers");
+    wrk.create("data.csv", data(false));
+    let mut cmd = wrk.command("search");
+    cmd.arg("^foo")
+        .arg("data.csv")
+        .args(["--flag", "M"])
+        .arg("--no-headers");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![svec!["1"], svec!["3"]];
     assert_eq!(got, expected);
     wrk.assert_success(&mut cmd);
 }
