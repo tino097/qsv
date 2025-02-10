@@ -39,16 +39,17 @@ It supports seven sampling methods:
 
 - WEIGHTED: the sampling method when the --weighted option is specified.
   Samples records with probability proportional to weights in the specified weight column.
-  Useful when some records are more important than others.
+  If the weight column contains a value that is not a number for a record,
+  the record will be skipped. Useful when some records are more important than others.
   Uses MEMORY PROPORTIONAL to the sample size (k) - O(k).
   "Weighted random sampling with a reservoir" https://doi.org/10.1016/j.ipl.2005.11.003
 
 - CLUSTER: the sampling method when the --cluster option is specified.
   Samples entire groups of records together based on a cluster identifier column.
   Useful when records are naturally grouped (e.g., by household, neighborhood, etc.).
-  For example, if you want to sample 1000 records from a population of 100,000,
-  you can cluster the population by neighborhood and then sample 100 records from each
-  cluster. This will ensure that you have a representative sample from each neighborhood.
+  For example, if you have records grouped by neighborhood and specify a sample size of 10,
+  it will randomly select 10 neighborhoods and include ALL records from those neighborhoods
+  in the output. This ensures that natural groupings in the data are preserved.
   Uses MEMORY PROPORTIONAL to the number of clusters (c) - O(c).
   https://en.wikipedia.org/wiki/Cluster_sampling
 
@@ -836,7 +837,7 @@ fn sample_weighted<R: io::Read, W: io::Write>(
                 .ok_or_else(|| format!("Weight column index {weight_column} out of bounds"))?,
         )
         .parse::<f64>()
-        .map_err(|_| "Invalid weight value")?;
+        .unwrap_or(0.0);
 
         if weight < 0.0 {
             return fail_incorrectusage_clierror!("Weights must be non-negative");
@@ -921,7 +922,7 @@ fn do_weighted_sampling<T: Rng + ?Sized>(
                     .ok_or_else(|| format!("Weight column index {weight_column} out of bounds"))?,
             )
             .parse::<f64>()
-            .map_err(|_| "Invalid weight value")?;
+            .unwrap_or(0.0);
 
             if weight < 0.0 {
                 return fail_incorrectusage_clierror!("Weights must be non-negative");
