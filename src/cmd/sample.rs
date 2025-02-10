@@ -20,10 +20,12 @@ It supports seven sampling methods:
   https://en.wikipedia.org/wiki/Bernoulli_sampling
 
 - SYSTEMATIC: the sampling method when the --systematic option is specified.
-  Selects every nth record from the input, where n = population_size/sample_size.
-  The sample size must be a whole number. Uses CONSTANT memory - O(1).
-  The starting point can be specified as "random" or "first".
-  Useful for time series data or when you want evenly spaced samples.
+  Selects every nth record from the input, where n is the integer part of <sample-size>
+  and the fraction part is the percentage of the population to sample. If <sample-size>
+  is a whole number (no fractional part), it will select every nth record for the whole
+  population. For example, if <sample-size> is 10.5, it will select every 10th record and
+  50% of the population. Uses CONSTANT memory - O(1). The starting point can be specified as
+  "random" or "first". Useful for time series data or when you want evenly spaced samples.
   https://en.wikipedia.org/wiki/Systematic_sampling
 
 - STRATIFIED: the sampling method when the --stratified option is specified.
@@ -666,25 +668,35 @@ fn sample_systematic<R: io::Read, W: io::Write>(
         return fail_incorrectusage_clierror!("Sample size must be positive");
     }
 
-    let sample_size = sample_size.round() as usize;
-    if sample_size as u64 > row_count {
-        return fail_incorrectusage_clierror!("Sample size cannot be larger than population size");
+    // Split sample_size into integer and fractional parts
+    let interval = sample_size.trunc() as usize;
+    let percentage = sample_size.fract();
+
+    if interval == 0 {
+        return fail_incorrectusage_clierror!("Interval must be at least 1");
     }
+
+    // Calculate target sample size based on percentage
+    let target_count = if percentage > 0.0 {
+        ((row_count as f64) * percentage).round() as u64
+    } else {
+        row_count
+    };
 
     // Select starting point
     let start = if starting_point == "random" {
         match rng_kind {
             RngKind::Standard => {
                 let mut rng = StandardRng::create(seed);
-                rng.random_range(0..sample_size)
+                rng.random_range(0..interval)
             },
             RngKind::Faster => {
                 let mut rng = FasterRng::create(seed);
-                rng.random_range(0..sample_size)
+                rng.random_range(0..interval)
             },
             RngKind::Cryptosecure => {
                 let mut rng = CryptoRng::create(seed);
-                rng.random_range(0..sample_size)
+                rng.random_range(0..interval)
             },
         }
     } else {
@@ -692,11 +704,14 @@ fn sample_systematic<R: io::Read, W: io::Write>(
     };
 
     // Select records at regular intervals
+    let mut selected_count = 0;
     for (i, record) in rdr.byte_records().enumerate().skip(start) {
-        if i % sample_size == 0 && (i / sample_size) < sample_size {
+        if i % interval == 0 && selected_count < target_count {
             wtr.write_byte_record(&record?)?;
+            selected_count += 1;
         }
     }
+
     Ok(())
 }
 
