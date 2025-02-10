@@ -190,7 +190,6 @@ struct Args {
 
 impl Args {
     fn get_column_index(
-        #[allow(clippy::unused_self)] &self,
         header: &csv::ByteRecord,
         column_spec: &str,
         purpose: &str,
@@ -220,7 +219,7 @@ impl Args {
 
     fn get_strata_column(&self, header: &csv::ByteRecord) -> CliResult<usize> {
         match &self.flag_stratified {
-            Some(col) => self.get_column_index(header, col, "strata"),
+            Some(col) => Self::get_column_index(header, col, "strata"),
             None => {
                 fail_incorrectusage_clierror!(
                     "--stratified <col> is required for stratified sampling"
@@ -231,7 +230,7 @@ impl Args {
 
     fn get_weight_column(&self, header: &csv::ByteRecord) -> CliResult<usize> {
         match &self.flag_weighted {
-            Some(col) => self.get_column_index(header, col, "weight"),
+            Some(col) => Self::get_column_index(header, col, "weight"),
             None => {
                 fail_incorrectusage_clierror!("--weighted <col> is required for weighted sampling")
             },
@@ -240,7 +239,7 @@ impl Args {
 
     fn get_cluster_column(&self, header: &csv::ByteRecord) -> CliResult<usize> {
         match &self.flag_cluster {
-            Some(col) => self.get_column_index(header, col, "cluster"),
+            Some(col) => Self::get_column_index(header, col, "cluster"),
             None => {
                 fail_incorrectusage_clierror!("--cluster <col> is required for cluster sampling")
             },
