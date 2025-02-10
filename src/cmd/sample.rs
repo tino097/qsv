@@ -41,8 +41,9 @@ It supports seven sampling methods:
 
 - WEIGHTED: the sampling method when the --weighted option is specified.
   Samples records with probability proportional to weights in the specified weight column.
-  If the weight column contains a value that is not a number for a record, the record will
-  be skipped. The number of records to sample is specified by the <sample-size> argument.
+  If the weight column contains a value that is not a number for a record, the record will be
+  skipped. The weights are automatically scaled based on the maximum weight in the sample.
+  The number of records to sample is specified by the <sample-size> argument.
   Useful when some records are more important than others.
   Uses MEMORY PROPORTIONAL to the sample size (k) - O(k).
   "Weighted random sampling with a reservoir" https://doi.org/10.1016/j.ipl.2005.11.003
@@ -110,6 +111,8 @@ sample options:
                            number of strata (s) and samples per stratum (k) - O(s*k).
     --weighted <col>       Use weighted sampling. The weight column is specified by <col>.
                            Can be either a column name or 0-based column index.
+                           The column will be parsed as a number. Records with non-number weights
+                           will be skipped.
                            Uses MEMORY PROPORTIONAL to the sample size (k) - O(k).
     --cluster <col>        Use cluster sampling. The cluster column is specified by <col>.
                            Can be either a column name or 0-based column index.
@@ -851,12 +854,12 @@ fn sample_weighted<R: io::Read, W: io::Write>(
     let mut max_weight = 0.0f64;
     for record in rdr.byte_records() {
         let record = record?;
-        let weight = String::from_utf8_lossy(
+
+        let weight: f64 = fast_float2::parse(
             record
                 .get(weight_column)
                 .ok_or_else(|| format!("Weight column index {weight_column} out of bounds"))?,
         )
-        .parse::<f64>()
         .unwrap_or(0.0);
 
         if weight < 0.0 {
@@ -936,12 +939,12 @@ fn do_weighted_sampling<T: Rng + ?Sized>(
             }
 
             let record = record?;
-            let weight = String::from_utf8_lossy(
+
+            let weight: f64 = fast_float2::parse(
                 record
                     .get(weight_column)
                     .ok_or_else(|| format!("Weight column index {weight_column} out of bounds"))?,
             )
-            .parse::<f64>()
             .unwrap_or(0.0);
 
             if weight < 0.0 {
