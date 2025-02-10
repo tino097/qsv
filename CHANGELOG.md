@@ -6,6 +6,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2025-02-10
+
+## What's Changed
+* docs: QSV_AUTOINDEX => QSV_AUTOINDEX_SIZE by @jqnatividad in https://github.com/dathere/qsv/pull/2484
+* build(deps): bump mlua from 0.10.2 to 0.10.3 by @dependabot in https://github.com/dathere/qsv/pull/2485
+* feat: additional `joinp` `asof` join sort and match options by @jqnatividad in https://github.com/dathere/qsv/pull/2486
+* build(deps): bump actions/setup-python from 5.3.0 to 5.4.0 by @dependabot in https://github.com/dathere/qsv/pull/2488
+* build(deps): bump minijinja-contrib from 2.6.0 to 2.7.0 by @dependabot in https://github.com/dathere/qsv/pull/2489
+* `contrib(completions)`: update qsv completions for qsv 2.2.1 by @rzmk in https://github.com/dathere/qsv/pull/2494
+* fix & perf: `stats` compute string len stats only for strings by @jqnatividad in https://github.com/dathere/qsv/pull/2495
+* build(deps): bump qsv-stats from 0.27.0 to 0.28.0 by @dependabot in https://github.com/dathere/qsv/pull/2496
+* build(deps): bump bytes from 1.9.0 to 1.10.0 by @dependabot in https://github.com/dathere/qsv/pull/2497
+* build(deps): bump qsv-stats from 0.28.0 to 0.29.0 by @dependabot in https://github.com/dathere/qsv/pull/2498
+* feat: `stats` add "sortiness" statistic by @jqnatividad in https://github.com/dathere/qsv/pull/2499
+* build(deps): bump uuid from 1.12.1 to 1.13.1 by @dependabot in https://github.com/dathere/qsv/pull/2500
+* feat: `stats` and `frequency` add `--vis-whitespace` option by @jqnatividad in https://github.com/dathere/qsv/pull/2503
+* chore: Bump rand to 0.9 by @jqnatividad in https://github.com/dathere/qsv/pull/2504
+* build(deps): bump qsv-stats from 0.29.0 to 0.30.0 by @dependabot in https://github.com/dathere/qsv/pull/2505
+* feat: `sample` add --poisson sampling method; refactored indexed sampling method so it also uses less memory by @jqnatividad in https://github.com/dathere/qsv/pull/2507
+* build(deps): bump jsonschema from 0.28.3 to 0.29.0 by @dependabot in https://github.com/dathere/qsv/pull/2510
+* feat: `sample` add more sampling methods by @jqnatividad in https://github.com/dathere/qsv/pull/2511
+* build(deps): bump data-encoding from 2.7.0 to 2.8.0 by @dependabot in https://github.com/dathere/qsv/pull/2512
+* fix: `search` & `searchset` off by 1 when using `--flag` option by @jqnatividad in https://github.com/dathere/qsv/pull/2513
+
+**Full Changelog**: https://github.com/dathere/qsv/compare/2.2.1...2.3.0
+
 ## [2.2.1] - 2025-01-26
 
 ### Changed
