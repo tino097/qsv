@@ -21,18 +21,19 @@ It supports seven sampling methods:
 
 - SYSTEMATIC: the sampling method when the --systematic option is specified.
   Selects every nth record from the input, where n is the integer part of <sample-size>
-  and the fraction part is the percentage of the population to sample. If <sample-size>
-  is a whole number (no fractional part), it will select every nth record for the whole
-  population. For example, if <sample-size> is 10.5, it will select every 10th record and
-  50% of the population. Uses CONSTANT memory - O(1). The starting point can be specified as
-  "random" or "first". Useful for time series data or when you want evenly spaced samples.
+  and the fraction part is the percentage of the population to sample.
+  For example, if <sample-size> is 10.5, it will select every 10th record and 50% of the
+  population. If <sample-size> is a whole number (no fractional part), it will select
+  every nth record for the whole population. Uses CONSTANT memory - O(1). The starting
+  point can be specified as "random" or "first". Useful for time series data or when you
+  want evenly spaced samples.
   https://en.wikipedia.org/wiki/Systematic_sampling
 
 - STRATIFIED: the sampling method when the --stratified option is specified.
   Stratifies the population by the specified column and then samples from each stratum.
   Particularly useful when a population has distinct subgroups (strata) that are
   heterogeneous within but homogeneous between in terms of the variable of interest. 
-  For example, if you want to sample 1000 records from a population of 100,000,
+  For example, if you want to sample 1,000 records from a population of 100,000,
   you can stratify the population by gender and then sample 500 records from each
   stratum. This will ensure that you have a representative sample from each gender.
   The sample size must be a whole number. Uses MEMORY PROPORTIONAL to the
@@ -684,6 +685,7 @@ fn sample_systematic<R: io::Read, W: io::Write>(
     }
 
     // Calculate target sample size based on percentage
+    #[allow(clippy::cast_precision_loss)]
     let target_count = if percentage > 0.0 {
         ((row_count as f64) * percentage).round() as u64
     } else {
@@ -736,16 +738,17 @@ fn sample_stratified<R: io::Read, W: io::Write>(
     // Pre-allocate with capacity for better performance
     let mut strata_counts: HashMap<Vec<u8>, usize> = HashMap::with_capacity(ESTIMATED_STRATA_COUNT);
     let mut records = Vec::with_capacity(ESTIMATED_STRATA_COUNT * samples_per_stratum);
+    let mut curr_record;
 
     // First pass: count strata and collect records
     for record in rdr.byte_records() {
-        let record = record?;
-        let stratum = record
+        curr_record = record?;
+        let stratum = curr_record
             .get(strata_column)
             .ok_or_else(|| format!("Strata column index {strata_column} out of bounds"))?
             .to_vec();
         *strata_counts.entry(stratum.clone()).or_default() += 1;
-        records.push(record);
+        records.push(curr_record);
     }
 
     let strata_count = strata_counts.len();
@@ -997,11 +1000,12 @@ fn sample_cluster<R: io::Read, W: io::Write>(
     // Use HashSet for faster lookups of unique clusters
     let mut unique_clusters: HashSet<Vec<u8>> = HashSet::with_capacity(ESTIMATED_CLUSTER_COUNT);
     let mut all_clusters: Vec<Vec<u8>> = Vec::with_capacity(ESTIMATED_CLUSTER_COUNT);
+    let mut curr_record;
 
     // First pass: collect unique clusters
     for record in rdr.byte_records() {
-        let record = record?;
-        let cluster = record
+        curr_record = record?;
+        let cluster = curr_record
             .get(cluster_column)
             .ok_or_else(|| format!("Cluster column index {cluster_column} out of bounds"))?
             .to_vec();
@@ -1042,15 +1046,16 @@ fn sample_cluster<R: io::Read, W: io::Write>(
 
     // Second pass: output records from selected clusters
     let mut rdr2 = rconfig.reader()?;
+    let mut curr_record;
     for record in rdr2.byte_records() {
-        let record = record?;
-        let cluster = record
+        curr_record = record?;
+        let cluster = curr_record
             .get(cluster_column)
             .ok_or_else(|| format!("Cluster column index {cluster_column} out of bounds"))?
             .to_vec();
 
         if selected_clusters.contains(&cluster) {
-            wtr.write_byte_record(&record)?;
+            wtr.write_byte_record(&curr_record)?;
         }
     }
 
