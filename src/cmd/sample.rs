@@ -13,10 +13,10 @@ It supports seven sampling methods:
   https://en.wikipedia.org/wiki/Random_access
 
 - BERNOULLI: the sampling method when the --bernoulli option is specified.
-  Visits every CSV record exactly once and selects records with a given probability
-  as specified by the <sample-size> argument. The number of records in the output
-  follows a binomial distribution with parameters n (input size) and
-  p (sample-size as probability). Uses CONSTANT memory - O(1).
+  Each record has an independent probability p of being selected, where p is
+  specified by the <sample-size> argument. For example, if p=0.1, then each record
+  has a 10% chance of being selected, regardless of the other records. The final
+  sample size is random and follows a binomial distribution. Uses CONSTANT MEMORY - O(1).
   https://en.wikipedia.org/wiki/Bernoulli_sampling
 
 - SYSTEMATIC: the sampling method when the --systematic option is specified.
@@ -34,18 +34,20 @@ It supports seven sampling methods:
   you can stratify the population by gender and then sample 500 records from each
   stratum. This will ensure that you have a representative sample from each gender.
   The sample size must be a whole number. Uses MEMORY PROPORTIONAL to the
-  number of strata (s) and samples per stratum (k) - O(s*k).
+  number of strata (s) and samples per stratum (k) as specified by <sample-size> - O(s*k).
   https://en.wikipedia.org/wiki/Stratified_sampling
 
 - WEIGHTED: the sampling method when the --weighted option is specified.
   Samples records with probability proportional to weights in the specified weight column.
-  If the weight column contains a value that is not a number for a record,
-  the record will be skipped. Useful when some records are more important than others.
+  If the weight column contains a value that is not a number for a record, the record will
+  be skipped. The number of records to sample is specified by the <sample-size> argument.
+  Useful when some records are more important than others.
   Uses MEMORY PROPORTIONAL to the sample size (k) - O(k).
   "Weighted random sampling with a reservoir" https://doi.org/10.1016/j.ipl.2005.11.003
 
 - CLUSTER: the sampling method when the --cluster option is specified.
   Samples entire groups of records together based on a cluster identifier column.
+  The number of records to sample per cluster is specified by the <sample-size> argument.
   Useful when records are naturally grouped (e.g., by household, neighborhood, etc.).
   For example, if you have records grouped by neighborhood and specify a sample size of 10,
   it will randomly select 10 neighborhoods and include ALL records from those neighborhoods
@@ -91,9 +93,9 @@ sample options:
 
                            SAMPLING METHODS:
     --bernoulli            Use Bernoulli sampling instead of indexed or reservoir sampling.
-                           When this flag is set, the sample-size must be between
+                           When this flag is set, <sample-size> must be between
                            0 and 1 and represents the probability of selecting each record.
-    --systematic <arg>     Use systematic sampling (every nth record as specified by sample-size).
+    --systematic <arg>     Use systematic sampling (every nth record as specified by <sample-size>).
                            If <arg> is "random", the starting point is randomly chosen between 0 & n.
                            If <arg> is "first", the starting point is the first record.
                            The sample size must be a whole number. Uses CONSTANT memory - O(1).
