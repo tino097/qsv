@@ -976,9 +976,7 @@ fn do_weighted_sampling<T: Rng + ?Sized>(
     }
 
     if selected_len < sample_size {
-        wwarn!(
-            "Could only sample {selected_len} records out of requested {sample_size}"
-        );
+        wwarn!("Could only sample {selected_len} records out of requested {sample_size}");
     }
 
     Ok(())
