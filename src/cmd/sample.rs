@@ -49,7 +49,7 @@ It supports seven sampling methods:
 
 - CLUSTER: the sampling method when the --cluster option is specified.
   Samples entire groups of records together based on a cluster identifier column.
-  The number of records to sample per cluster is specified by the <sample-size> argument.
+  The number of clusters is specified by the <sample-size> argument.
   Useful when records are naturally grouped (e.g., by household, neighborhood, etc.).
   For example, if you have records grouped by neighborhood and specify a sample size of 10,
   it will randomly select 10 neighborhoods and include ALL records from those neighborhoods
@@ -73,12 +73,15 @@ sample arguments:
     <input>                The CSV file to sample. This can be a local file,
                            stdin, or a URL (http and https schemes supported).
 
-    <sample-size>          When using INDEXED, RESERVOIR or WEIGHTED sampling, the number of records to sample.
-                           When using SYSTEMATIC sampling, the interval between records to sample.
-                           When using STRATIFIED sampling, the number of records to sample per stratum.
-                           When using CLUSTER sampling, the number of records to sample per cluster.
+    <sample-size>          When using INDEXED, RESERVOIR or WEIGHTED sampling, the sample size.
                            When using BERNOULLI sampling, the probability of selecting each record
-                           (between 0 and 1).
+                             (between 0 and 1).
+                           When using SYSTEMATIC sampling, the integer part is the interval between
+                             records to sample & the fractional part is the percentage of the
+                             population to sample. When there is no fractional part, it will
+                             select every nth record for the entire population.
+                           When using STRATIFIED sampling, the stratum sample size.
+                           When using CLUSTER sampling, the number of clusters.                       
 
 sample options:
     --seed <number>        Random Number Generator (RNG) seed.
