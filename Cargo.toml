@@ -168,7 +168,7 @@ mlua = { version = "0.10", features = [
 ], optional = true }
 num_cpus = "1"
 odht = "0.3"
-phf = { version = "0.11", features = ["macros"], optional = true }
+phf = { version = "0.11", features = ["macros"]}
 polars = { version = "0.46", features = [
     "asof_join",
     "avro",
@@ -396,7 +396,6 @@ geocode = [
     "cached",
     "geosuggest-core",
     "geosuggest-utils",
-    "phf",
     "sled",
 ]
 luau = ["mlua", "sanitize-filename"]
