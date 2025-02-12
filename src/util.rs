@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use std::os::unix::process::ExitStatusExt;
 use std::{
     cmp::min,
+    collections::HashMap,
     env,
     fmt::Write as _,
     fs,
@@ -31,7 +32,7 @@ use sysinfo::System;
 #[cfg(feature = "polars")]
 use crate::cmd::count::polars_count_input;
 use crate::{
-    cmd::stats::{get_stats_data_types, JsonTypes, StatsData},
+    cmd::stats::{JsonTypes, StatsData, STATSDATA_TYPES_MAP},
     config,
     config::{Config, Delimiter, DEFAULT_RDR_BUFFER_CAPACITY, DEFAULT_WTR_BUFFER_CAPACITY},
     select::SelectColumns,
@@ -2065,7 +2066,7 @@ pub fn write_json_record<W: std::io::Write>(
 pub fn get_stats_records(
     args: &SchemaArgs,
     mode: StatsMode,
-) -> CliResult<(ByteRecord, Vec<StatsData>)> {
+) -> CliResult<(ByteRecord, Vec<StatsData>, HashMap<String, String>)> {
     const DATASET_STATS_PREFIX: &str = r#"{"field":"qsv__"#;
 
     if mode == StatsMode::None
@@ -2074,7 +2075,7 @@ pub fn get_stats_records(
     {
         // if stdin or StatsMode::None,
         // we're just doing frequency old school w/o cardinality
-        return Ok((ByteRecord::new(), Vec::new()));
+        return Ok((ByteRecord::new(), Vec::new(), HashMap::new()));
     }
 
     let canonical_input_path = Path::new(args.arg_input.as_ref().unwrap()).canonicalize()?;
@@ -2102,7 +2103,7 @@ pub fn get_stats_records(
     if mode == StatsMode::Frequency && !stats_data_current {
         // if the stats.data file is not current,
         // we're also doing frequency old school w/o cardinality
-        return Ok((ByteRecord::new(), Vec::new()));
+        return Ok((ByteRecord::new(), Vec::new(), HashMap::new()));
     }
 
     // get the headers from the input file
@@ -2112,6 +2113,7 @@ pub fn get_stats_records(
 
     let mut stats_data_loaded = false;
     let mut csv_stats: Vec<StatsData> = Vec::with_capacity(csv_fields.len());
+    let mut dataset_stats: HashMap<String, String> = HashMap::with_capacity(4);
 
     // if stats_data file exists and is current, use it
     if stats_data_current && !args.flag_force {
@@ -2120,14 +2122,30 @@ pub fn get_stats_records(
 
         let mut curr_line: String;
         let mut s_slice: Vec<u8>;
+
         for line in statsdatajson_rdr.lines() {
             curr_line = line?;
-            if curr_line.starts_with(DATASET_STATS_PREFIX) {
-                break;
-            }
             s_slice = curr_line.as_bytes().to_vec();
-            if let Ok(stats) = simd_json::serde::from_slice(&mut s_slice) {
-                csv_stats.push(stats);
+            if curr_line.starts_with(DATASET_STATS_PREFIX) {
+                // Parse dataset stats record
+                let v: serde_json::Value = simd_json::serde::from_slice(&mut s_slice).unwrap();
+                let field = &v["field"];
+                let value = v["qsv__value"].clone();
+
+                dataset_stats.insert(
+                    field
+                        .as_str()
+                        .unwrap_or_default()
+                        .trim_matches('"')
+                        .to_string(),
+                    value.to_string(),
+                );
+            } else {
+                // Parse regular stats record
+                match simd_json::from_slice::<StatsData>(&mut s_slice) {
+                    Ok(stats) => csv_stats.push(stats),
+                    Err(e) => eprintln!("error parsing stats: {e}"),
+                }
             }
         }
         stats_data_loaded = !csv_stats.is_empty();
@@ -2269,8 +2287,8 @@ pub fn get_stats_records(
             }
         }
 
-        // create a statsdatajon from the output of the stats command
-        csv_to_jsonl(&tempfile_path, &get_stats_data_types(), statsdatajson_path)?;
+        // create a stats data jsonl from the output of the stats command
+        csv_to_jsonl(&tempfile_path, &STATSDATA_TYPES_MAP, statsdatajson_path)?;
 
         let statsdatajson_rdr =
             BufReader::with_capacity(DEFAULT_RDR_BUFFER_CAPACITY, File::open(statsdatajson_path)?);
@@ -2279,32 +2297,44 @@ pub fn get_stats_records(
         let mut s_slice: Vec<u8>;
         for line in statsdatajson_rdr.lines() {
             curr_line = line?;
-            if curr_line.starts_with(DATASET_STATS_PREFIX) {
-                break;
-            }
             s_slice = curr_line.as_bytes().to_vec();
-            if let Ok(stats) = simd_json::serde::from_slice(&mut s_slice) {
-                csv_stats.push(stats);
+            if curr_line.starts_with(DATASET_STATS_PREFIX) {
+                // Parse dataset stats record
+                let v: serde_json::Value = simd_json::serde::from_slice(&mut s_slice).unwrap();
+                let field = &v["field"];
+                let value = v["qsv__value"].clone();
+
+                dataset_stats.insert(
+                    field
+                        .as_str()
+                        .unwrap_or_default()
+                        .trim_matches('"')
+                        .to_string(),
+                    value.to_string(),
+                );
+            } else {
+                // Parse regular stats record
+                match simd_json::from_slice::<StatsData>(&mut s_slice) {
+                    Ok(stats) => csv_stats.push(stats),
+                    Err(e) => eprintln!("error parsing stats: {e}"),
+                }
             }
         }
     }
 
-    Ok((csv_fields, csv_stats))
+    Ok((csv_fields, csv_stats, dataset_stats))
 }
 
-/// simple helper to convert a CSV file to a JSONL file
-/// no type inferencing is done unlike tojsonl, so all fields are strings
 pub fn csv_to_jsonl(
     input_csv: &str,
-    csv_types: &[JsonTypes],
+    csv_types: &phf::Map<&'static str, JsonTypes>,
     output_jsonl: &PathBuf,
 ) -> CliResult<()> {
     let file = File::open(input_csv)?;
     let mut rdr = csv::ReaderBuilder::new()
-        .has_headers(true) // requires headers for keys
+        .has_headers(true)
         .from_reader(file);
 
-    // Get the headers and create a vector of of keys
     let headers = rdr.headers()?;
     let key_vec: Vec<String> = headers
         .iter()
@@ -2314,36 +2344,47 @@ pub fn csv_to_jsonl(
     let output = File::create(output_jsonl)?;
     let mut writer = BufWriter::new(output);
 
-    // amortize allocations
     let mut json_object = serde_json::Map::with_capacity(key_vec.len());
     let mut record = csv::StringRecord::new();
     let mut json_line: String;
 
-    // Iterate over each record in the CSV
     while rdr.read_record(&mut record)? {
         json_object.clear();
 
-        // safety: we know the record length is the same as the key_vec length
         for (i, val) in record.iter().enumerate() {
             let key = unsafe { key_vec.get_unchecked(i) };
-            let data_type = if key == "cardinality" {
-                &JsonTypes::Int
-            } else {
-                csv_types.get(i).unwrap_or(&JsonTypes::String)
-            };
-            let value = if val.is_empty() && data_type != &JsonTypes::Bool {
+            let data_type = csv_types.get(key).unwrap_or(&JsonTypes::String);
+            let value = if val.is_empty() {
                 continue;
             } else {
                 match *data_type {
                     JsonTypes::String => serde_json::Value::String(val.to_owned()),
                     JsonTypes::Int => {
-                        let num = val.parse::<u64>().unwrap_or_default();
-                        serde_json::Value::Number(serde_json::Number::from(num))
+                        if let Ok(num) = val.parse::<u64>() {
+                            serde_json::Value::Number(serde_json::Number::from(num))
+                        } else {
+                            serde_json::Value::String(val.to_owned())
+                        }
                     },
-                    JsonTypes::Float => serde_json::Value::Number(
-                        serde_json::Number::from_f64(val.parse::<f64>().unwrap_or_default())
-                            .unwrap_or_else(|| serde_json::Number::from(0)),
-                    ),
+                    JsonTypes::Float => {
+                        if let Ok(num) = val.parse::<f64>() {
+                            if let Some(n) = serde_json::Number::from_f64(num) {
+                                serde_json::Value::Number(n)
+                            } else {
+                                serde_json::Value::Number(
+                                    serde_json::Number::from_f64(0.0).unwrap_or_else(|| {
+                                        serde_json::Number::from_f64(0.0).unwrap()
+                                    }),
+                                )
+                            }
+                        } else {
+                            // serde_json::Value::String(val.to_owned())
+                            serde_json::Value::Number(
+                                serde_json::Number::from_f64(0.0)
+                                    .unwrap_or_else(|| serde_json::Number::from_f64(0.0).unwrap()),
+                            )
+                        }
+                    },
                     JsonTypes::Bool => {
                         serde_json::Value::Bool(val.parse::<bool>().unwrap_or(false))
                     },
