@@ -455,6 +455,8 @@ fn frequency_all_unique() {
     let mut cmd = wrk.command("frequency");
     cmd.args(["--select", "1"]).arg(testdata);
 
+    wrk.assert_success(&mut cmd);
+
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["field", "value", "count", "percentage"],

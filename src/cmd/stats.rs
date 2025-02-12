@@ -263,6 +263,7 @@ use std::{
 
 use crossbeam_channel;
 use itertools::Itertools;
+use phf::phf_map;
 use qsv_dateparser::parse_with_preference;
 use serde::{Deserialize, Serialize};
 use simd_json::{prelude::ValueAsScalar, OwnedValue};
@@ -398,6 +399,7 @@ pub struct StatsData {
     // so we escape it as r#type
     // we need to do this for serde to work
     pub r#type:               String,
+    #[serde(default)]
     pub is_ascii:             bool,
     pub sum:                  Option<f64>,
     pub min:                  Option<String>,
@@ -448,51 +450,52 @@ pub enum JsonTypes {
 
 // we use this to serialize the StatsData data structure
 // to a JSONL file using serde_json
-const STATSDATA_TYPES_ARRAY: [JsonTypes; MAX_STAT_COLUMNS] = [
-    JsonTypes::String, //field
-    JsonTypes::String, //type
-    JsonTypes::Bool,   //is_ascii
-    JsonTypes::Float,  //sum
-    JsonTypes::String, //min
-    JsonTypes::String, //max
-    JsonTypes::Float,  //range
-    JsonTypes::String, //sort_order
-    JsonTypes::Float,  //sortiness
-    JsonTypes::Int,    //min_length
-    JsonTypes::Int,    //max_length
-    JsonTypes::Int,    //sum_length
-    JsonTypes::Float,  //avg_length
-    JsonTypes::Float,  //stddev_length
-    JsonTypes::Float,  //variance_length
-    JsonTypes::Float,  //cv_length
-    JsonTypes::Float,  //mean
-    JsonTypes::Float,  //sem
-    JsonTypes::Float,  //geometric_mean
-    JsonTypes::Float,  //harmonic_mean
-    JsonTypes::Float,  //stddev
-    JsonTypes::Float,  //variance
-    JsonTypes::Float,  //cv
-    JsonTypes::Int,    //nullcount
-    JsonTypes::Int,    //max_precision
-    JsonTypes::Float,  //sparsity
-    JsonTypes::Float,  //mad
-    JsonTypes::Float,  //lower_outer_fence
-    JsonTypes::Float,  //lower_inner_fence
-    JsonTypes::Float,  //q1
-    JsonTypes::Float,  //q2_median
-    JsonTypes::Float,  //q3
-    JsonTypes::Float,  //iqr
-    JsonTypes::Float,  //upper_inner_fence
-    JsonTypes::Float,  //upper_outer_fence
-    JsonTypes::Float,  //skewness
-    JsonTypes::Int,    //cardinality
-    JsonTypes::String, //mode
-    JsonTypes::Int,    //mode_count
-    JsonTypes::Int,    //mode_occurrences
-    JsonTypes::String, //antimode
-    JsonTypes::Int,    //antimode_count
-    JsonTypes::Int,    //antimode_occurrences
-];
+pub static STATSDATA_TYPES_MAP: phf::Map<&'static str, JsonTypes> = phf_map! {
+    "field" => JsonTypes::String,
+    "type" => JsonTypes::String,
+    "is_ascii" => JsonTypes::Bool,
+    "sum" => JsonTypes::Float,
+    "min" => JsonTypes::String,
+    "max" => JsonTypes::String,
+    "range" => JsonTypes::Float,
+    "sort_order" => JsonTypes::String,
+    "sortiness" => JsonTypes::Float,
+    "min_length" => JsonTypes::Int,
+    "max_length" => JsonTypes::Int,
+    "sum_length" => JsonTypes::Int,
+    "avg_length" => JsonTypes::Float,
+    "stddev_length" => JsonTypes::Float,
+    "variance_length" => JsonTypes::Float,
+    "cv_length" => JsonTypes::Float,
+    "mean" => JsonTypes::Float,
+    "sem" => JsonTypes::Float,
+    "geometric_mean" => JsonTypes::Float,
+    "harmonic_mean" => JsonTypes::Float,
+    "stddev" => JsonTypes::Float,
+    "variance" => JsonTypes::Float,
+    "cv" => JsonTypes::Float,
+    "nullcount" => JsonTypes::Int,
+    "max_precision" => JsonTypes::Int,
+    "sparsity" => JsonTypes::Float,
+    "mad" => JsonTypes::Float,
+    "lower_outer_fence" => JsonTypes::Float,
+    "lower_inner_fence" => JsonTypes::Float,
+    "q1" => JsonTypes::Float,
+    "q2_median" => JsonTypes::Float,
+    "q3" => JsonTypes::Float,
+    "iqr" => JsonTypes::Float,
+    "upper_inner_fence" => JsonTypes::Float,
+    "upper_outer_fence" => JsonTypes::Float,
+    "skewness" => JsonTypes::Float,
+    "cardinality" => JsonTypes::Int,
+    "mode" => JsonTypes::String,
+    "mode_count" => JsonTypes::Int,
+    "mode_occurrences" => JsonTypes::Int,
+    "antimode" => JsonTypes::String,
+    "antimode_count" => JsonTypes::Int,
+    "antimode_occurrences" => JsonTypes::Int,
+    "qsv__value" => JsonTypes::Int,
+};
 
 static INFER_DATE_FLAGS: OnceLock<SmallVec<[bool; 50]>> = OnceLock::new();
 static RECORD_COUNT: OnceLock<u64> = OnceLock::new();
@@ -522,11 +525,6 @@ const MAX_ANTIMODES: usize = 10;
 // default length of antimode string before truncating and appending "..."
 const DEFAULT_ANTIMODES_LEN: usize = 100;
 pub const DEFAULT_MODES_SEPARATOR: &str = "|";
-
-// we do this so this is evaluated at compile-time
-pub const fn get_stats_data_types() -> [JsonTypes; MAX_STAT_COLUMNS] {
-    STATSDATA_TYPES_ARRAY
-}
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let mut args: Args = util::get_args(USAGE, argv)?;
@@ -1010,7 +1008,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 stats_jsonl_pathbuf.set_extension("data.jsonl");
                 util::csv_to_jsonl(
                     &currstats_filename,
-                    &get_stats_data_types(),
+                    &STATSDATA_TYPES_MAP,
                     &stats_jsonl_pathbuf,
                 )?;
             }

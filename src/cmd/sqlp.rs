@@ -805,7 +805,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         arg_input:            Some(table.to_string_lossy().into_owned()),
                         flag_memcheck:        false,
                     };
-                    let (csv_fields, csv_stats) =
+                    let (csv_fields, csv_stats, _) =
                         get_stats_records(&schema_args, util::StatsMode::PolarsSchema)?;
 
                     let mut schema = Schema::with_capacity(csv_stats.len());
