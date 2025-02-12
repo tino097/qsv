@@ -3,7 +3,10 @@ Find the difference between two CSVs with ludicrous speed.
 
 NOTE: diff does not support stdin. A file path is required for both arguments.
       Further, PRIMARY KEY VALUES MUST BE UNIQUE WITHIN EACH CSV.
-      Otherwise, diff will produce an incorrect result.
+      When diffing CSVs with just a single --key column and a stats cache is
+      available, diff will automatically validate for primary key uniqueness.
+      If more than one --key column is specified, however, this auto-validation
+      is not done.
 
       To check if a CSV has unique primary key values, use `qsv extdedup`
       with the same key columns using the `--select` option:
@@ -76,7 +79,7 @@ diff options:
     --delimiter-output <arg>    The field delimiter for writing the CSV diff result.
                                 Must be a single character. (default: ,)
     -k, --key <arg...>          The column indices that uniquely identify a record
-                                as a comma separated list of indices, e.g. 0,1,2
+                                as a comma separated list of 0-based indices, e.g. 0,1,2
                                 or column names, e.g. name,age.
                                 Note that when selecting columns by name, only the 
                                 left CSV's headers are used to match the column names
@@ -101,6 +104,12 @@ diff options:
     -j, --jobs <arg>            The number of jobs to run in parallel.
                                 When not set, the number of jobs is set to the number
                                 of CPUs detected.
+    --force                     Force diff and ignore stats caches for the left & right CSVs.
+                                Otherwise, if available, the stats cache will be used to:
+                                 * short-circuit the diff if their fingerprint hashes are
+                                   identical.
+                                 * check for primary key uniqueness when only one --key
+                                   column is specified.
 
 Common options:
     -h, --help                  Display this message
@@ -123,7 +132,10 @@ use super::rename::rename_headers_all_generic;
 use crate::{
     clitypes::CliError,
     config::{Config, Delimiter},
-    util, CliResult,
+    select::SelectColumns,
+    util,
+    util::{get_stats_records, SchemaArgs, StatsMode},
+    CliResult,
 };
 
 #[derive(Deserialize)]
@@ -132,6 +144,7 @@ struct Args {
     arg_input_right:        Option<String>,
     flag_output:            Option<String>,
     flag_jobs:              Option<usize>,
+    flag_force:             bool,
     flag_no_headers_left:   bool,
     flag_no_headers_right:  bool,
     flag_no_headers_output: bool,
@@ -146,6 +159,139 @@ struct Args {
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let mut args: Args = util::get_args(USAGE, argv)?;
+
+    // ===== VALIDATION CHECKS =====
+
+    // If --force is not set and
+    // neither --no-headers-left nor --no-headers-right are set and
+    // the key is a just single column (or unspecified),
+    // perform validation checks on the input files using the stats cache.
+    if !args.flag_force
+        && (!args.flag_no_headers_left && !args.flag_no_headers_right)
+        && args
+            .flag_key
+            .as_ref()
+            .is_none_or(|k| k.split(',').count() == 0)
+    {
+        // ---- STATS CACHE VALIDATION CHECKS ----
+
+        // Get stats for left file
+        let left_schema_args = SchemaArgs {
+            arg_input:            args.arg_input_left.clone(),
+            flag_no_headers:      false,
+            flag_delimiter:       args.flag_delimiter,
+            flag_jobs:            None,
+            flag_memcheck:        false,
+            flag_force:           args.flag_force,
+            flag_prefer_dmy:      false,
+            flag_dates_whitelist: String::new(),
+            flag_enum_threshold:  0,
+            flag_ignore_case:     false,
+            flag_strict_dates:    false,
+            flag_pattern_columns: SelectColumns::parse("")?,
+            flag_stdout:          false,
+        };
+
+        // Get stats for right file using same args
+        let right_schema_args = SchemaArgs {
+            arg_input: args.arg_input_right.clone(),
+            ..left_schema_args.clone()
+        };
+
+        // Get stats records for both files
+        if let (
+            Ok((left_csv_fields, left_stats, left_dataset_stats)),
+            Ok((_, right_stats, right_dataset_stats)),
+        ) = (
+            get_stats_records(&left_schema_args, StatsMode::FrequencyForceStats),
+            get_stats_records(&right_schema_args, StatsMode::FrequencyForceStats),
+        ) {
+            // If both files fingerprint hashes match, files are identical short-circuit diff
+            if left_dataset_stats.get("qsv__fingerprint_hash")
+                == right_dataset_stats.get("qsv__fingerprint_hash")
+            {
+                return Ok(());
+            }
+
+            // Check if row counts match
+            let left_dataset_rowcount = left_dataset_stats
+                .get("qsv__rowcount")
+                .unwrap()
+                .parse::<f64>()
+                .unwrap_or_default() as u64;
+            let right_dataset_rowcount = right_dataset_stats
+                .get("qsv__rowcount")
+                .unwrap()
+                .parse::<f64>()
+                .unwrap_or_default() as u64;
+
+            if left_dataset_rowcount != right_dataset_rowcount {
+                return fail_incorrectusage_clierror!(
+                    "The number of rows in the left ({left_dataset_rowcount}) and right \
+                     ({right_dataset_rowcount}) CSVs do not match."
+                );
+            }
+
+            // If key column specified, check if it has all unique values in both files
+            let mut colname_used_for_key = false;
+            if let Some(key_col) = &args.flag_key {
+                let idx = if key_col.chars().all(char::is_numeric) {
+                    key_col
+                        .parse::<usize>()
+                        .map_err(|err| CliError::Other(err.to_string()))?
+                } else {
+                    // Handle column name case...
+                    colname_used_for_key = true;
+                    left_csv_fields
+                        .iter()
+                        .position(|field| field == key_col.as_bytes())
+                        .unwrap_or_default()
+                };
+
+                // Check cardinality equals row count for key column in left file
+                if let Some(left_col) = left_stats.get(idx) {
+                    if left_col.cardinality != left_dataset_rowcount {
+                        return fail_incorrectusage_clierror!(
+                            "Primary key values in left CSV are not unique in column {colname} \
+                             (cardinality: {left_cardinality} != rowcount: {left_rowcount}). Use \
+                             `qsv extdedup --select {colname} {left_input} --no-output` to check \
+                             duplicates.",
+                            colname = if colname_used_for_key {
+                                key_col.to_string()
+                            } else {
+                                idx.to_string()
+                            },
+                            left_cardinality = left_col.cardinality,
+                            left_rowcount = left_dataset_rowcount,
+                            left_input = args.arg_input_left.as_ref().unwrap()
+                        );
+                    }
+                }
+
+                // Check cardinality equals row count for key column in right file
+                if let Some(right_col) = right_stats.get(idx) {
+                    if right_col.cardinality != right_dataset_rowcount {
+                        return fail_incorrectusage_clierror!(
+                            "Primary key values in right CSV are not unique in column {colname} \
+                             (cardinality: {right_cardinality} != rowcount: {right_rowcount}). \
+                             Use `qsv extdedup --select {colname} {right_input} --no-output` to \
+                             check duplicates.",
+                            colname = if colname_used_for_key {
+                                key_col.to_string()
+                            } else {
+                                idx.to_string()
+                            },
+                            right_cardinality = right_col.cardinality,
+                            right_rowcount = right_dataset_rowcount,
+                            right_input = args.arg_input_right.as_ref().unwrap()
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    // ---- SETUP and OTHER VALIDATION CHECKS ----
 
     if let Some(delim) = args.flag_delimiter {
         [
@@ -240,6 +386,8 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         .writer()?;
 
     util::njobs(args.flag_jobs);
+
+    // ===== DIFF PROCESSING =====
 
     let Ok(csv_diff) = CsvByteDiffBuilder::new()
         .primary_key_columns(primary_key_cols.clone())
