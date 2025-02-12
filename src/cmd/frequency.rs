@@ -537,7 +537,7 @@ impl Args {
             "_schema" => StatsMode::Schema, // only meant for internal use by schema command
             _ => return fail_incorrectusage_clierror!("Invalid stats mode"),
         };
-        let (csv_fields, csv_stats) = get_stats_records(&schema_args, stats_mode)?;
+        let (csv_fields, csv_stats, dataset_stats) = get_stats_records(&schema_args, stats_mode)?;
 
         if stats_mode == StatsMode::None || stats_mode == StatsMode::Schema || csv_fields.is_empty()
         {
@@ -552,8 +552,11 @@ impl Args {
         // in the following hot iterator loop
         assert!(
             csv_fields.len() == csv_stats.len(),
-            "Mismatch between the number of fields and stats records"
+            "Mismatch between the number of fields: {} and stats records: {}",
+            csv_fields.len(),
+            csv_stats.len()
         );
+
         let col_cardinality_vec: Vec<(String, u64)> = csv_stats
             .iter()
             .enumerate()
@@ -571,7 +574,11 @@ impl Args {
             .collect();
 
         // now, get the unique headers, where cardinality == rowcount
-        let row_count = util::count_rows(&self.rconfig())?;
+        let row_count = if let Some(row_count) = dataset_stats.get("qsv__rowcount") {
+            row_count.parse::<u64>().unwrap()
+        } else {
+            util::count_rows(&self.rconfig())?
+        };
         FREQ_ROW_COUNT.set(row_count as u64).unwrap();
 
         // Most datasets have relatively few columns with all unique values (e.g. ID columns)
