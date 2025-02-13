@@ -1702,6 +1702,7 @@ fn stats_vis_whitespace() {
             "upper_outer_fence",
             "skewness",
             "cardinality",
+            "uniqueness_ratio",
             "mode",
             "mode_count",
             "mode_occurrences",
@@ -1748,6 +1749,7 @@ fn stats_vis_whitespace() {
             "",
             "",
             "6",
+            "0.8571",
             "value《¶》",
             "1",
             "2",
@@ -1794,6 +1796,7 @@ fn stats_vis_whitespace() {
             "",
             "",
             "6",
+            "0.8571",
             "《¶》value",
             "1",
             "2",
@@ -1840,6 +1843,7 @@ fn stats_vis_whitespace() {
             "",
             "",
             "6",
+            "0.8571",
             "《¶》value《¶》",
             "1",
             "2",
@@ -1850,6 +1854,7 @@ fn stats_vis_whitespace() {
         ],
         svec![
             "qsv__rowcount",
+            "",
             "",
             "",
             "",
@@ -1938,6 +1943,7 @@ fn stats_vis_whitespace() {
             "",
             "",
             "",
+            "",
             "3"
         ],
         svec![
@@ -1984,10 +1990,12 @@ fn stats_vis_whitespace() {
             "",
             "",
             "",
+            "",
             "323"
         ],
         svec![
             "qsv__fingerprint_hash",
+            "",
             "",
             "",
             "",
