@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.0.0] - 2025-02-13
 
+## Highlights:
+* `sample`: Four new sampling methods! In addition to [reservoir](https://en.wikipedia.org/wiki/Reservoir_sampling) & [indexed](https://en.wikipedia.org/wiki/Random_access) - added [bernoulli](https://en.wikipedia.org/wiki/Bernoulli_sampling), [systematic](https://en.wikipedia.org/wiki/Systematic_sampling), [stratified](https://en.wikipedia.org/wiki/Stratified_sampling), [weighted](https://doi.org/10.1016/j.ipl.2005.11.003) & [cluster](https://en.wikipedia.org/wiki/Cluster_sampling) sampling. And they're all memory efficient so you should be able to sample arbitrarily large datasets!
+* `stats`: Added "sortiness" (-1 (Descending) to 1 (Ascending)) and "uniqueness_ratio" (0 (many repeated values) to 1 (All unique values)) stats. The [qsv-stats](https://github.com/dathere/qsv-stats) engine has also been optimized to squeeze out more performance.
+* `diff`: make it a "smart" command, so that it uses the stats cache to short-circuit the diff if the files are identical per their fingerprint hashes, and to validate that the diff key column is all unique.
+
 ### Added
 * `joinp`: additional `joinp` `asof` join sort and match options https://github.com/dathere/qsv/pull/2486
 * `stats`: add "sortiness" statistic https://github.com/dathere/qsv/pull/2499
