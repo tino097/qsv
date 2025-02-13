@@ -574,12 +574,11 @@ impl Args {
             .collect();
 
         // now, get the unique headers, where cardinality == rowcount
-        let row_count = if let Some(row_count) = dataset_stats.get("qsv__rowcount") {
-            row_count.parse::<u64>().unwrap()
-        } else {
-            util::count_rows(&self.rconfig())?
-        };
-        FREQ_ROW_COUNT.set(row_count as u64).unwrap();
+        let row_count = dataset_stats
+            .get("qsv__rowcount")
+            .and_then(|count| count.parse::<u64>().ok())
+            .unwrap_or_else(|| util::count_rows(&self.rconfig()).unwrap_or_default());
+        FREQ_ROW_COUNT.set(row_count).unwrap();
 
         // Most datasets have relatively few columns with all unique values (e.g. ID columns)
         // so pre-allocate space for 5 as a reasonable default capacity
