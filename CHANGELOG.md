@@ -9,16 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.0.0] - 2025-02-13
 
 ### Added
-* feat: additional `joinp` `asof` join sort and match options by @jqnatividad in https://github.com/dathere/qsv/pull/2486
-* feat: `stats` add "sortiness" statistic by @jqnatividad in https://github.com/dathere/qsv/pull/2499
-* feat: `stats` and `frequency` add `--vis-whitespace` option by @jqnatividad in https://github.com/dathere/qsv/pull/2503
-* feat: `sample` add --poisson sampling method; refactored indexed sampling method so it also uses less memory by @jqnatividad in https://github.com/dathere/qsv/pull/2507
-* feat: `sample` add more sampling methods by @jqnatividad in https://github.com/dathere/qsv/pull/2511
-* feat: "smart" diff by @jqnatividad in https://github.com/dathere/qsv/pull/2518
-* feat: `stats` add uniqueness_ratio by @jqnatividad in https://github.com/dathere/qsv/pull/2521
-* `benchmarks` : added new benchmarks for `sample` for new sampling methods
+* `joinp`: additional `joinp` `asof` join sort and match options https://github.com/dathere/qsv/pull/2486
+* `stats`: add "sortiness" statistic https://github.com/dathere/qsv/pull/2499
+* `stats` add uniqueness_ratio https://github.com/dathere/qsv/pull/2521
+* `stats` & `frequency`: add `--vis-whitespace` option. Fulfills #2501 https://github.com/dathere/qsv/pull/2503
+* `sample`: add more sampling methods (in addition to indexed and reservoir - added bernoulli, systematic, stratified, weighted & cluster sampling) and made them all memory efficient so we can sample arbitrarily large datasets: https://github.com/dathere/qsv/pull/2507 & https://github.com/dathere/qsv/pull/2511
+* `diff`: make `diff` a "smart" command. Fulfills #2493 and #2509 https://github.com/dathere/qsv/pull/2518
+* `benchmarks` : added new benchmarks for `sample` for new sampling methods https://github.com/dathere/qsv/commit/d758c54effcef31dbc1c1eb40e0c1789050eeb34
 
 ### Changed
+* `luau`: bump from 0.653 to 0.657 and optimize for performance https://github.com/dathere/qsv/commit/4402df6788205341552b4f4e43220ea49924a28e https://github.com/dathere/qsv/commit/de429b4bb858a7872e30eccbdb3e526ad0ea322b https://github.com/dathere/qsv/commit/07ff8b8458a042987c9d11cae5b5b1dfaa934097 https://github.com/dathere/qsv/commit/3211f5c84fc23b652e4d7da83098e7db46829081
+* `stats`: compute string len stats only for string columns https://github.com/dathere/qsv/pull/2495
 * `contrib(completions)`: update qsv completions for qsv 2.2.1 by @rzmk in https://github.com/dathere/qsv/pull/2494
 * deps: bump polars to latest upstream after its py-1.22.0 release
 * deps: backported csv-core 0.1.12 fix to our qsv-optimized csv-core fork https://github.com/dathere/rust-csv/commit/5d0916e243f365a377b1b0e7c84bcf9585e83f2d
@@ -28,21 +29,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * build(deps): bump geosuggest-core from 0.6.5 to 0.6.6 by @dependabot in https://github.com/dathere/qsv/pull/2520
 * build(deps): bump geosuggest-utils from 0.6.5 to 0.6.6 by @dependabot in https://github.com/dathere/qsv/pull/2519
 * build(deps): bump jsonschema from 0.28.3 to 0.29.0 by @dependabot in https://github.com/dathere/qsv/pull/2510
-* build(deps): bump minijinja-contrib from 2.6.0 to 2.7.0 by @dependabot in https://github.com/dathere/qsv/pull/2489
+* build(deps): bump minijinja from 2.6.0 to 2.7.0 by @dependabot in https://github.com/dathere/qsv/pull/2489
 * build(deps): bump mlua from 0.10.2 to 0.10.3 by @dependabot in https://github.com/dathere/qsv/pull/2485
 * build(deps): bump qsv-stats from 0.27.0 to 0.28.0 by @dependabot in https://github.com/dathere/qsv/pull/2496
 * build(deps): bump qsv-stats from 0.28.0 to 0.29.0 by @dependabot in https://github.com/dathere/qsv/pull/2498
 * build(deps): bump qsv-stats from 0.29.0 to 0.30.0 by @dependabot in https://github.com/dathere/qsv/pull/2505
-* chore: Bump rand to 0.9 by @jqnatividad in https://github.com/dathere/qsv/pull/2504
+* chore: Bump rand to 0.9 https://github.com/dathere/qsv/pull/2504
 * build(deps): bump simple-home-dir from 0.4.6 to 0.4.7 by @dependabot in https://github.com/dathere/qsv/pull/2515
 * build(deps): bump uuid from 1.12.1 to 1.13.1 by @dependabot in https://github.com/dathere/qsv/pull/2500
 * bumped numerous indirect dependencies to latest versions
 * applied select clippy lint suggestions
+* bumped MSRV to latest Rust stable - v1.84.1
 
 ### Fixed
-* docs: QSV_AUTOINDEX => QSV_AUTOINDEX_SIZE by @jqnatividad in https://github.com/dathere/qsv/pull/2484
-* fix & perf: `stats` compute string len stats only for strings by @jqnatividad in https://github.com/dathere/qsv/pull/2495
-* fix: `search` & `searchset` off by 1 when using `--flag` option by @jqnatividad in https://github.com/dathere/qsv/pull/2513
+* docs: QSV_AUTOINDEX => QSV_AUTOINDEX_SIZE typo. Fixes #2479 https://github.com/dathere/qsv/pull/2484
+* fix: `search` & `searchset` off by 1 when using `--flag` option. Fixes #2508 https://github.com/dathere/qsv/pull/2513
 
 
 **Full Changelog**: https://github.com/dathere/qsv/compare/2.2.1...3.0.0
