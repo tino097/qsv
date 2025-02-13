@@ -297,8 +297,10 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 /// This function checks if the stats cache is available and if it is, performs "smart"
 /// validation checks on the input files.
 ///
-/// If the stats cache is not available, the function returns false.
-/// If it is available, the function returns true if the files are identical.
+/// First, it check if the current options allow us to leverage the stats cache.
+/// If so, it checks if the stats cache is available.
+/// If it is, the function returns true if the files are identical per their fingerprint hashes,
+/// allowing us to short-circuit the diff.
 /// If the files are not identical, it performs additional "smart" validation checks.
 fn check_stats_cache(args: &Args) -> Result<bool, CliError> {
     if args.flag_force
@@ -312,8 +314,6 @@ fn check_stats_cache(args: &Args) -> Result<bool, CliError> {
         // do not use stats cache
         return Ok(false);
     }
-
-    // ---- STATS CACHE VALIDATION CHECKS ----
 
     // Set stats config for left file
     let left_schema_args = SchemaArgs {
@@ -343,8 +343,8 @@ fn check_stats_cache(args: &Args) -> Result<bool, CliError> {
         Ok((left_csv_fields, left_stats, left_dataset_stats)),
         Ok((_, right_stats, right_dataset_stats)),
     ) = (
-        get_stats_records(&left_schema_args, StatsMode::FrequencyForceStats),
-        get_stats_records(&right_schema_args, StatsMode::FrequencyForceStats),
+        get_stats_records(&left_schema_args, StatsMode::Frequency),
+        get_stats_records(&right_schema_args, StatsMode::Frequency),
     ) {
         // check if dataset stats are empty
         // if so, return false and proceed to "regular" diff processing
@@ -352,11 +352,10 @@ fn check_stats_cache(args: &Args) -> Result<bool, CliError> {
             return Ok(false);
         }
 
-        // If both files fingerprint hashes match, files are identical short-circuit diff
+        // If both files' fingerprint hashes match, files are identical. Short-circuit diff
         if left_dataset_stats.get("qsv__fingerprint_hash")
             == right_dataset_stats.get("qsv__fingerprint_hash")
         {
-            // if fingerprint hashes match, files are identical, short-circuit diff
             return Ok(true);
         }
 
