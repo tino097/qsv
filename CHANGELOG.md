@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.3.0] - 2025-02-10
+## [3.0.0] - 2025-02-13
 
 ## What's Changed
 * docs: QSV_AUTOINDEX => QSV_AUTOINDEX_SIZE by @jqnatividad in https://github.com/dathere/qsv/pull/2484
@@ -29,8 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * feat: `sample` add more sampling methods by @jqnatividad in https://github.com/dathere/qsv/pull/2511
 * build(deps): bump data-encoding from 2.7.0 to 2.8.0 by @dependabot in https://github.com/dathere/qsv/pull/2512
 * fix: `search` & `searchset` off by 1 when using `--flag` option by @jqnatividad in https://github.com/dathere/qsv/pull/2513
+* build(deps): bump simple-home-dir from 0.4.6 to 0.4.7 by @dependabot in https://github.com/dathere/qsv/pull/2515
+* feat: "smart" diff by @jqnatividad in https://github.com/dathere/qsv/pull/2518
+* build(deps): bump geosuggest-core from 0.6.5 to 0.6.6 by @dependabot in https://github.com/dathere/qsv/pull/2520
+* build(deps): bump geosuggest-utils from 0.6.5 to 0.6.6 by @dependabot in https://github.com/dathere/qsv/pull/2519
+* feat: `stats` add uniqueness_ratio by @jqnatividad in https://github.com/dathere/qsv/pull/2521
 
-**Full Changelog**: https://github.com/dathere/qsv/compare/2.2.1...2.3.0
+**Full Changelog**: https://github.com/dathere/qsv/compare/2.2.1...3.0.0
 
 ## [2.2.1] - 2025-01-26
 
