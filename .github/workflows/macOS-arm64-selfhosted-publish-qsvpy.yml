@@ -117,6 +117,27 @@ jobs:
                 mv qsv qsvpy312
                 cd ..
 
+    - uses: actions/setup-python@v5.4.0
+      with:
+            python-version: '3.13'
+    - name: Build qsvpy313
+      env:
+        RUSTFLAGS: --emit=asm -C target-cpu=native
+      uses: actions-rs/cargo@v1
+      with:
+            command: build
+            use-cross: false
+            toolchain: ${{ matrix.rust }}
+            args: --release --locked --bin qsv --target ${{ matrix.job.target }} ${{ matrix.job.addl-build-args }},feature_capable ${{ matrix.job.default-features }}
+    - name: Copy binaries to working dir
+      shell: bash
+      run: |
+                rm target/${{ matrix.job.target }}/release/*.d 
+                cp target/${{ matrix.job.target }}/release/qsv* qsv-${{ needs.analyze-tags.outputs.previous-tag }}
+                cd qsv-${{ needs.analyze-tags.outputs.previous-tag }}
+                mv qsv qsvpy313
+                cd ..
+
     - name: install zipsign
       run: |
         cargo install zipsign

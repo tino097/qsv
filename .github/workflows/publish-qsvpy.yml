@@ -175,6 +175,34 @@ jobs:
             rustup show > qsvpy_rust_version_info.txt
             cd ..
 
+    - uses: actions/setup-python@v5.4.0
+      with:
+          python-version: '3.13'
+    - name: Build qsvpy313
+        # env:
+        #   RUSTFLAGS: --emit=asm
+      env:
+        RUSTFLAGS: ${{ matrix.job.addl-rustflags }}
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        use-cross: false
+        toolchain: ${{ matrix.rust }}
+        args: --release --locked --bin qsv --target ${{ matrix.job.target }} ${{ matrix.job.addl-build-args }},feature_capable ${{ matrix.job.default-features }}
+    - name: Copy binaries to working dir
+      shell: bash
+      run: |
+          rm target/${{ matrix.job.target }}/release/*.d 
+          cp target/${{ matrix.job.target }}/release/qsv* qsv-${{ needs.analyze-tags.outputs.previous-tag }}
+          cd qsv-${{ needs.analyze-tags.outputs.previous-tag }}
+          if [ "$RUNNER_OS" == "Windows"]; then
+                  mv qsv.exe qsvpy313.exe
+            else
+                  mv qsv qsvpy313
+            fi
+            rustup show > qsvpy_rust_version_info.txt
+            cd ..
+
     - name: install zipsign
       run: |
         cargo install zipsign
