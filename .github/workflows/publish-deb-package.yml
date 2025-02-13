@@ -60,13 +60,13 @@ jobs:
           ls -l renamed_debs
 
       - name: Upload Debian Packages as Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: debian-packages
           path: renamed_debs/*.deb
 
       - name: Upload Debian Packages as Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: debian-packages
           path: |
