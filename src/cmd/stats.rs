@@ -5,10 +5,12 @@ Compute summary statistics & infers data types for each column in a CSV.
 UTF-8 encoded. If you encounter problems generating stats, use `qsv validate` to confirm the
 input CSV is valid.
 
-Summary statistics includes sum, min/max/range, sort order/sortiness, min/max/sum/avg/stddev/variance/cv length,
-mean, standard error of the mean (SEM), geometric mean, harmonic mean, stddev, variance, coefficient
-of variation (CV), nullcount, max_precision, sparsity, Median Absolute Deviation (MAD), quartiles,
-interquartile range (IQR), lower/upper fences, skewness, median, cardinality, mode/s & "antimode/s".
+Summary stats include sum, min/max/range, sort order/sortiness, min/max/sum/avg/stddev/variance/cv length,
+mean, standard error of the mean (SEM), geometric mean, harmonic mean, stddev, variance, coefficient of
+variation (CV), nullcount, max_precision, sparsity, Median Absolute Deviation (MAD), quartiles,
+interquartile range (IQR), lower/upper fences, skewness, median, cardinality/uniqueness ratio,
+mode/s & "antimode/s".
+
 Note that some stats require loading the entire file into memory, so they must be enabled explicitly. 
 
 By default, the following "streaming" statistics are reported for *every* column:
@@ -19,8 +21,8 @@ The default set of statistics corresponds to ones that can be computed efficient
 (i.e., constant memory) and works with arbitrarily large CSVs.
 
 The following additional "non-streaming" statistics require loading the entire file into memory:
-cardinality, modes/antimodes, median, MAD, quartiles and its related measures (q1, q2, q3, IQR,
-lower/upper fences & skewness).
+cardinality/uniqueness ratio, modes/antimodes, median, MAD, quartiles and its related measures
+(q1, q2, q3, IQR, lower/upper fences & skewness).
 
 When computing "non-streaming" statistics, an Out-Of-Memory (OOM) heuristic check is done.
 If the file is larger than the available memory minus a headroom buffer of 20% (which can be
@@ -143,7 +145,7 @@ stats options:
     --mode                    Compute the mode/s & antimode/s. Multimodal-aware.
                               This requires loading CSV data in memory proportionate to the
                               cardinality of each column.
-    --cardinality             Compute the cardinality.
+    --cardinality             Compute the cardinality and the uniqueness ratio.
                               This requires loading CSV data in memory proportionate to the
                               number of unique values in each column.
     --median                  Compute the median.
@@ -239,13 +241,12 @@ inferencing & to compile smart Data Dictionaries in the most performant way poss
 for Datapusher+ (https://github.com/dathere/datapusher-plus).
 
 It underpins the `schema` and `validate` commands - enabling the automatic creation of
-a JSONschema based on a CSV's summary statistics; and use the generated JSONschema to
-quickly validate complex CSVs (NYC's 311 data) at almost 930,000 records/sec.
+a JSON Schema based on a CSV's summary statistics; and use the generated JSON Schema
+to quickly validate complex CSVs hundreds of thousands of records/sec.
 
-It's type inferences are also used by the `tojsonl` command to generate properly typed
-JSONL files; the `frequency` command to short-circuit frequency table generation for columns
-with all unique values; and the `schema` command to set the data type of a column and identify
-low-cardinality columns for enum generation in the JSONschema.
+It's type inferences are also used by the "smart" commands (see
+https://github.com/dathere/qsv/blob/master/docs/PERFORMANCE.md#stats-cache)
+to make them work smarter & faster.
 
 To safeguard against undefined behavior, `stats` is the most extensively tested command,
 with ~500 tests.
@@ -432,6 +433,7 @@ pub struct StatsData {
     pub upper_outer_fence:    Option<f64>,
     pub skewness:             Option<f64>,
     pub cardinality:          u64,
+    pub uniqueness_ratio:     Option<f64>,
     pub mode:                 Option<String>,
     pub mode_count:           Option<u64>,
     pub mode_occurrences:     Option<u64>,
@@ -488,6 +490,7 @@ pub static STATSDATA_TYPES_MAP: phf::Map<&'static str, JsonTypes> = phf_map! {
     "upper_outer_fence" => JsonTypes::Float,
     "skewness" => JsonTypes::Float,
     "cardinality" => JsonTypes::Int,
+    "uniqueness_ratio" => JsonTypes::Float,
     "mode" => JsonTypes::String,
     "mode_count" => JsonTypes::Int,
     "mode_occurrences" => JsonTypes::Int,
@@ -515,7 +518,7 @@ const MS_IN_DAY_INT: i64 = 86_400_000;
 const DAY_DECIMAL_PLACES: u32 = 5;
 
 // maximum number of output columns
-const MAX_STAT_COLUMNS: usize = 43;
+const MAX_STAT_COLUMNS: usize = 44;
 
 // the first N columns are fingerprint hash columns
 const FINGERPRINT_HASH_COLUMNS: usize = 26;
@@ -1258,7 +1261,7 @@ impl Args {
             ]);
         }
         if self.flag_cardinality || everything {
-            fields.push("cardinality");
+            fields.extend_from_slice(&["cardinality", "uniqueness_ratio"]);
         }
         if self.flag_mode || everything {
             fields.extend_from_slice(&[
@@ -1613,17 +1616,17 @@ impl Stats {
 
         let record_count = *RECORD_COUNT.get().unwrap_or(&1);
 
-        // modes/antimodes & cardinality
+        // modes/antimodes & cardinality/uniqueness_ratio
         // we do this second because we can use the sort order with cardinality, to skip sorting
         // if its not required. This makes not only cardinality computation faster, it also makes
         // modes/antimodes computation faster.
         // We also need to know the cardinality to --infer-boolean should that be enabled
         let mut cardinality = 0;
-        let mut mc_pieces = Vec::with_capacity(7);
+        let mut mc_pieces = Vec::with_capacity(8);
         match self.modes.as_mut() {
             None => {
                 if self.which.cardinality {
-                    mc_pieces.push(empty());
+                    mc_pieces.extend_from_slice(&[empty(), empty()]);
                 }
                 if self.which.mode {
                     mc_pieces.extend_from_slice(&[
@@ -1639,7 +1642,12 @@ impl Stats {
             Some(ref mut v) => {
                 if self.which.cardinality {
                     cardinality = v.cardinality(column_sorted, 1);
-                    mc_pieces.push(itoa::Buffer::new().format(cardinality).to_owned());
+                    #[allow(clippy::cast_precision_loss)]
+                    let uniqueness_ratio = (cardinality as f64) / (record_count as f64);
+                    mc_pieces.extend_from_slice(&[
+                        itoa::Buffer::new().format(cardinality).to_owned(),
+                        util::round_num(uniqueness_ratio, round_places),
+                    ]);
                 }
                 if self.which.mode {
                     // get the modes separator
