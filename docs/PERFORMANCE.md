@@ -37,10 +37,12 @@ And some of these stats were relatively expensive to compute, so qsv started cac
 
 Slowly, over time, we realized that the cached stats can be used to make other commands faster and smarter - thus the stats cache was born!
 
-- `frequency` uses the stats cache to short-circuit compiling frequency tables for ID columns (all unique values) by looking at the cardinality of a column.
+- `frequency` uses the stats cache to short-circuit compiling frequency tables for ID columns (all unique values) by looking at the cardinality of a column and fetching rowcounts from the cache.
 - `schema` uses the cache to create a JSON Schema Validation file. It uses the cache to set the data type, enum values, const values, minLength, maxLength, minimum and maximum properties in the JSON Schema file.
 - `tojsonl` uses the cache to set the JSON data type, and to infer boolean JSON properties.
 - `sqlp` and `joinp` uses the cache to create a Polars Schema, short-circuting Polars' schema inferencing - which is not as reliable as it depends on sampling the first N rows of a CSV, which may lead to wrong type inferences if the sample size is not large enough (which if set too large, slows down the Polars engine). As the data type inferences of `stats` are guaranteed, its not only faster, it works all the time!
+- `pivotp` uses the cache extensively to automatically infer the best aggregation function to use based on the attributes of the pivot and value columns.
+- `diff` uses the cache to short-circuit comparison if the files fingerprint hashes are identical. It also uses the rowcount and cardinality of the primary key column to check for uniqueness.
 
 For the most part, the default caching behavior works transparently, though you will notice several files with the same file stem will start appearing in the same location as your CSV files. As metadata is tiny by nature and very useful on its own, a conscious decision was made not to hide them.
 
@@ -210,7 +212,7 @@ Shows that I'm running qsv version 2.0.0, with the `mimalloc` allocator (instead
 qsv employs several caching strategies to improve performance:
 
 * qsv has large read and write buffers to minimize disk I/O. The default read buffer size is 128k and the default write buffer size is 512k. These can be fine-tuned with the `QSV_RDR_BUFFER_CAPACITY` and `QSV_WTR_BUFFER_CAPACITY` environment variables.
-* The `stats` command caches its results in both CSV and JSONL formats. It does this to avoid re-computing the same statistics when the same input file/parameters are used, but also, as statistics are used in several other commands (currently - `frequency`, `schema` and `tojsonl`, with [more commands using cached statistics in the future](https://github.com/dathere/qsv/issues/898)).   
+* The `stats` command caches its results in both CSV and JSONL formats. It does this to avoid re-computing the same statistics when the same input file/parameters are used, but also, as statistics are used in several other commands (see [Stats Cache](#stats-cache)).   
 The stats cache are automatically refreshed when the input file is modified the next time the `stats` command is run or when cache-aware commands attempt to use them. The stats cache is stored in the same directory as the input file. The stats cache files are named with the same file stem as the input file with the `stats.csv`, `stats.csv.json` and `stats.csv.data.jsonl` extensions. The CSV contains the cached stats, the JSON file contains metadata about how the stats were compiled, and the JSONL file is the JSONL version of the stats that can be directly loaded into memory by other commands. The JSONL is used by the `frequency`, `schema` and `tojsonl` commands and will only be generated when the `--stats-jsonl` option is set.
 * The `geocode` command [memoizes](https://en.wikipedia.org/wiki/Memoization) otherwise expensive geocoding operations and will report its cache hit rate. `geocode` memoization, however, is not persistent across sessions.
 * The `fetch` and `fetchpost` commands also memoizes expensive REST API calls. When the `--redis` option is enabled, it effectively has a persistent cache as the default time-to-live (TTL) before a Redis cache entry is expired is 28 days and Redis entries are persisted across restarts. Redis cache settings can be fine-tuned with the `QSV_REDIS_CONNSTR`, `QSV_REDIS_TTL_SECONDS`, `QSV_REDIS_TTL_REFRESH` and `QSV_FP_REDIS_CONNSTR` environment variables.

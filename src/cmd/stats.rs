@@ -196,11 +196,11 @@ stats options:
                               number of CPUs detected.
     --stats-jsonl             Also write the stats in JSONL format. 
                               If set, the stats will be written to <FILESTEM>.stats.csv.data.jsonl.
-                              Note that this option used internally by other qsv commands
-                              (currently describegpt, frequency, joinp, pivotp, schema, sqlp & tojsonl)
-                              to load cached stats. You can preemptively create the stats-jsonl
-                              file by using this option BEFORE running the commands listed above
-                              and they will automatically use it.
+                              Note that this option used internally by other qsv "smart" commands (see
+                              https://github.com/dathere/qsv/blob/master/docs/PERFORMANCE.md#stats-cache)
+                              to load cached stats to make them work smarter & faster.
+                              You can preemptively create the stats-jsonl file by using this option
+                              BEFORE running "smart" commands and they will automatically use it.
  -c, --cache-threshold <arg>  Controls the creation of stats cache files.
                                 - when greater than 1, the threshold in milliseconds before caching
                                   stats results. If a stats run takes longer than this threshold,
