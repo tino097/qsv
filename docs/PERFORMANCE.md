@@ -31,7 +31,7 @@ export QSV_AUTOINDEX_SIZE=10000000
 ## Stats Cache
 `stats` is the primary reason qsv was created. Several projects we were working on required GUARANTEED data type inferences at speed when we first started working on it in 2021. As we iterated and started additional projects, we started needing additional capabilities to enable the ["automagical metadata"](https://dathere.com/2023/11/automagical-metadata/) inferencing workflow we wanted for our data ingestion pipelines.
 
-From the original 11 summary statistics in xsv (type, sum, min/max, min/max length, mean, stddev, median, mode & cardinality ), 22 more were added incrementally over time (is_ascii, range, sort_order, sum_length, avg_length, mean_length, sem, variance, cv, nullcount, max_precision, sparsity, mad, lower outer/inner fence, q1, q2_median, q3, iqr, upper inner/outer fence, skewness, mode_count, mode_occurrences, antimode, antimode_count, antimode_occurrences). Check the [Wiki](https://github.com/dathere/qsv/wiki/Supplemental#stats-command-output-explanation) for more info.
+From the original 11 summary statistics in xsv (type, sum, min/max, min/max length, mean, stddev, median, mode & cardinality ), 35 more were added incrementally over time (is_ascii, range, sort_order/sortiness, min/max/sum/avg/stddev/variance/cv lengths, sem, geometric_mean, harmonic_mean, variance, cv, nullcount, max_precision, sparsity, mad, lower outer/inner fence, q1, q2_median, q3, iqr, upper inner/outer fence, skewness, uniqueness_ratio, mode_count, mode_occurrences, antimode, antimode_count, antimode_occurrences). Check the [Wiki](https://github.com/dathere/qsv/wiki/Supplemental#stats-command-output-explanation) for more info.
 
 And some of these stats were relatively expensive to compute, so qsv started caching statistics so it didn't need to recompute them if a file hasn't changed (as most of the files we were working on were historical data).
 
@@ -54,6 +54,8 @@ If you want to fine-tune qsv's caching behavior, use the `--cache-threshold` opt
   As `stats` is much faster with an index. It also controls auto-indexing:
 - when set to a negative number, automatically creates an index when the input file size is greater than the absolute of the provided values in BYTES. The stats cache remains after `stats` finishes.
 - when set to a negative number AND the number ends with 5, it will automatically create an index, compile the stats, AND then delete the index as well as the stats cache files afterwards.
+
+> NOTE: To ensure the stats cache is used by "smart" commands, run `stats` with the `--stats-jsonl` option. This will create the stats cache file in the same directory as the input file.
 
 ## CPU Optimization
 
