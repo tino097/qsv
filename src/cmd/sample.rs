@@ -33,9 +33,9 @@ It supports seven sampling methods:
   Stratifies the population by the specified column and then samples from each stratum.
   Particularly useful when a population has distinct subgroups (strata) that are
   heterogeneous within but homogeneous between in terms of the variable of interest. 
-  For example, if you want to sample 1,000 records from a population of 100,000,
-  you can stratify the population by gender and then sample 500 records from each
-  stratum. This will ensure that you have a representative sample from each gender.
+  For example, if you want to sample 1,000 records from a population of 100,000 across the US,
+  you can stratify the population by US state and then sample 20 records from each stratum.
+  This will ensure that you have a representative sample from each of the 50 states.
   The sample size must be a whole number. Uses MEMORY PROPORTIONAL to the
   number of strata (s) and samples per stratum (k) as specified by <sample-size> - O(s*k).
   https://en.wikipedia.org/wiki/Stratified_sampling
