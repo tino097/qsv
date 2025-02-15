@@ -18,4 +18,12 @@ UE            = "UE"
 seeked        = "seeked"
 
 [files]
-extend-exclude = ["*.pynb", "*.ipynb", "*.lua", "*.csv", "*.jsonl"]
+extend-exclude = [
+    "*.pynb",
+    "*.ipynb",
+    "*.lua",
+    "*.csv",
+    "*.jsonl",
+    "*.tab",
+    "*.ssv",
+]
