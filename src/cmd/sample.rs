@@ -366,6 +366,18 @@ fn check_stats_cache(
 
                     if let Some(idx) = idx {
                         if let Some(col_stats) = stats.get(idx) {
+                            let min_weight = col_stats
+                                .min
+                                .clone()
+                                .unwrap()
+                                .parse::<f64>()
+                                .unwrap_or_default();
+                            if min_weight < 0.0 {
+                                return fail_incorrectusage_clierror!(
+                                    "Weights must be non-negative. Lowest weight: {min_weight}"
+                                );
+                            }
+
                             col_stats.max.clone().unwrap().parse::<f64>().ok()
                         } else {
                             None
@@ -1014,7 +1026,7 @@ fn sample_weighted<R: io::Read, W: io::Write>(
             .unwrap_or(0.0);
 
             if weight < 0.0 {
-                return fail_incorrectusage_clierror!("Weights must be non-negative");
+                return fail_incorrectusage_clierror!("Weights must be non-negative: ({weight})");
             }
             max_weight_scan = max_weight_scan.max(weight);
         }
@@ -1106,7 +1118,7 @@ fn do_weighted_sampling<T: Rng + ?Sized>(
             .unwrap_or(0.0);
 
             if weight < 0.0 {
-                return fail_incorrectusage_clierror!("Weights must be non-negative");
+                return fail_incorrectusage_clierror!("Weights must be non-negative: ({weight})");
             }
 
             // Modified acceptance-rejection method to handle zero weights
