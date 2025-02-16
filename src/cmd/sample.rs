@@ -7,7 +7,7 @@ It supports seven sampling methods:
   sample size (k) - O(k).
   https://en.wikipedia.org/wiki/Reservoir_sampling
 
-- INDEXED: the default sampling method when an index is present.
+- INDEXED: the default sampling method when an INDEX is present.
   Uses random I/O to sample efficiently, as it only visits records selected
   by random indexing, using MEMORY PROPORTIONAL to the sample size (k) - O(k).
   https://en.wikipedia.org/wiki/Random_access
@@ -77,6 +77,9 @@ sample arguments:
                            stdin, or a URL (http and https schemes supported).
 
     <sample-size>          When using INDEXED, RESERVOIR or WEIGHTED sampling, the sample size.
+                             Can either be a whole number or a value between value between 0 and 1.
+                             If a fraction, specifies the sample size as a percentage of the population. 
+                             (e.g. 0.15 - 15 percent of the CSV)
                            When using BERNOULLI sampling, the probability of selecting each record
                              (between 0 and 1).
                            When using SYSTEMATIC sampling, the integer part is the interval between
@@ -132,6 +135,7 @@ sample options:
                            Will download the entire file if not specified.
                            If the CSV is partially downloaded, the sample will be taken
                            only from the downloaded portion.
+    --force                Do not use stats cache, even if its available.
 
 Common options:
     -h, --help             Display this message
@@ -166,7 +170,10 @@ use url::Url;
 
 use crate::{
     config::{Config, Delimiter},
-    util, CliResult,
+    select::SelectColumns,
+    util,
+    util::{get_stats_records, SchemaArgs, StatsMode},
+    CliResult,
 };
 
 #[derive(Deserialize)]
@@ -186,6 +193,7 @@ struct Args {
     flag_stratified: Option<String>,
     flag_weighted:   Option<String>,
     flag_cluster:    Option<String>,
+    flag_force:      bool,
 }
 
 impl Args {
@@ -307,8 +315,103 @@ impl RngProvider for CryptoRng {
     }
 }
 
+fn check_stats_cache(
+    args: &Args,
+    method: &SamplingMethod,
+) -> CliResult<(Option<u64>, Option<f64>, Option<u64>)> {
+    if args.flag_force {
+        return Ok((None, None, None));
+    }
+
+    // Set stats config
+    let schema_args = SchemaArgs {
+        arg_input:            args.arg_input.clone(),
+        flag_no_headers:      args.flag_no_headers,
+        flag_delimiter:       args.flag_delimiter,
+        flag_jobs:            None,
+        flag_memcheck:        false,
+        flag_force:           args.flag_force,
+        flag_prefer_dmy:      false,
+        flag_dates_whitelist: String::new(),
+        flag_enum_threshold:  0,
+        flag_ignore_case:     false,
+        flag_strict_dates:    false,
+        flag_pattern_columns: SelectColumns::parse("")?,
+        flag_stdout:          false,
+    };
+
+    // Get stats records
+    if let Ok((csv_fields, stats, dataset_stats)) =
+        get_stats_records(&schema_args, StatsMode::Frequency)
+    {
+        // Get row count from stats cache
+        let rowcount = dataset_stats
+            .get("qsv__rowcount")
+            .and_then(|rc| rc.parse::<f64>().ok())
+            .map(|rc| rc as u64);
+
+        let mut max_weight = None;
+        let mut cardinality = None;
+        match method {
+            SamplingMethod::Weighted => {
+                // For weighted sampling, get max weight
+                max_weight = if let Some(weight_col) = &args.flag_weighted {
+                    let idx = if weight_col.chars().all(char::is_numeric) {
+                        weight_col.parse::<usize>().ok()
+                    } else {
+                        csv_fields
+                            .iter()
+                            .position(|field| field == weight_col.as_bytes())
+                    };
+
+                    if let Some(idx) = idx {
+                        if let Some(col_stats) = stats.get(idx) {
+                            col_stats.max.clone().unwrap().parse::<f64>().ok()
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+            },
+            SamplingMethod::Cluster => {
+                // For cluster sampling, get cardinality
+                cardinality = if let Some(cluster_col) = &args.flag_cluster {
+                    let idx = if cluster_col.chars().all(char::is_numeric) {
+                        cluster_col.parse::<usize>().ok()
+                    } else {
+                        csv_fields
+                            .iter()
+                            .position(|field| field == cluster_col.as_bytes())
+                    };
+
+                    if let Some(idx) = idx {
+                        stats.get(idx).map(|col_stats| col_stats.cardinality)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+            },
+            _ => {},
+        }
+
+        Ok((rowcount, max_weight, cardinality))
+    } else {
+        Ok((None, None, None))
+    }
+}
+
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let mut args: Args = util::get_args(USAGE, argv)?;
+
+    if args.arg_sample_size.is_sign_negative() {
+        return fail_incorrectusage_clierror!("Sample size cannot be negative.");
+    }
 
     // Validate that only one sampling method is selected
     let methods = [
@@ -411,7 +514,16 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 },
                 None => String::from("random"),
             };
-            let row_count = util::count_rows(&rconfig)?;
+
+            let (rowcount_stats, _, _) = check_stats_cache(&args, &SamplingMethod::Systematic)?;
+            let row_count = if let Some(rc) = rowcount_stats {
+                rc
+            } else if let Ok(rc) = util::count_rows(&rconfig) {
+                rc
+            } else {
+                return fail!("Cannot get rowcount. Systematic sampling requires a rowcount.");
+            };
+
             sample_systematic(
                 &mut rdr,
                 &mut wtr,
@@ -435,23 +547,48 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         },
         SamplingMethod::Weighted => {
             let weight_column = args.get_weight_column(&rdr.byte_headers()?.clone())?;
+
+            // Get max_weight from cache if available
+            let (rowcount, max_weight, _) = check_stats_cache(&args, &SamplingMethod::Weighted)?;
+
+            // determine sample size
+            #[allow(clippy::cast_precision_loss)]
+            let sample_size = if let Some(rc) = rowcount {
+                if args.arg_sample_size < 1.0 {
+                    (rc as f64 * args.arg_sample_size).round() as usize
+                } else {
+                    args.arg_sample_size as usize
+                }
+            } else if args.arg_sample_size < 1.0 {
+                let rowcount = util::count_rows(&rconfig)?;
+                (rowcount as f64 * args.arg_sample_size).round() as usize
+            } else {
+                args.arg_sample_size as usize
+            };
+
             sample_weighted(
                 &rconfig,
                 &mut rdr,
                 &mut wtr,
                 weight_column,
-                args.arg_sample_size as usize,
+                max_weight,
+                sample_size,
                 args.flag_seed,
                 &rng_kind,
             )?;
         },
         SamplingMethod::Cluster => {
             let cluster_column = args.get_cluster_column(&rdr.byte_headers()?.clone())?;
+
+            // Get cardinality from cache if available
+            let (_, _, cardinality) = check_stats_cache(&args, &SamplingMethod::Cluster)?;
+
             sample_cluster(
                 &rconfig,
                 &mut rdr,
                 &mut wtr,
                 cluster_column,
+                cardinality,
                 args.arg_sample_size as usize,
                 args.flag_seed,
                 &rng_kind,
@@ -498,22 +635,28 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             } else {
                 // No sampling method is specified and no index is present
                 // do reservoir sampling
+
                 #[allow(clippy::cast_precision_loss)]
-                if args.arg_sample_size < 1.0 {
-                    let Ok(row_count) = util::count_rows(&rconfig) else {
+                let sample_size = if args.arg_sample_size < 1.0 {
+                    // Get rowcount from stats cache if available
+                    let (rowcount_stats, _, _) =
+                        check_stats_cache(&args, &SamplingMethod::Default)?;
+
+                    if let Some(rc) = rowcount_stats {
+                        (rc as f64 * args.arg_sample_size).round() as u64
+                    } else if let Ok(rc) = util::count_rows(&rconfig) {
+                        // we don't have a stats cache, get the rowcount the "regular" way
+                        (rc as f64 * args.arg_sample_size).round() as u64
+                    } else {
                         return fail!(
                             "Cannot get rowcount. Percentage sampling requires a rowcount."
                         );
-                    };
-                    args.arg_sample_size *= row_count as f64;
-                }
-                sample_reservoir(
-                    &mut rdr,
-                    &mut wtr,
-                    args.arg_sample_size as u64,
-                    args.flag_seed,
-                    &rng_kind,
-                )?;
+                    }
+                } else {
+                    args.arg_sample_size as u64
+                };
+
+                sample_reservoir(&mut rdr, &mut wtr, sample_size, args.flag_seed, &rng_kind)?;
             }
         },
     }
@@ -849,28 +992,34 @@ fn sample_weighted<R: io::Read, W: io::Write>(
     rdr: &mut csv::Reader<R>,
     wtr: &mut csv::Writer<W>,
     weight_column: usize,
+    max_weight_stats: Option<f64>,
     sample_size: usize,
     seed: Option<u64>,
     rng_kind: &RngKind,
 ) -> CliResult<()> {
-    // First pass: find maximum weight
-    let mut max_weight = 0.0f64;
-    let mut curr_record;
-    for record in rdr.byte_records() {
-        curr_record = record?;
+    let max_weight = if let Some(wt) = max_weight_stats {
+        wt
+    } else {
+        // We don't have a stats cache, do a first pass to find maximum weight
+        let mut max_weight_scan = 0.0f64;
+        let mut curr_record;
+        for record in rdr.byte_records() {
+            curr_record = record?;
 
-        let weight: f64 = fast_float2::parse(
-            curr_record
-                .get(weight_column)
-                .ok_or_else(|| format!("Weight column index {weight_column} out of bounds"))?,
-        )
-        .unwrap_or(0.0);
+            let weight: f64 = fast_float2::parse(
+                curr_record
+                    .get(weight_column)
+                    .ok_or_else(|| format!("Weight column index {weight_column} out of bounds"))?,
+            )
+            .unwrap_or(0.0);
 
-        if weight < 0.0 {
-            return fail_incorrectusage_clierror!("Weights must be non-negative");
+            if weight < 0.0 {
+                return fail_incorrectusage_clierror!("Weights must be non-negative");
+            }
+            max_weight_scan = max_weight_scan.max(weight);
         }
-        max_weight = max_weight.max(weight);
-    }
+        max_weight_scan
+    };
 
     if max_weight == 0.0 {
         return fail_incorrectusage_clierror!("All weights are zero");
@@ -937,9 +1086,12 @@ fn do_weighted_sampling<T: Rng + ?Sized>(
     let max_attempts = sample_size * 100; // Prevent infinite loops
     let mut curr_record;
     let mut selected_len = 0;
+    let mut records_exhausted = false;
 
-    while selected_len < sample_size && attempts < max_attempts {
+    while selected_len < sample_size && attempts < max_attempts && !records_exhausted {
+        let mut any_records = false;
         for (i, record) in records.enumerate() {
+            any_records = true;
             if selected_len >= sample_size {
                 break;
             }
@@ -975,6 +1127,7 @@ fn do_weighted_sampling<T: Rng + ?Sized>(
                 break;
             }
         }
+        records_exhausted = !any_records;
     }
 
     if selected_len < sample_size {
@@ -990,15 +1143,28 @@ fn sample_cluster<R: io::Read, W: io::Write>(
     rdr: &mut csv::Reader<R>,
     wtr: &mut csv::Writer<W>,
     cluster_column: usize,
-    n_clusters: usize,
+    cluster_cardinality: Option<u64>,
+    requested_clusters: usize,
     seed: Option<u64>,
     rng_kind: &RngKind,
 ) -> CliResult<()> {
     const ESTIMATED_CLUSTER_COUNT: usize = 100;
 
+    let cluster_count = if let Some(cardinality) = cluster_cardinality {
+        if requested_clusters > cardinality as usize {
+            return fail_incorrectusage_clierror!(
+                "Requested sample size ({requested_clusters}) exceeds number of clusters \
+                 ({cardinality})",
+            );
+        }
+        requested_clusters
+    } else {
+        ESTIMATED_CLUSTER_COUNT
+    };
+
     // Use HashSet for faster lookups of unique clusters
-    let mut unique_clusters: HashSet<Vec<u8>> = HashSet::with_capacity(ESTIMATED_CLUSTER_COUNT);
-    let mut all_clusters: Vec<Vec<u8>> = Vec::with_capacity(ESTIMATED_CLUSTER_COUNT);
+    let mut unique_clusters: HashSet<Vec<u8>> = HashSet::with_capacity(cluster_count);
+    let mut all_clusters: Vec<Vec<u8>> = Vec::with_capacity(cluster_count);
     let mut curr_record;
 
     // First pass: collect unique clusters
@@ -1023,21 +1189,21 @@ fn sample_cluster<R: io::Read, W: io::Write>(
         RngKind::Standard => {
             let mut rng = StandardRng::create(seed);
             all_clusters
-                .choose_multiple(&mut rng, n_clusters.min(all_clusters.len()))
+                .choose_multiple(&mut rng, requested_clusters.min(all_clusters.len()))
                 .cloned()
                 .collect()
         },
         RngKind::Faster => {
             let mut rng = FasterRng::create(seed);
             all_clusters
-                .choose_multiple(&mut rng, n_clusters.min(all_clusters.len()))
+                .choose_multiple(&mut rng, requested_clusters.min(all_clusters.len()))
                 .cloned()
                 .collect()
         },
         RngKind::Cryptosecure => {
             let mut rng = CryptoRng::create(seed);
             all_clusters
-                .choose_multiple(&mut rng, n_clusters.min(all_clusters.len()))
+                .choose_multiple(&mut rng, requested_clusters.min(all_clusters.len()))
                 .cloned()
                 .collect()
         },
