@@ -53,6 +53,8 @@ const DEFAULT_FREEMEMORY_HEADROOM_PCT: u8 = 20;
 
 const DEFAULT_BATCH_SIZE: usize = 50_000;
 
+const DEFAULT_STATSCACHE_MODE: &str = "auto";
+
 static ROW_COUNT: OnceLock<Option<u64>> = OnceLock::new();
 
 static JOBS_TO_USE: OnceLock<usize> = OnceLock::new();
@@ -2065,11 +2067,22 @@ pub fn write_json_record<W: std::io::Write>(
 /// command returns tuple (`csv_fields`, `csv_stats`, `stats_col_index_map`)
 pub fn get_stats_records(
     args: &SchemaArgs,
-    mode: StatsMode,
+    requested_mode: StatsMode,
 ) -> CliResult<(ByteRecord, Vec<StatsData>, HashMap<String, String>)> {
     const DATASET_STATS_PREFIX: &str = r#"{"field":"qsv__"#;
 
-    if mode == StatsMode::None
+    let env_mode = env::var("QSV_STATSCACHE_MODE")
+        .unwrap_or_else(|_| DEFAULT_STATSCACHE_MODE.to_string())
+        .to_ascii_lowercase();
+
+    if !["auto", "force", "none"].contains(&env_mode.as_str()) {
+        return fail_incorrectusage_clierror!(
+            "Invalid QSV_STATSCACHE_MODE value: {env_mode}. Must be one of: auto, force, none"
+        );
+    }
+
+    if requested_mode == StatsMode::None
+        || env_mode == "none"
         || args.arg_input.is_none()
         || args.arg_input.as_ref() == Some(&"-".to_string())
     {
@@ -2100,9 +2113,10 @@ pub fn get_stats_records(
         false
     };
 
-    if mode == StatsMode::Frequency && !stats_data_current {
+    if requested_mode == StatsMode::Frequency && env_mode != "auto" && !stats_data_current {
         // if the stats.data file is not current,
         // we're also doing frequency old school w/o cardinality
+        // unless env_mode auto overrides
         return Ok((ByteRecord::new(), Vec::new(), HashMap::new()));
     }
 
@@ -2194,7 +2208,7 @@ pub fn get_stats_records(
         // boundaries, causing CI errors.
         // This is because we're using tab characters (/t) to separate args to fix #2294,
         #[rustfmt::skip]
-        let mut stats_args_str = match mode {
+        let mut stats_args_str = match requested_mode {
             StatsMode::Schema => {
                 // mode is StatsMode::Schema
                 // we're generating schema, so we need cardinality and to infer-dates
@@ -2250,11 +2264,15 @@ pub fn get_stats_records(
             stats_args_str = format!("{stats_args_str}\t--nulls");
         }
 
+        if env_mode == "force" && !stats_args_str.contains("--force") {
+            stats_args_str = format!("{stats_args_str}\t--force");
+        }
+
         let stats_args_vec: Vec<&str> = stats_args_str.split('\t').collect();
 
         let qsv_bin = std::env::current_exe().unwrap();
         let mut stats_cmd = std::process::Command::new(qsv_bin);
-        if mode == StatsMode::Outliers {
+        if requested_mode == StatsMode::Outliers {
             // set the max length for antimodes
             stats_cmd.env("QSV_ANTIMODES_LEN", "0").args(stats_args_vec);
         } else {
