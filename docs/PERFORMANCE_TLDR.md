@@ -1,4 +1,4 @@
-# Performance Tuning Guide for qsv
+# Performance Tuning Guide (TLDR version)
 
 This guide will help you get the best performance out of qsv for your data analysis workflows.
 
@@ -29,7 +29,7 @@ The stats cache is qsv's secret weapon for fast data analysis. When you run the 
 - Enables smart pivoting by automatically choosing the right aggregation functions
 - Speeds up data sampling and comparison operations
 
-**Pro Tip:** Always run `stats` with the `--stats-jsonl` option on your frequently-used datasets to create this cache.
+**Pro Tip:** Always run `stats` with the `--stats-jsonl` option on your frequently-used datasets to create this cache. Alternatively, you can also set QSV_STATSCACHE_MODE to "force" or "auto".
 
 ### 3. Memory Management
 
@@ -81,13 +81,18 @@ If you need to fine-tune performance further:
 2. **Control parallel processing:**
    ```bash
    # Set maximum number of parallel jobs
+   # if you need to use your system for other CPU-intensive tasks
+   # otherwise, qsv will use ALL available CPU cores
+   # If you're just doing casual computing tasks, this is OK
    export QSV_MAX_JOBS=4
    ```
 
 3. **Memory safety limits:**
    ```bash
    # Adjust memory safety margin (10-90%, default 20)
-   export QSV_MEMORY_HEADROOM_PCT=30
+   # Modern Operating Systems are very smart in dynamically allocating
+   # memory so this is just a safeguard
+   export QSV_MEMORY_HEADROOM_PCT=10
    ```
 
 For most users, the default settings will work well. These advanced options are here if you need to optimize for specific scenarios.
