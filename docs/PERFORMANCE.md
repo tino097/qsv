@@ -1,4 +1,5 @@
 # Performance Tuning
+([TLDR Guide](PERFORMANCE_TLDR.md))
 
 ## Index! Index! Index!
 
