@@ -34,16 +34,12 @@ fn extsort_csvmode() {
     let unsorted_csv = wrk.load_test_resource("adur-public-toilets.csv");
     wrk.create_from_string("adur-public-toilets.csv", &unsorted_csv);
 
-    // set the environment variable to autoindex
-    std::env::set_var("QSV_AUTOINDEX_SIZE", "1");
-
     let mut cmd = wrk.command("extsort");
-    cmd.arg("adur-public-toilets.csv")
+    cmd.env("QSV_AUTOINDEX_SIZE", "1")
+        .arg("adur-public-toilets.csv")
         .args(["--select", "OpeningHours,StreetAddress,LocationText"])
         .arg("adur-public-toilets-extsort-csvmode.csv");
     wrk.output(&mut cmd);
-    // unset the environment variable
-    std::env::remove_var("QSV_AUTOINDEX_SIZE");
 
     // load sorted output
     let sorted_output: String = wrk.from_str(&wrk.path("adur-public-toilets-extsort-csvmode.csv"));

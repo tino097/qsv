@@ -92,17 +92,11 @@ fn count_simple_custom_delimiter() {
         b';',
     );
 
-    // set the environment variable to use semicolon
-    std::env::set_var("QSV_CUSTOM_DELIMITER", ";");
-
     let mut cmd = wrk.command("count");
-    cmd.arg("in.csv");
+    cmd.env("QSV_CUSTOM_DELIMITER", ";").arg("in.csv");
 
     let got: String = wrk.stdout(&mut cmd);
     let expected = "3";
-
-    // unset the environment variable
-    std::env::remove_var("QSV_CUSTOM_DELIMITER");
 
     assert_eq!(got, expected.to_string());
 }
@@ -227,17 +221,13 @@ fn count_width_custom_delimiter() {
         b';',
     );
 
-    // set the environment variable to use semicolon
-    std::env::set_var("QSV_CUSTOM_DELIMITER", ";");
-
     let mut cmd = wrk.command("count");
-    cmd.arg("--width").arg("in.csv");
+    cmd.env("QSV_CUSTOM_DELIMITER", ";")
+        .arg("--width")
+        .arg("in.csv");
 
     let got: String = wrk.stdout(&mut cmd);
     let expected = "4;18-15.5-15-13-3.25-1.8028-1.5";
-
-    // unset the environment variable
-    std::env::remove_var("QSV_CUSTOM_DELIMITER");
 
     assert_eq!(got, expected.to_string());
 }

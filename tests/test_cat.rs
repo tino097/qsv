@@ -25,7 +25,12 @@ where
     wrk.create("in2.csv", rows2);
 
     let mut cmd = wrk.command("cat");
-    modify_cmd(cmd.arg(which).arg("in1.csv").arg("in2.csv"));
+    modify_cmd(
+        cmd.env("QSV_SKIP_FORMAT_CHECK", "1")
+            .arg(which)
+            .arg("in1.csv")
+            .arg("in2.csv"),
+    );
     wrk.read_stdout(&mut cmd)
 }
 
@@ -40,9 +45,7 @@ fn prop_cat_rows() {
             let (rows1, rows2) = rows.split_at(rows.len() / 2);
             (rows1.to_vec(), rows2.to_vec())
         };
-        std::env::set_var("QSV_SKIP_FORMAT_CHECK", "1");
         let got: CsvData = run_cat("cat_rows", "rows", rows1, rows2, no_headers);
-        std::env::remove_var("QSV_SKIP_FORMAT_CHECK");
         rassert_eq!(got, expected)
     }
     qcheck(p as fn(CsvData) -> bool);
@@ -742,7 +745,6 @@ fn cat_rowskey_insertion_order_noheader() {
 #[serial]
 fn prop_cat_cols() {
     fn p(rows1: CsvData, rows2: CsvData) -> TestResult {
-        std::env::set_var("QSV_SKIP_FORMAT_CHECK", "1");
         let got: Vec<Vec<String>> = run_cat(
             "cat_cols",
             "columns",
@@ -750,7 +752,6 @@ fn prop_cat_cols() {
             rows2.clone(),
             no_headers,
         );
-        std::env::remove_var("QSV_SKIP_FORMAT_CHECK");
 
         let mut expected: Vec<Vec<String>> = vec![];
         let (rows1, rows2) = (rows1.to_vecs().into_iter(), rows2.to_vecs().into_iter());
