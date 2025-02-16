@@ -29,13 +29,13 @@ export QSV_AUTOINDEX_SIZE=10000000
 ```
 
 ## Stats Cache
-`stats` is the primary reason qsv was created. Several projects we were working on required GUARANTEED data type inferences at speed when we first started working on it in 2021. As we iterated and started additional projects, we started needing additional capabilities to enable the ["automagical metadata"](https://dathere.com/2023/11/automagical-metadata/) inferencing workflow we wanted for our data ingestion pipelines.
+`stats` is the primary reason qsv was created. In 2021, several projects we were working on required GUARANTEED data type inferences at speed. As we iterated and started additional projects, we started needing additional capabilities to enable the ["automagical metadata"](https://dathere.com/2023/11/automagical-metadata/) inferencing workflow we wanted for our data ingestion pipelines.
 
-From the original 11 summary statistics in xsv (type, sum, min/max, min/max length, mean, stddev, median, mode & cardinality ), 35 more were added incrementally over time (is_ascii, range, sort_order/sortiness, min/max/sum/avg/stddev/variance/cv lengths, sem, geometric_mean, harmonic_mean, variance, cv, nullcount, max_precision, sparsity, mad, lower outer/inner fence, q1, q2_median, q3, iqr, upper inner/outer fence, skewness, uniqueness_ratio, mode_count, mode_occurrences, antimode, antimode_count, antimode_occurrences). Check the [Wiki](https://github.com/dathere/qsv/wiki/Supplemental#stats-command-output-explanation) for more info.
+From the original 11 summary statistics in xsv (type, sum, min/max, min/max length, mean, stddev, median, mode & cardinality ), 35 more were added incrementally over time (is_ascii, range, sort_order/sortiness, min/max/sum/avg/stddev/variance/cv lengths, sem, geometric_mean, harmonic_mean, variance, cv, nullcount, max_precision, sparsity, mad, lower outer/inner fence, q1, q2_median, q3, iqr, upper inner/outer fence, skewness, uniqueness_ratio, mode_count, mode_occurrences, antimode, antimode_count, antimode_occurrences) [more info](https://github.com/dathere/qsv/wiki/Supplemental#stats-command-output-explanation).
 
-And some of these stats were relatively expensive to compute, so qsv started caching statistics so it didn't need to recompute them if a file hasn't changed (as most of the files we were working on were historical data).
+And some of these stats were relatively expensive to compute, we added stats caching so it didn't need to recompute them if a file hasn't changed (as most of the files we were working on were historical data).
 
-Slowly, over time, we realized that the cached stats can be used to make other commands faster and smarter - thus the stats cache was born!
+Over time, we realized that the cached stats can be used to make other commands faster and smarter - thus the stats cache was born!
 
 - `frequency` uses the stats cache to short-circuit compiling frequency tables for ID columns (all unique values) by looking at the cardinality of a column and fetching rowcounts from the cache.
 - `schema` uses the cache to create a JSON Schema Validation file. It uses the cache to set the data type, enum values, const values, minLength, maxLength, minimum and maximum properties in the JSON Schema file.
@@ -43,6 +43,7 @@ Slowly, over time, we realized that the cached stats can be used to make other c
 - `sqlp` and `joinp` uses the cache to create a Polars Schema, short-circuting Polars' schema inferencing - which is not as reliable as it depends on sampling the first N rows of a CSV, which may lead to wrong type inferences if the sample size is not large enough (which if set too large, slows down the Polars engine). As the data type inferences of `stats` are guaranteed, its not only faster, it works all the time!
 - `pivotp` uses the cache extensively to automatically infer the best aggregation function to use based on the attributes of the pivot and value columns.
 - `diff` uses the cache to short-circuit comparison if the files fingerprint hashes are identical. It also uses the rowcount and cardinality of the primary key column to check for uniqueness.
+- `sample` uses the cache to skip unnecessary scanning and to inform its sampling strategies.
 
 For the most part, the default caching behavior works transparently, though you will notice several files with the same file stem will start appearing in the same location as your CSV files. As metadata is tiny by nature and very useful on its own, a conscious decision was made not to hide them.
 
