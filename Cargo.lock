@@ -1078,7 +1078,7 @@ dependencies = [
 [[package]]
 name = "cached"
 version = "0.54.0"
-source = "git+https://github.com/jqnatividad/cached?branch=bump-redis-to-0.28#a48dcc69d272a9dbcdd262baab8dd8190e373306"
+source = "git+https://github.com/jqnatividad/cached?branch=bumped-deps-202502#4f08d8edad1a3d95758c00883d083da549fb2efd"
 dependencies = [
  "ahash",
  "cached_proc_macro",
@@ -1092,14 +1092,14 @@ dependencies = [
  "serde",
  "serde_json",
  "sled",
- "thiserror 1.0.69",
+ "thiserror 2.0.11",
  "web-time",
 ]
 
 [[package]]
 name = "cached_proc_macro"
 version = "0.23.0"
-source = "git+https://github.com/jqnatividad/cached?branch=bump-redis-to-0.28#a48dcc69d272a9dbcdd262baab8dd8190e373306"
+source = "git+https://github.com/jqnatividad/cached?branch=bumped-deps-202502#4f08d8edad1a3d95758c00883d083da549fb2efd"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -1110,7 +1110,7 @@ dependencies = [
 [[package]]
 name = "cached_proc_macro_types"
 version = "0.1.1"
-source = "git+https://github.com/jqnatividad/cached?branch=bump-redis-to-0.28#a48dcc69d272a9dbcdd262baab8dd8190e373306"
+source = "git+https://github.com/jqnatividad/cached?branch=bumped-deps-202502#4f08d8edad1a3d95758c00883d083da549fb2efd"
 
 [[package]]
 name = "calamine"
@@ -1860,23 +1860,23 @@ dependencies = [
 
 [[package]]
 name = "directories"
-version = "5.0.1"
+version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a49173b84e034382284f27f1af4dcbbd231ffa358c0fe316541a7337f376a35"
+checksum = "16f5094c54661b38d03bd7e50df373292118db60b585c08a411c6d840017fe7d"
 dependencies = [
  "dirs-sys",
 ]
 
 [[package]]
 name = "dirs-sys"
-version = "0.4.1"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "520f05a5cbd335fae5a99ff7a6ab8627577660ee5cfd6a94a6a929b52ff0321c"
+checksum = "e01a3366d27ee9890022452ee61b2b63a67e6f13f58900b651ff5665f0bb1fab"
 dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.48.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5647,9 +5647,9 @@ dependencies = [
 
 [[package]]
 name = "redis"
-version = "0.28.2"
+version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e37ec3fd44bea2ec947ba6cc7634d7999a6590aca7c35827c250bc0de502bda6"
+checksum = "9568894e8bdefd16512bca9e286a9d2abc27773609aa4eb7f428497d64df4373"
 dependencies = [
  "ahash",
  "arc-swap",
@@ -5675,13 +5675,13 @@ dependencies = [
 
 [[package]]
 name = "redox_users"
-version = "0.4.6"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba009ff324d1fc1b900bd1fdb31564febe58a8ccc8a6fdbb93b543d33b13ca43"
+checksum = "dd6f9d3d47bdd2ad6945c5015a226ec6155d0bcdfd8f7cd29f86b71f8de99d2b"
 dependencies = [
  "getrandom 0.2.15",
  "libredox",
- "thiserror 1.0.69",
+ "thiserror 2.0.11",
 ]
 
 [[package]]
@@ -7777,15 +7777,6 @@ checksum = "4cd9b125c486025df0eabcb585e62173c6c9eddcec5d117d3b6e8c30e2ee4d10"
 dependencies = [
  "windows-result 0.2.0",
  "windows-targets 0.52.6",
-]
-
-[[package]]
-name = "windows-sys"
-version = "0.48.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "677d2418bec65e3338edb076e806bc1ec15693c5d0104683f2efe857f61056a9"
-dependencies = [
- "windows-targets 0.48.5",
 ]
 
 [[package]]
