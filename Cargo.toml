@@ -310,8 +310,9 @@ csv-index = { git = "https://github.com/dathere/rust-csv", branch = "qsv-optimiz
 # use cached with bumped redis using 0.28
 cached = { git = "https://github.com/jqnatividad/cached", branch = "bump-redis-to-0.28" }
 
-# use our calamine fork with unreleased fixes, an upgraded quick-xml, and accelerated int/float parsing
-calamine = { git = "https://github.com/jqnatividad/calamine", branch = "qsv-2-optimized" }
+# use latest upstream with upgraded quick-xml and accelerated int/float parsing
+# now that our PR has been merged
+calamine = { git = "https://github.com/tafia/calamine", rev = "5cda5c7" }
 
 # use upstream of csvlens with unreleased fixes
 csvlens = { git = "https://github.com/YS-L/csvlens", rev = "f1efb7a" }
