@@ -1086,3 +1086,197 @@ fn sample_invalid_rng() {
     cmd.args(["--rng", "invalid_rng"]).arg("1").arg("in.csv");
     wrk.assert_err(&mut cmd);
 }
+
+#[test]
+fn sample_systematic_invalid_interval() {
+    let wrk = Workdir::new("sample_systematic_invalid_interval");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["R", "S"],
+            svec!["1", "b"],
+            svec!["2", "a"],
+            svec!["3", "d"],
+        ],
+    );
+
+    // Test interval of 0
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--systematic", "first"]).arg("0").arg("in.csv");
+    wrk.assert_err(&mut cmd);
+
+    // Test negative interval
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--systematic", "first"]).arg("-2").arg("in.csv");
+    wrk.assert_err(&mut cmd);
+}
+
+#[test]
+fn sample_weighted_invalid_weights() {
+    let wrk = Workdir::new("sample_weighted_invalid");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["ID", "Weight"],
+            svec!["1", "abc"], // non-numeric weight -> treated as 0
+            svec!["2", "20.5"],
+            svec!["3", ""], // empty weight -> treated as 0
+            svec!["4", "40"],
+        ],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--weighted", "Weight"])
+        .args(["--seed", "42"])
+        .arg("2")
+        .arg("in.csv");
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    // Records with invalid weights are treated as having zero weight
+    // we requested two samples but returning only one as we ran out of records
+    let expected = vec![svec!["ID", "Weight"], svec!["4", "40"]];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn sample_cluster_too_many_clusters_with_stats_cache() {
+    let wrk = Workdir::new("sample_cluster_too_many_with_stats_cache");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["Cluster", "Value"],
+            svec!["A", "1"],
+            svec!["B", "2"],
+            svec!["C", "3"],
+        ],
+    );
+
+    // create stats cache
+    let mut stats_cmd = wrk.command("stats");
+    stats_cmd.args(["in.csv", "-E", "--stats-jsonl"]);
+
+    wrk.assert_success(&mut stats_cmd);
+
+    // Request more clusters than exist, this error only happens with a stats cache
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--cluster", "Cluster"])
+        .args(["--seed", "42"])
+        .arg("5") // Only 3 clusters exist
+        .arg("in.csv");
+
+    wrk.assert_err(&mut cmd);
+}
+
+#[test]
+fn sample_stratified_with_delimiter() {
+    let wrk = Workdir::new("sample_stratified_delimiter");
+    wrk.create_with_delim(
+        "in.csv",
+        vec![
+            svec!["Group", "Value"],
+            svec!["A", "1"],
+            svec!["A", "2"],
+            svec!["B", "3"],
+            svec!["B", "4"],
+        ],
+        b'|',
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--stratified", "Group"])
+        .args(["--seed", "42"])
+        .args(["--delimiter", "|"])
+        .arg("1")
+        .arg("in.csv");
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![svec!["Group|Value"], svec!["A|2"], svec!["B|3"]];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn sample_weighted_all_zero_weights() {
+    let wrk = Workdir::new("sample_weighted_all_zero");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["ID", "Weight"],
+            svec!["1", "0"],
+            svec!["2", "0"],
+            svec!["3", "0"],
+        ],
+    );
+
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--weighted", "Weight"])
+        .args(["--seed", "42"])
+        .arg("2")
+        .arg("in.csv");
+
+    wrk.assert_err(&mut cmd);
+}
+
+#[test]
+fn sample_systematic_fractional() {
+    let wrk = Workdir::new("sample_systematic_fractional");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["ID", "Value"],
+            svec!["1", "a"],
+            svec!["2", "b"],
+            svec!["3", "c"],
+            svec!["4", "d"],
+            svec!["5", "e"],
+            svec!["6", "f"],
+            svec!["7", "g"],
+            svec!["8", "h"],
+            svec!["9", "i"],
+            svec!["10", "j"],
+        ],
+    );
+
+    // Test with fractional interval (3.5 means every 3rd record and 50% of population)
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--systematic", "first"])
+        .args(["--seed", "42"])
+        .arg("3.5")
+        .arg("in.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["ID", "Value"],
+        svec!["1", "a"],
+        svec!["4", "d"],
+        svec!["7", "g"],
+        svec!["10", "j"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn sample_multiple_sampling_methods_error() {
+    let wrk = Workdir::new("sample_multiple_methods_error");
+    wrk.create(
+        "in.csv",
+        vec![svec!["ID", "Value"], svec!["1", "a"], svec!["2", "b"]],
+    );
+
+    // Test combining cluster with weighted
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--cluster", "ID", "--weighted", "Value"])
+        .arg("1")
+        .arg("in.csv");
+    wrk.assert_err(&mut cmd);
+
+    // Test combining systematic with stratified
+    let mut cmd = wrk.command("sample");
+    cmd.args(["--systematic", "first", "--stratified", "ID"])
+        .arg("1")
+        .arg("in.csv");
+    wrk.assert_err(&mut cmd);
+}
