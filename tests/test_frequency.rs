@@ -460,17 +460,7 @@ fn frequency_all_unique() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["field", "value", "count", "percentage"],
-        svec!["case_enquiry_id", "101004113298", "1", "1"],
-        svec!["case_enquiry_id", "101004113313", "1", "1"],
-        svec!["case_enquiry_id", "101004113348", "1", "1"],
-        svec!["case_enquiry_id", "101004113363", "1", "1"],
-        svec!["case_enquiry_id", "101004113371", "1", "1"],
-        svec!["case_enquiry_id", "101004113385", "1", "1"],
-        svec!["case_enquiry_id", "101004113386", "1", "1"],
-        svec!["case_enquiry_id", "101004113391", "1", "1"],
-        svec!["case_enquiry_id", "101004113394", "1", "1"],
-        svec!["case_enquiry_id", "101004113403", "1", "1"],
-        svec!["case_enquiry_id", "Other (90)", "90", "90"],
+        svec!["case_enquiry_id", "<ALL_UNIQUE>", "100", "100"],
     ];
     assert_eq!(got, expected);
 }
@@ -516,7 +506,6 @@ fn frequency_all_unique_with_stats_cache_alt_all_unique_text() {
     cmd.args(["--select", "1"])
         // "<ALL_UNIQUE>" in German
         .args(["--all-unique-text", "<ALLE EINZIGARTIG>"])
-        .args(["--stats-mode", "auto"])
         .arg(testdata);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
@@ -528,14 +517,12 @@ fn frequency_all_unique_with_stats_cache_alt_all_unique_text() {
 }
 
 #[test]
-fn frequency_all_unique_force_stats_cache() {
-    let wrk = Workdir::new("frequency_all_unique_force_stats_cache");
+fn frequency_all_unique_stats_cache_default() {
+    let wrk = Workdir::new("frequency_all_unique_stats_cache_default");
     let testdata = wrk.load_test_file("boston311-100.csv");
 
     let mut cmd = wrk.command("frequency");
-    cmd.args(["--select", "1"])
-        .args(["--stats-mode", "force"])
-        .arg(testdata);
+    cmd.args(["--select", "1"]).arg(testdata);
 
     wrk.assert_success(&mut cmd);
 
@@ -563,8 +550,8 @@ fn frequency_all_unique_stats_mode_none() {
 
     // run frequency with stats-mode none, ignoring the stats cache
     let mut cmd = wrk.command("frequency");
-    cmd.args(["--select", "1"])
-        .args(["--stats-mode", "none"])
+    cmd.env("QSV_STATSCACHE_MODE", "None")
+        .args(["--select", "1"])
         .arg(testdata);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
@@ -811,7 +798,8 @@ fn frequency_vis_whitespace() {
     wrk.create("in.csv", rows);
 
     let mut cmd = wrk.command("frequency");
-    cmd.arg("in.csv")
+    cmd.env("QSV_STATSCACHE_MODE", "none")
+        .arg("in.csv")
         .args(["--limit", "0"])
         .arg("--vis-whitespace");
 
@@ -905,7 +893,8 @@ fn frequency_vis_whitespace_ignore_case() {
     wrk.create("in.csv", rows);
 
     let mut cmd = wrk.command("frequency");
-    cmd.arg("in.csv")
+    cmd.env("QSV_STATSCACHE_MODE", "none")
+        .arg("in.csv")
         .args(["--limit", "0"])
         .arg("--vis-whitespace")
         .arg("--ignore-case");

@@ -49,6 +49,13 @@ QSV_NO_HEADERS = False
 # updated regardless of this setting.
 # QSV_AUTOINDEX_SIZE = 1000000
 
+# Specifies how the stats cache is used by "smart" commands.
+# Valid values are:
+#   auto - use the stats cache if it's valid (the stats-jsonl file exists and is current) - default.
+#   force - if the cache does not exist, create it by running stats.
+#   none - do not use the stats cache, even if it exists.
+# QSV_STATSCACHE_MODE = auto
+
 # if set, add a BOM (Byte Order Mark) to the beginning of the output.
 # Note that this will also set the BOM for qsv's output to stdout.
 # This is useful when generating CSV files for Excel on Windows.

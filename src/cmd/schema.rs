@@ -481,8 +481,6 @@ fn get_unique_values(
         flag_no_nulls:        true,
         flag_no_trim:         false,
         flag_ignore_case:     args.flag_ignore_case,
-        // internal mode for getting frequency tables
-        flag_stats_mode:      "_schema".to_string(),
         flag_all_unique_text: "<ALL UNIQUE>".to_string(),
         flag_jobs:            Some(util::njobs(args.flag_jobs)),
         flag_output:          None,
@@ -492,10 +490,15 @@ fn get_unique_values(
         flag_vis_whitespace:  false,
     };
 
+    let curr_mode = std::env::var("QSV_STATSCACHE_MODE");
+    std::env::set_var("QSV_STATSCACHE_MODE", "none");
     let (headers, ftables) = match freq_args.rconfig().indexed()? {
         Some(ref mut idx) => freq_args.parallel_ftables(idx),
         _ => freq_args.sequential_ftables(),
     }?;
+    if let Ok(orig_mode) = curr_mode {
+        std::env::set_var("QSV_STATSCACHE_MODE", orig_mode);
+    }
 
     let unique_values_map = construct_map_of_unique_values(&headers, &ftables)?;
     Ok(unique_values_map)

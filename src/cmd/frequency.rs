@@ -21,12 +21,19 @@ maintain an in-memory hashmap for ID columns. This allows `frequency` to handle
 larger-than-memory datasets with the added benefit of also making it faster when
 working with datasets with ID columns.
 
-STATS_MODE "none" NOTES:
+NOTE: "Complete" Frequency Tables:
 
-    If --stats mode is set to "none", the frequency command will compute frequencies
-    for all columns regardless of cardinality, even for columns with all unique values.
-    In this case, the unique limit (--unq-limit) is particularly useful when a column
-    has all unique values  and --limit is set to 0.
+    By default, ID columns will have an "<ALL UNIQUE>" value with count equal to
+    rowcount and percentage set to 100. This is done by using the stats cache to
+    fetch each column's cardinality - allowing qsv to short-circuit frequency
+    compilation and eliminate the need to maintain a hashmap for ID columns.
+
+    If you wish to compile a "complete" frequency table even for ID columns, set
+    QSV_STATSCACHE_MODE to "none". This will force the frequency command to compute
+    frequencies for all columns regardless of cardinality, even for ID columns.
+
+    In this case, the unique limit (--unq-limit) option is particularly useful when
+    a column has all unique values  and --limit is set to 0.
     Without a unique limit, the frequency table for that column will be the same as
     the number of rows in the data.
     With a unique limit, the frequency table will be a sample of N unique values,
@@ -59,7 +66,6 @@ frequency options:
     -u, --unq-limit <arg>   If a column has all unique values, limit the
                             frequency table to a sample of N unique items.
                             Set to '0' to disable a unique_limit.
-                            Only works when --stats-mode is set to "none".
                             [default: 10]
     --lmt-threshold <arg>   The threshold for which --limit and --unq-limit
                             will be applied. If the number of unique items
@@ -85,20 +91,6 @@ frequency options:
                             The default is to trim leading and trailing whitespaces.
     --no-nulls              Don't include NULLs in the frequency table.
     -i, --ignore-case       Ignore case when computing frequencies.
-    --stats-mode <arg>      The stats mode to use when compiling frequencies with cardinality info.
-                            Having column cardinalities short-circuits frequency compilation and
-                            eliminates memory usage for columns with all unique values (ID columns).
-                            This makes it possible to compile frequencies for larger-than-memory
-                            datasets and as an added bonus, makes the command faster as well.
-                            There are three modes:
-                              auto: use stats cache if it already exists to get column cardinalities.
-                                    For columns with all unique values, "<ALL_UNIQUE>" will be used.
-                              force: force stats calculation to get cardinalities. If the stats cache
-                                    does not exist, it will be created.
-                              none: don't use cardinality information.
-                                    For columns with all unique values, the first N sorted unique
-                                    values (based on the --limit and --unq-limit options) will be used.
-                            [default: auto]
    --all-unique-text <arg>  The text to use for the "<ALL_UNIQUE>" category.
                             [default: <ALL_UNIQUE>]
     --vis-whitespace        Visualize whitespace characters in the output.
@@ -157,7 +149,6 @@ pub struct Args {
     pub flag_no_trim:         bool,
     pub flag_no_nulls:        bool,
     pub flag_ignore_case:     bool,
-    pub flag_stats_mode:      String,
     pub flag_all_unique_text: String,
     pub flag_jobs:            Option<usize>,
     pub flag_output:          Option<String>,
@@ -530,17 +521,11 @@ impl Args {
             arg_input:            self.arg_input.clone(),
             flag_memcheck:        false,
         };
-        let stats_mode = match self.flag_stats_mode.as_str() {
-            "auto" => StatsMode::Frequency,
-            "force" => StatsMode::FrequencyForceStats,
-            "none" => StatsMode::None,
-            "_schema" => StatsMode::Schema, // only meant for internal use by schema command
-            _ => return fail_incorrectusage_clierror!("Invalid stats mode"),
-        };
-        let (csv_fields, csv_stats, dataset_stats) = get_stats_records(&schema_args, stats_mode)?;
 
-        if stats_mode == StatsMode::None || stats_mode == StatsMode::Schema || csv_fields.is_empty()
-        {
+        let (csv_fields, csv_stats, dataset_stats) =
+            get_stats_records(&schema_args, StatsMode::Frequency)?;
+
+        if csv_fields.is_empty() {
             // the stats cache does not exist, just return an empty vector
             // we're not going to be able to get the cardinalities, so
             // this signals that we just compute frequencies for all columns
