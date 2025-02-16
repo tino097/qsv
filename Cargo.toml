@@ -318,7 +318,7 @@ calamine = { git = "https://github.com/tafia/calamine", rev = "5cda5c7" }
 csvlens = { git = "https://github.com/YS-L/csvlens", rev = "f1efb7a" }
 
 # needed to get latest dependencies and unreleased fixes
-grex = { git = "https://github.com/pemistahl/grex", rev = "cb71c10" }
+grex = { git = "https://github.com/jqnatividad/grex", branch = "bumped-dependencies-202502" }
 
 # use our patched fork of sled to get rid of unmaintained instant
 sled = { git = "https://github.com/dathere/sled", branch = "v0.34.7-bumped-parking_lot_to_0.12" }
