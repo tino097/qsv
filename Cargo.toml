@@ -307,8 +307,8 @@ csv       = { git = "https://github.com/dathere/rust-csv", branch = "qsv-optimiz
 csv-core  = { git = "https://github.com/dathere/rust-csv", branch = "qsv-optimized-non-allocating-byterecord-trim" }
 csv-index = { git = "https://github.com/dathere/rust-csv", branch = "qsv-optimized-non-allocating-byterecord-trim" }
 
-# use cached with bumped dependencies
-cached = { git = "https://github.com/jqnatividad/cached", branch = "bumped-deps-202502" }
+# use latest upstream with bumped dependencies
+cached = { git = "https://github.com/jaemk/cached", rev = "d0eabce" }
 
 # use latest upstream with upgraded quick-xml and accelerated int/float parsing
 # now that our PR has been merged
