@@ -3057,3 +3057,156 @@ return "ok"
     assert_eq!(json["empty_table"], json!({}));
     assert_eq!(json["nested_empty"]["empty"], json!({}));
 }
+
+#[test]
+fn luau_accumulate_custom_sum_function() {
+    let wrk = Workdir::new("luau_accumulate_custom_sum_function");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["10"],
+            svec!["20"],
+            svec!["30"],
+            svec!["40"],
+            svec!["50"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("accumulated")
+        .arg(
+            r#"
+BEGIN {
+
+    -- Define a custom accumulator function that keeps a weighted sum
+    -- where each new value is weighted by its position
+    function udf_sum(acc, x)
+         return acc + tonumber(x)
+    end
+}!
+
+-- This is the MAIN LOOP
+accumulated = qsv_accumulate("value", udf_sum, 0)
+
+-- return the accumulated value for the current row
+return accumulated
+"#,
+        )
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "accumulated"],
+        svec!["10", "10"],  // initial value
+        svec!["20", "30"],  // 10 + 20
+        svec!["30", "60"],  // 30 + 30
+        svec!["40", "100"], // 60 + 40
+        svec!["50", "150"], // 100 + 50
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_accumulate_custom_sum_function_with_initial_value() {
+    let wrk = Workdir::new("luau_accumulate_custom_sum_function_with_initial_value");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["10"],
+            svec!["20"],
+            svec!["30"],
+            svec!["40"],
+            svec!["50"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("accumulated")
+        .arg(
+            r#"
+BEGIN {
+
+    -- Define a custom accumulator function that keeps a weighted sum
+    -- where each new value is weighted by its position
+    function udf_sum(acc, x)
+         return acc + x
+    end
+}!
+
+-- This is the MAIN LOOP
+accumulated = qsv_accumulate("value", udf_sum, 100)
+
+-- return the accumulated value for the current row
+return accumulated
+"#,
+        )
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "accumulated"],
+        svec!["10", "110"], // initial value
+        svec!["20", "130"], // 110 + 20
+        svec!["30", "160"], // 130 + 30
+        svec!["40", "200"], // 160 + 40
+        svec!["50", "250"], // 200 + 50
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_accumulate_custom_function_with_reset() {
+    let wrk = Workdir::new("luau_accumulate_custom_with_reset");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["3"],
+            svec!["5"],
+            svec!["4"],
+            svec!["1"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("accumulated")
+        .arg(
+            r#"
+BEGIN {
+
+    -- Define a custom accumulator function that keeps a weighted sum
+    -- where each new value is weighted by its position
+    function func_with_reset(acc, x)
+         if tonumber(acc) > 7 then
+            z = x
+         else
+            z = acc + x
+         end
+         return z
+    end
+}!
+
+-- This is the MAIN LOOP
+accumulated = qsv_accumulate("value", func_with_reset, 0)
+
+-- return the accumulated value for the current row
+return accumulated
+"#,
+        )
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "accumulated"],
+        svec!["3", "3"], // initial value
+        svec!["5", "8"], // 3 + 5
+        svec!["4", "4"], // reset since 8 > 7
+        svec!["1", "5"], // 4 + 1
+    ];
+    assert_eq!(got, expected);
+}
