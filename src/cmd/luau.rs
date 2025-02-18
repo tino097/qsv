@@ -2439,6 +2439,85 @@ fn setup_helpers(
     })?;
     luau.globals().set("qsv_cumall", qsv_cumall)?;
 
+    // this is a helper function that implements accumulate functionality.
+    // It takes a column, a function of two arguments, and an optional initial value.
+    // If y = accumulate(x, f, init) then y[1] = init and for i > 1 we have y[i] = f(y[i-1], x[i])
+    // The default for init is x[1].
+    //
+    //   qsv_accumulate(column: string, func: function, init?: any)
+    //          column: the name of the column to accumulate over
+    //            func: function that takes two arguments (prev accumulated value, current val)
+    //            init: optional initial value. If not provided, first row of column is used
+    //         returns: table containing accumulated values
+    //                  or Luau runtime error if invalid arguments
+    //
+    let qsv_accumulate = luau.create_function(|luau, args: mlua::MultiValue| {
+        // Convert args to Vec for easier handling
+        let args: Vec<mlua::Value> = args.into_iter().collect();
+
+        if args.len() < 2 {
+            return helper_err!(
+                "qsv_accumulate",
+                "requires at least 2 arguments: column name and function"
+            );
+        }
+
+        // Get the column name
+        let column_name = args[0].to_string()?;
+
+        // Get the current value from the column
+        let curr_value = luau
+            .globals()
+            .get::<String>(&*column_name)?
+            .parse::<f64>()
+            .unwrap_or(0.0);
+
+        // Get the function
+        let func = match &args[1] {
+            mlua::Value::Function(f) => f.clone(),
+            _ => {
+                return helper_err!("qsv_accumulate", "second argument must be a function");
+            },
+        };
+
+        // Generate unique name for the accumulator state
+        let state_name = format!("_qsv_accumulate_state_{column_name}");
+
+        // Get existing accumulator value or use initial value
+        let prev_acc = if let Ok(prev) = luau.globals().get::<f64>(&*state_name) {
+            prev
+        } else {
+            // Get initial value from args or default to 0.0
+            let init_value = if args.len() > 2 {
+                match &args[2] {
+                    mlua::Value::Number(n) => *n,
+                    mlua::Value::Integer(i) => *i as f64,
+                    mlua::Value::String(s) => s.to_string_lossy().parse::<f64>().unwrap_or(0.0),
+                    _ => 0.0,
+                }
+            } else {
+                0.0 // Always start with 0.0 as default initial value
+            };
+            luau.globals().set(&*state_name, init_value)?;
+            init_value
+        };
+
+        // Call the accumulator function
+        let result = match func.call::<mlua::Value>((prev_acc, curr_value)) {
+            Ok(mlua::Value::Number(n)) => n,
+            Ok(mlua::Value::Integer(i)) => i as f64,
+            Ok(mlua::Value::String(s)) => s.to_string_lossy().parse::<f64>().unwrap_or(prev_acc),
+            Ok(_) => prev_acc,
+            Err(e) => return Err(e),
+        };
+
+        // Store the new accumulated value
+        luau.globals().set(&*state_name, result)?;
+
+        Ok(result)
+    })?;
+    luau.globals().set("qsv_accumulate", qsv_accumulate)?;
+
     // qsv_diff - returns difference between current and previous value
     //
     //   qsv_diff(name, value[, periods])
