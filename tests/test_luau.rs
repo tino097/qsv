@@ -3104,6 +3104,51 @@ return qsv_accumulate("value", weighted_sum, 0)
 }
 
 #[test]
+fn luau_accumulate_custom_sum_function_no_initial_value() {
+    let wrk = Workdir::new("luau_accumulate_custom_sum_function_no_initial_value");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["10"],
+            svec!["20"],
+            svec!["30"],
+            svec!["40"],
+            svec!["50"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("accumulated")
+        .arg(
+            r#"
+-- This is the MAIN LOOP
+-- Define a custom accumulator function that keeps a weighted sum
+-- where each new value is weighted by its position
+-- we define the function inside the MAIN LOOP to access the _IDX variable
+function weighted_sum(acc, x)
+        return acc + x * _IDX
+end
+
+return qsv_accumulate("value", weighted_sum)
+"#,
+        )
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "accumulated"],
+        svec!["10", "20"],  // 10 + 10 * 1
+        svec!["20", "60"],  // 20 + 20 * 2
+        svec!["30", "150"], // 60 + 30 * 3
+        svec!["40", "310"], // 150 + 40 * 4
+        svec!["50", "560"], // 310 + 50 * 5
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
 fn luau_accumulate_custom_sum_function_with_initial_value() {
     let wrk = Workdir::new("luau_accumulate_custom_sum_function_with_initial_value");
     wrk.create(

@@ -2502,7 +2502,8 @@ fn setup_helpers(
                     _ => 0.0,
                 }
             } else {
-                0.0 // Always start with 0.0 as default initial value
+                // Always start with the current value as the initial value
+                curr_value
             };
             luau.globals().set(&*state_name, init_value)?;
             init_value
