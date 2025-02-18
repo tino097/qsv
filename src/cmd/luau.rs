@@ -2251,8 +2251,9 @@ fn setup_helpers(
     // if the input cannot be converted to a number, it returns 1 for that row.
     //
     //   qsv_cumprod(name, value)
-    //          name: identifier for this cumulative product (allows multiple products to run in
-    // parallel)         value: the numeric value to multiply with the cumulative product
+    //          name: identifier for this cumulative product
+    //                (allows multiple products to run in parallel)
+    //         value: the numeric value to multiply with the cumulative product
     //       returns: the cumulative product up to the current row for the named product
     //
     let qsv_cumprod = luau.create_function(|_, (name, value): (String, mlua::Value)| {
@@ -2280,8 +2281,9 @@ fn setup_helpers(
     // if the input cannot be converted to a number, it returns negative infinity for that row.
     //
     //   qsv_cummax(name, value)
-    //          name: identifier for this cumulative maximum (allows multiple maximums to run in
-    // parallel)         value: the numeric value to compare with the cumulative maximum
+    //          name: identifier for this cumulative maximum
+    //                (allows multiple maximums to run in parallel)
+    //         value: the numeric value to compare with the cumulative maximum
     //       returns: the cumulative maximum up to the current row for the named maximum
     //
     let qsv_cummax = luau.create_function(|_, (name, value): (String, mlua::Value)| {
@@ -2312,8 +2314,9 @@ fn setup_helpers(
     // if the input cannot be converted to a number, it returns positive infinity for that row.
     //
     //   qsv_cummin(name, value)
-    //          name: identifier for this cumulative minimum (allows multiple minimums to run in
-    // parallel)         value: the numeric value to compare with the cumulative minimum
+    //          name: identifier for this cumulative minimum
+    //                (allows multiple minimums to run in parallel)
+    //         value: the numeric value to compare with the cumulative minimum
     //       returns: the cumulative minimum up to the current row for the named minimum
     //
     let qsv_cummin = luau.create_function(|_, (name, value): (String, mlua::Value)| {
@@ -2384,8 +2387,9 @@ fn setup_helpers(
     // qsv_cumany - returns true if any value so far has been truthy
     //
     //   qsv_cumany(name, value)
-    //          name: identifier for this cumulative any (allows multiple cumany's to run in
-    // parallel)         value: the value to check for truthiness
+    //          name: identifier for this cumulative any
+    //                (allows multiple cumany's to run in parallel)
+    //         value: the value to check for truthiness
     //       returns: true if any value seen so far has been truthy, false otherwise
     let qsv_cumany = luau.create_function(|_, (name, value): (String, mlua::Value)| {
         thread_local! {
@@ -2413,9 +2417,10 @@ fn setup_helpers(
     // qsv_cumall - returns true if all values so far have been truthy
     //
     //   qsv_cumall(name, value)
-    //          name: identifier for this cumulative all (allows multiple cumall's to run in
-    // parallel)         value: the value to check for truthiness
-    //       returns: true if all values seen so far have been truthy, false otherwise
+    //       name: identifier for this cumulative all
+    //                (allows multiple cumall's to run in parallel)
+    //       value: the value to check for truthiness
+    //     returns: true if all values seen so far have been truthy, false otherwise
     let qsv_cumall = luau.create_function(|_, (name, value): (String, mlua::Value)| {
         thread_local! {
             static CUMALLS: RefCell<HashMap<String, bool>> = RefCell::new(HashMap::new());
@@ -2439,18 +2444,19 @@ fn setup_helpers(
     })?;
     luau.globals().set("qsv_cumall", qsv_cumall)?;
 
-    // this is a helper function that implements accumulate functionality.
-    // It takes a column, a function of two arguments, and an optional initial value.
-    // If y = accumulate(x, f, init) then y[1] = init and for i > 1 we have y[i] = f(y[i-1], x[i])
-    // The default for init is x[1].
+    // qsv_accumulate - accumulates values using a custom function
     //
-    //   qsv_accumulate(column: string, func: function, init?: any)
-    //          column: the name of the column to accumulate over
-    //            func: function that takes two arguments (prev accumulated value, current val)
-    //            init: optional initial value. If not provided, first row of column is used
-    //         returns: table containing accumulated values
+    //   qsv_accumulate(column: string, func: function, init?: number)
+    //          column: the name of the NUMERIC column to accumulate over
+    //                  IMPORTANT: Be sure to enclose the name in double quotes,
+    //                  Otherwise, the current value of the column is passed, and not the
+    //                  name, resulting in a runtime error.
+    //            func: function that takes two arguments (prev_acc, curr_val) and returns
+    //                  the new accumulated value. prev_acc is the previously accumulated value,
+    //                  curr_val is the current value from the column.
+    //            init: optional initial value. If not provided, defaults to 0.0
+    //         returns: the accumulated value for the current row
     //                  or Luau runtime error if invalid arguments
-    //
     let qsv_accumulate = luau.create_function(|luau, args: mlua::MultiValue| {
         // Convert args to Vec for easier handling
         let args: Vec<mlua::Value> = args.into_iter().collect();
