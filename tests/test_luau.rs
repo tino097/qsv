@@ -3125,8 +3125,7 @@ fn luau_accumulate_custom_sum_function_with_initial_value() {
             r#"
 BEGIN {
 
-    -- Define a custom accumulator function that keeps a weighted sum
-    -- where each new value is weighted by its position
+    -- Define a custom accumulator function
     function udf_sum(acc, x)
          return acc + x
     end
@@ -3174,8 +3173,8 @@ fn luau_accumulate_custom_function_with_reset() {
             r#"
 BEGIN {
 
-    -- Define a custom accumulator function that keeps a weighted sum
-    -- where each new value is weighted by its position
+    -- Define a custom accumulator function that resets the accumulator
+    -- if the accumulated value exceeds a threshold of 7
     function func_with_reset(acc, x)
          if tonumber(acc) > 7 then
             z = x
@@ -3187,10 +3186,7 @@ BEGIN {
 }!
 
 -- This is the MAIN LOOP
-accumulated = qsv_accumulate("value", func_with_reset, 0)
-
--- return the accumulated value for the current row
-return accumulated
+return qsv_accumulate("value", func_with_reset, 0)
 "#,
         )
         .arg("data.csv");
