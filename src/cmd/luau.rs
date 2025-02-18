@@ -2502,7 +2502,9 @@ fn setup_helpers(
                     _ => 0.0,
                 }
             } else {
-                // Always start with the current value as the initial value
+                // By default, the first column value is used as the initial value
+                // unless the optional initial value is provided.
+                // If the first column value is not a number, 0.0 is used as the initial value.
                 curr_value
             };
             luau.globals().set(&*state_name, init_value)?;
