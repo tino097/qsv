@@ -3078,20 +3078,15 @@ fn luau_accumulate_custom_sum_function() {
         .arg("accumulated")
         .arg(
             r#"
-BEGIN {
-
-    -- Define a custom accumulator function that keeps a weighted sum
-    -- where each new value is weighted by its position
-    function udf_sum(acc, x)
-         return acc + tonumber(x)
-    end
-}!
-
 -- This is the MAIN LOOP
-accumulated = qsv_accumulate("value", udf_sum, 0)
+-- Define a custom accumulator function that keeps a weighted sum
+-- where each new value is weighted by its position
+-- we define the function inside the MAIN LOOP to access the _IDX variable
+function weighted_sum(acc, x)
+        return acc + x * _IDX
+end
 
--- return the accumulated value for the current row
-return accumulated
+return qsv_accumulate("value", weighted_sum, 0)
 "#,
         )
         .arg("data.csv");
@@ -3099,11 +3094,11 @@ return accumulated
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["value", "accumulated"],
-        svec!["10", "10"],  // initial value
-        svec!["20", "30"],  // 10 + 20
-        svec!["30", "60"],  // 30 + 30
-        svec!["40", "100"], // 60 + 40
-        svec!["50", "150"], // 100 + 50
+        svec!["10", "10"],  // 10 + 0 * 1
+        svec!["20", "50"],  // 10 + 20 * 2
+        svec!["30", "140"], // 50 + 30 * 3
+        svec!["40", "300"], // 140 + 40 * 4
+        svec!["50", "550"], // 300 + 50 * 5
     ];
     assert_eq!(got, expected);
 }
