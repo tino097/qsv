@@ -2239,7 +2239,7 @@ fn setup_helpers(
         let num = match value {
             Value::Number(n) => n,
             Value::Integer(i) => i as f64,
-            Value::String(s) => s.to_string_lossy().parse::<f64>().unwrap_or_default(),
+            Value::String(s) => fast_float2::parse(s.as_bytes()).unwrap_or_default(),
             _ => 0.0,
         };
 
@@ -2248,6 +2248,9 @@ fn setup_helpers(
             let mut sums = cs.borrow_mut();
             let sum = sums.entry(key).or_insert(0.0);
             *sum += num;
+            if !sum.is_finite() {
+                return helper_err!("qsv_cumsum", "cumulative sum underflowed/overflowed");
+            }
             Ok(*sum)
         })
     })?;
@@ -2276,7 +2279,7 @@ fn setup_helpers(
         let num = match value {
             Value::Number(n) => n,
             Value::Integer(i) => i as f64,
-            Value::String(s) => s.to_string_lossy().parse::<f64>().unwrap_or(1.0),
+            Value::String(s) => fast_float2::parse(s.as_bytes()).unwrap_or(1.0),
             _ => 1.0,
         };
 
@@ -2284,6 +2287,9 @@ fn setup_helpers(
             let mut prods = cp.borrow_mut();
             let prod = prods.entry(key).or_insert(1.0);
             *prod *= num;
+            if !prod.is_finite() {
+                return helper_err!("qsv_cumprod", "cumulative product is not a finite number");
+            }
             Ok(*prod)
         })
     })?;
@@ -2312,10 +2318,7 @@ fn setup_helpers(
         let num = match value {
             Value::Number(n) => n,
             Value::Integer(i) => i as f64,
-            Value::String(s) => s
-                .to_string_lossy()
-                .parse::<f64>()
-                .unwrap_or(f64::NEG_INFINITY),
+            Value::String(s) => fast_float2::parse(s.as_bytes()).unwrap_or(f64::NEG_INFINITY),
             _ => f64::NEG_INFINITY,
         };
 
@@ -2351,7 +2354,7 @@ fn setup_helpers(
         let num = match value {
             Value::Number(n) => n,
             Value::Integer(i) => i as f64,
-            Value::String(s) => s.to_string_lossy().parse::<f64>().unwrap_or(f64::INFINITY),
+            Value::String(s) => fast_float2::parse(s.as_bytes()).unwrap_or(f64::INFINITY),
             _ => f64::INFINITY,
         };
 
@@ -2371,7 +2374,7 @@ fn setup_helpers(
     //           lag: (optional) number of rows to lag by (default: 1)
     //       default: (optional) value to return for rows before lag is available (default: "0")
     //          name: (optional) identifier for this lag. Note that you need to specify lag and
-    // default                if you want to use a named lag.
+    //                default if you want to use a named lag.
     //                (allows multiple lags to run in parallel)
     //       returns: the value from 'lag' rows ago, or default if not enough rows seen yet
     let qsv_lag = luau.create_function(|luau, args: mlua::MultiValue| {
@@ -2423,7 +2426,9 @@ fn setup_helpers(
                 // Return the default value when not enough history
                 Ok(default)
             } else {
-                let lagged_value = &values[values.len() - 1 - lag as usize];
+                let lagged_value = values
+                    .get(values.len().saturating_sub(1 + lag as usize))
+                    .ok_or_else(|| mlua::Error::runtime("Invalid lag index"))?;
                 Ok(mlua::Value::String(luau.create_string(lagged_value)?))
             }
         })
@@ -2532,7 +2537,7 @@ fn setup_helpers(
         // Get the current value from the column
         let curr_value = luau
             .globals()
-            .get::<String>(&*column_name)?
+            .raw_get::<String>(&*column_name)?
             .parse::<f64>()
             .unwrap_or(0.0);
 
@@ -2556,7 +2561,7 @@ fn setup_helpers(
                 match &args[2] {
                     mlua::Value::Number(n) => *n,
                     mlua::Value::Integer(i) => *i as f64,
-                    mlua::Value::String(s) => s.to_string_lossy().parse::<f64>().unwrap_or(0.0),
+                    mlua::Value::String(s) => fast_float2::parse(s.as_bytes()).unwrap_or(0.0),
                     _ => 0.0,
                 }
             } else {
@@ -2573,7 +2578,7 @@ fn setup_helpers(
         let result = match func.call::<mlua::Value>((prev_acc, curr_value)) {
             Ok(mlua::Value::Number(n)) => n,
             Ok(mlua::Value::Integer(i)) => i as f64,
-            Ok(mlua::Value::String(s)) => s.to_string_lossy().parse::<f64>().unwrap_or(prev_acc),
+            Ok(mlua::Value::String(s)) => fast_float2::parse(s.as_bytes()).unwrap_or(prev_acc),
             Ok(_) => prev_acc,
             Err(e) => return Err(e),
         };
@@ -2612,7 +2617,7 @@ fn setup_helpers(
             let num = match value {
                 Value::Number(n) => n,
                 Value::Integer(i) => i as f64,
-                Value::String(s) => s.to_string_lossy().parse::<f64>().unwrap_or(0.0),
+                Value::String(s) => fast_float2::parse(s.as_bytes()).unwrap_or(0.0),
                 _ => 0.0,
             };
 
@@ -2624,7 +2629,9 @@ fn setup_helpers(
                 if values.len() as i64 <= periods {
                     Ok(0.0) // Return 0 when not enough history
                 } else {
-                    let prev_value = values[values.len() - 1 - periods as usize];
+                    let prev_value = values
+                        .get(values.len().saturating_sub(1 + periods as usize))
+                        .ok_or_else(|| mlua::Error::runtime("Invalid periods value"))?;
                     Ok(num - prev_value)
                 }
             })
