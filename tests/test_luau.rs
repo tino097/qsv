@@ -3246,3 +3246,51 @@ return qsv_accumulate("value", func_with_reset, 0)
     ];
     assert_eq!(got, expected);
 }
+
+#[test]
+fn luau_cumsum_overflow() {
+    let wrk = Workdir::new("luau_cumsum_overflow");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["1e308"], // Very large number
+            svec!["1e308"], // Adding these will overflow
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("total")
+        .arg(r#"qsv_cumsum(value)"#)
+        .arg("data.csv");
+
+    wrk.assert_err(&mut cmd);
+    let stderr = wrk.output_stderr(&mut cmd);
+    let expected = "Luau errors encountered: 1\n";
+    assert_eq!(stderr, expected);
+}
+
+#[test]
+fn luau_shellcmd_invalid_command() {
+    let wrk = Workdir::new("luau_shellcmd_invalid");
+    wrk.create("data.csv", vec![svec!["value"], svec!["10"]]);
+
+    // Test with an unauthorized command
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("result")
+        .arg(
+            r#"
+BEGIN {
+    local result = qsv_shellcmd("rm", "-rf /")  -- This command should not be allowed
+}!
+return "ok"
+"#,
+        )
+        .arg("data.csv");
+
+    wrk.assert_err(&mut cmd);
+    let stderr = wrk.output_stderr(&mut cmd);
+    assert!(stderr.contains("Invalid shell command"));
+}
