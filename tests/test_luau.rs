@@ -2484,7 +2484,7 @@ fn luau_cumsum_single() {
     let mut cmd = wrk.command("luau");
     cmd.arg("map")
         .arg("running_total")
-        .arg(r#"qsv_cumsum("total", amount)"#)
+        .arg(r#"qsv_cumsum(amount)"#)
         .arg("data.csv");
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
@@ -2518,9 +2518,9 @@ fn luau_cumsum_multiple() {
         .arg("revenue_total,expenses_total,profit_total")
         .arg(
             r#"{
-            qsv_cumsum("revenue", revenue),
-            qsv_cumsum("expenses", expenses),
-            qsv_cumsum("profit", tonumber(revenue) - tonumber(expenses))
+            qsv_cumsum(revenue, "revenue"),
+            qsv_cumsum(expenses, "expenses"),
+            qsv_cumsum(tonumber(revenue) - tonumber(expenses), "profit")
         }"#,
         )
         .arg("data.csv");
@@ -2560,7 +2560,7 @@ fn luau_cumsum_invalid_input() {
     let mut cmd = wrk.command("luau");
     cmd.arg("map")
         .arg("total")
-        .arg(r#"qsv_cumsum("sum", value)"#)
+        .arg(r#"qsv_cumsum(value)"#)
         .arg("data.csv");
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
@@ -2592,7 +2592,7 @@ fn luau_cumprod() {
     let mut cmd = wrk.command("luau");
     cmd.arg("map")
         .arg("running_product")
-        .arg(r#"qsv_cumprod("prod", value)"#)
+        .arg(r#"qsv_cumprod(value)"#)
         .arg("data.csv");
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
@@ -2624,7 +2624,7 @@ fn luau_cummax_cummin() {
     let mut cmd = wrk.command("luau");
     cmd.arg("map")
         .arg("running_max,running_min")
-        .arg(r#"{qsv_cummax("max", value), qsv_cummin("min", value)}"#)
+        .arg(r#"{qsv_cummax(value), qsv_cummin(value)}"#)
         .arg("data.csv");
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
@@ -2659,8 +2659,8 @@ fn luau_lag() {
         .arg("lag1,lag2")
         .arg(
             r#"{
-            qsv_lag("val", value, 1, "0"),
-            qsv_lag("val", value, 2, "0")
+            qsv_lag(value, 1, "0"),
+            qsv_lag(value, 2, "0")
         }"#,
         )
         .arg("data.csv");
@@ -2697,8 +2697,8 @@ fn luau_cumany_cumall() {
         .arg("has_zero,all_positive")
         .arg(
             r#"{
-            qsv_cumany("zero", value == "0"),
-            qsv_cumall("pos", tonumber(value) > 0)
+            qsv_cumany(value == "0"),
+            qsv_cumall(tonumber(value) > 0)
         }"#,
         )
         .arg("data.csv");
@@ -2735,8 +2735,8 @@ fn luau_diff() {
         .arg("diff1,diff2")
         .arg(
             r#"{
-            qsv_diff("val", value),
-            qsv_diff("val", value, 2)
+            qsv_diff(value),
+            qsv_diff(value, 2)
         }"#,
         )
         .arg("data.csv");
@@ -2772,8 +2772,8 @@ fn luau_cumany_cumall_with_strings() {
         .arg("has_empty,all_nonempty")
         .arg(
             r#"{
-            qsv_cumany("empty", value == ""),
-            qsv_cumall("nonempty", value ~= "")
+            qsv_cumany(value == ""),
+            qsv_cumall(value ~= "")
         }"#,
         )
         .arg("data.csv");
@@ -2806,7 +2806,7 @@ fn luau_cumall_with_numbers() {
     let mut cmd = wrk.command("luau");
     cmd.arg("map")
         .arg("all_positive")
-        .arg(r#"qsv_cumall("pos", tonumber(value) > 0)"#)
+        .arg(r#"qsv_cumall(tonumber(value) > 0)"#)
         .arg("data.csv");
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
@@ -2839,8 +2839,8 @@ fn luau_lag_with_default() {
         .arg("prev,prev2")
         .arg(
             r#"{
-            qsv_lag("lag1", value, 1, "N/A"),
-            qsv_lag("lag2", value, 2, "N/A")
+            qsv_lag(value, 1, "N/A"),
+            qsv_lag(value, 2, "N/A")
         }"#,
         )
         .arg("data.csv");
@@ -2875,9 +2875,9 @@ fn luau_diff_with_lag() {
         .arg("diff1,diff2,pct_change")
         .arg(
             r#"{
-            qsv_diff("d1", value),
-            qsv_diff("d2", value, 2),
-            string.format("%.1f%%", ((tonumber(value) / tonumber(qsv_lag("pct", value))) - 1.0) * 100)
+            qsv_diff(value),
+            qsv_diff(value, 2),
+            string.format("%.1f%%", ((tonumber(value) / tonumber(qsv_lag(value))) - 1.0) * 100)
         }"#,
         )
         .arg("data.csv");
@@ -2913,9 +2913,9 @@ fn luau_cumulative_stats() {
         .arg("running_max,running_min,running_sum")
         .arg(
             r#"{
-            qsv_cummax("max", value),
-            qsv_cummin("min", value),
-            qsv_cumsum("sum", value)
+            qsv_cummax(value),
+            qsv_cummin(value),
+            qsv_cumsum(value)
         }"#,
         )
         .arg("data.csv");
