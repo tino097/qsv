@@ -2509,7 +2509,7 @@ fn setup_helpers(
 
     // qsv_accumulate - accumulates values using a custom function
     //
-    //   qsv_accumulate(column: string, func: function, init?: number)
+    //   qsv_accumulate(column: string, func: function, init: number, name: string)
     //          column: the name of the NUMERIC column to accumulate over
     //                  IMPORTANT: Be sure to enclose the name in double quotes,
     //                  Otherwise, the current value of the column is passed, and not the
@@ -2517,9 +2517,9 @@ fn setup_helpers(
     //            func: function that takes two arguments (prev_acc, curr_val) and returns
     //                  the new accumulated value. prev_acc is the previously accumulated value,
     //                  curr_val is the current value from the column.
-    //            init: optional initial value. If not provided, defaults to 0.0
+    //            init: (optional) initial value. If not provided, defaults to 0.0
     //                  If the column value is not a number, 0.0 is used as the initial value.
-    //            name: optional identifier for this accumulator.
+    //            name: (optional) identifier for this accumulator.
     //                  Note that you need to specify name if you want to use a named accumulator.
     //                  (allows multiple accumulators to run in parallel)
     //         returns: the accumulated value for the current row
@@ -2540,7 +2540,10 @@ fn setup_helpers(
 
         // Get the current value from the column
         let Ok(column) = luau.globals().raw_get::<String>(&*column_name) else {
-            return helper_err!("qsv_accumulate", "column '{column_name}' not found");
+            return helper_err!(
+                "qsv_accumulate",
+                "'{column_name}' not found. Be sure to enclose the column name in double quotes."
+            );
         };
         let curr_value = column.parse::<f64>().unwrap_or(0.0);
 
@@ -2586,7 +2589,7 @@ fn setup_helpers(
             Ok(mlua::Value::Number(n)) => n,
             Ok(mlua::Value::Integer(i)) => i as f64,
             Ok(mlua::Value::String(s)) => fast_float2::parse(s.as_bytes()).unwrap_or(prev_acc),
-            Ok(_) => prev_acc,
+            Ok(_) => prev_acc, // for other types, return the previous accumulated value
             Err(e) => return Err(e),
         };
 
