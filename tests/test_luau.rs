@@ -3086,7 +3086,7 @@ function weighted_sum(acc, x)
         return acc + x * _IDX
 end
 
-return qsv_accumulate("value", weighted_sum, 0)
+return qsv_accumulate(value, weighted_sum, 0)
 "#,
         )
         .arg("data.csv");
@@ -3131,7 +3131,7 @@ function weighted_sum(acc, x)
         return acc + x * _IDX
 end
 
-return qsv_accumulate("value", weighted_sum)
+return qsv_accumulate(value, weighted_sum)
 "#,
         )
         .arg("data.csv");
@@ -3177,7 +3177,7 @@ BEGIN {
 }!
 
 -- This is the MAIN LOOP
-accumulated = qsv_accumulate("value", udf_sum, 100)
+accumulated = qsv_accumulate(value, udf_sum, 100)
 
 -- return the accumulated value for the current row
 return accumulated
@@ -3231,7 +3231,7 @@ BEGIN {
 }!
 
 -- This is the MAIN LOOP
-return qsv_accumulate("value", func_with_reset, 0)
+return qsv_accumulate(value, func_with_reset, 0)
 "#,
         )
         .arg("data.csv");
