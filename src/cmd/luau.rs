@@ -2548,17 +2548,16 @@ fn setup_helpers(
         let curr_value = column.parse::<f64>().unwrap_or(0.0);
 
         // Get the function
-        let func = match &args[1] {
-            mlua::Value::Function(f) => f.clone(),
-            _ => {
-                return helper_err!("qsv_accumulate", "second argument must be a function");
-            },
+        let mlua::Value::Function(func) = &args[1] else {
+            return helper_err!("qsv_accumulate", "second argument must be a function");
         };
 
         // Generate unique name for the accumulator state
         let state_name = if args.len() > 3 {
+            // if a name is provided, use it as part of the state name
             format!("_qsv_accumulate_{column_name}_{}", args[3].to_string()?)
         } else {
+            // otherwise, just use the column name
             format!("_qsv_accumulate_{column_name}")
         };
 
@@ -2580,7 +2579,7 @@ fn setup_helpers(
                 // If the first column value is not a number, 0.0 is used as the initial value.
                 curr_value
             };
-            luau.globals().set(&*state_name, init_value)?;
+            luau.globals().raw_set(&*state_name, init_value)?;
             init_value
         };
 
@@ -2594,7 +2593,7 @@ fn setup_helpers(
         };
 
         // Store the new accumulated value
-        luau.globals().set(&*state_name, result)?;
+        luau.globals().raw_set(&*state_name, result)?;
 
         Ok(result)
     })?;
