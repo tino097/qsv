@@ -2535,11 +2535,10 @@ fn setup_helpers(
         let column_name = args[0].to_string()?;
 
         // Get the current value from the column
-        let curr_value = luau
-            .globals()
-            .raw_get::<String>(&*column_name)?
-            .parse::<f64>()
-            .unwrap_or(0.0);
+        let Ok(column) = luau.globals().raw_get::<String>(&*column_name) else {
+            return helper_err!("qsv_accumulate", "column '{column_name}' not found");
+        };
+        let curr_value = column.parse::<f64>().unwrap_or(0.0);
 
         // Get the function
         let func = match &args[1] {
