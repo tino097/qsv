@@ -2222,7 +2222,7 @@ fn setup_helpers(
     //         value: the numeric value to add to the cumulative sum
     //         name: (optional) identifier for this cumulative sum
     //               (allows multiple sums to run in parallel)
-    //       returns: the cumulative sum up to the current row for the named sum
+    //       returns: the cumulative sum up to the current row
     //
     let qsv_cumsum = luau.create_function(|_, (value, name): (mlua::Value, Option<String>)| {
         // Get static cumulative sums using thread_local storage
@@ -2263,7 +2263,7 @@ fn setup_helpers(
     //         value: the numeric value to multiply with the cumulative product
     //         name: (optional) identifier for this cumulative product
     //               (allows multiple products to run in parallel)
-    //       returns: the cumulative product up to the current row for the named product
+    //       returns: the cumulative product up to the current row
     //
     let qsv_cumprod = luau.create_function(|_, (value, name): (mlua::Value, Option<String>)| {
         thread_local! {
@@ -2302,7 +2302,7 @@ fn setup_helpers(
     //         value: the numeric value to compare with the cumulative maximum
     //         name: (optional) identifier for this cumulative maximum
     //               (allows multiple maximums to run in parallel)
-    //       returns: the cumulative maximum up to the current row for the named maximum
+    //       returns: the cumulative maximum up to the current row
     //
     let qsv_cummax = luau.create_function(|_, (value, name): (mlua::Value, Option<String>)| {
         thread_local! {
@@ -2338,7 +2338,7 @@ fn setup_helpers(
     //         value: the numeric value to compare with the cumulative minimum
     //         name: (optional) identifier for this cumulative minimum
     //               (allows multiple minimums to run in parallel)
-    //       returns: the cumulative minimum up to the current row for the named minimum
+    //       returns: the cumulative minimum up to the current row
     //
     let qsv_cummin = luau.create_function(|_, (value, name): (mlua::Value, Option<String>)| {
         thread_local! {
@@ -2518,6 +2518,10 @@ fn setup_helpers(
     //                  the new accumulated value. prev_acc is the previously accumulated value,
     //                  curr_val is the current value from the column.
     //            init: optional initial value. If not provided, defaults to 0.0
+    //                  If the column value is not a number, 0.0 is used as the initial value.
+    //            name: optional identifier for this accumulator.
+    //                  Note that you need to specify name if you want to use a named accumulator.
+    //                  (allows multiple accumulators to run in parallel)
     //         returns: the accumulated value for the current row
     //                  or Luau runtime error if invalid arguments
     let qsv_accumulate = luau.create_function(|luau, args: mlua::MultiValue| {
@@ -2549,7 +2553,11 @@ fn setup_helpers(
         };
 
         // Generate unique name for the accumulator state
-        let state_name = format!("_qsv_accumulate_{column_name}");
+        let state_name = if args.len() > 3 {
+            format!("_qsv_accumulate_{column_name}_{}", args[3].to_string()?)
+        } else {
+            format!("_qsv_accumulate_{column_name}")
+        };
 
         // Get existing accumulator value or use initial value
         let prev_acc = if let Ok(prev) = luau.globals().get::<f64>(&*state_name) {
