@@ -2340,7 +2340,13 @@ pub fn get_stats_records(
         }
     }
 
-    Ok((csv_fields, csv_stats, dataset_stats))
+    // ensure csv_fields and csv_stats have the same length
+    // as csv_fields may have the extra "qsv__value" field for dataset stats
+    Ok((
+        csv_fields.iter().take(csv_stats.len()).collect(),
+        csv_stats,
+        dataset_stats,
+    ))
 }
 
 pub fn csv_to_jsonl(
