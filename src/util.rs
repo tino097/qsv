@@ -485,8 +485,14 @@ pub fn count_rows(conf: &Config) -> Result<u64, CliError> {
 fn count_rows_with_best_method(conf: &Config) -> Option<u64> {
     if !conf.no_headers {
         // Try polars first for files with headers
-        if let Ok(count) = polars_count_input(conf, false) {
-            return Some(count);
+        if let Ok(polars_count) = polars_count_input(conf, false) {
+            // If count is greater than 0, return the polars accelerated count
+            // as sometimes, polars returns a zero count even if the file is not empty
+            // and the file is a proper CSV file.
+            // Otherwise, double-check with the "regular" CSV reader
+            if polars_count > 0 {
+                return Some(polars_count);
+            }
         }
     }
 
