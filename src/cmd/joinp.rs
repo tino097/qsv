@@ -405,7 +405,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             validation,
             maintain_order,
             SpecialJoin::None,
-            normalization_form,
+            normalization_form.as_ref(),
         ),
         // left join
         (true, false, false, false, false, false, false, false, false, false) => join.run(
@@ -413,7 +413,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             validation,
             maintain_order,
             SpecialJoin::None,
-            normalization_form,
+            normalization_form.as_ref(),
         ),
         // left anti join
         (false, true, false, false, false, false, false, false, false, false) => join.run(
@@ -421,7 +421,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             validation,
             maintain_order,
             SpecialJoin::None,
-            normalization_form,
+            normalization_form.as_ref(),
         ),
         // left semi join
         (false, false, true, false, false, false, false, false, false, false) => join.run(
@@ -429,7 +429,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             validation,
             maintain_order,
             SpecialJoin::None,
-            normalization_form,
+            normalization_form.as_ref(),
         ),
         // right join
         (false, false, false, true, false, false, false, false, false, false) => join.run(
@@ -437,7 +437,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             validation,
             maintain_order,
             SpecialJoin::None,
-            normalization_form,
+            normalization_form.as_ref(),
         ),
         // right anti join
         // swap left and right data sets and run left anti join
@@ -450,7 +450,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 validation,
                 maintain_order,
                 SpecialJoin::None,
-                normalization_form,
+                normalization_form.as_ref(),
             )
         },
         // right semi join
@@ -464,7 +464,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 validation,
                 maintain_order,
                 SpecialJoin::None,
-                normalization_form,
+                normalization_form.as_ref(),
             )
         },
         // full join
@@ -473,7 +473,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             validation,
             maintain_order,
             SpecialJoin::None,
-            normalization_form,
+            normalization_form.as_ref(),
         ),
         // cross join
         (false, false, false, false, false, false, false, true, false, false) => join.run(
@@ -481,7 +481,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             validation,
             MaintainOrderJoin::None,
             SpecialJoin::None,
-            normalization_form,
+            normalization_form.as_ref(),
         ),
 
         // as of join
@@ -540,7 +540,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 } else {
                     SpecialJoin::AsOfAutoSort
                 },
-                normalization_form,
+                normalization_form.as_ref(),
             )
         },
 
@@ -553,7 +553,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 validation,
                 maintain_order,
                 SpecialJoin::NonEqui(args.flag_non_equi.unwrap()),
-                normalization_form,
+                normalization_form.as_ref(),
             )
         },
         _ => fail_incorrectusage_clierror!("Please pick exactly one join operation."),
@@ -587,14 +587,13 @@ struct JoinStruct {
 }
 
 impl JoinStruct {
-    #[allow(clippy::needless_pass_by_value)]
     fn run(
         mut self,
         jointype: JoinType,
         validation: JoinValidation,
         maintain_order: MaintainOrderJoin,
         special_join: SpecialJoin,
-        normalization_form: Option<UnicodeForm>,
+        normalization_form: Option<&UnicodeForm>,
     ) -> CliResult<(usize, usize)> {
         let mut left_selcols: Vec<_> = self
             .left_sel
@@ -619,7 +618,7 @@ impl JoinStruct {
                     if self.ignore_case {
                         transformed = transformed.str().to_lowercase();
                     }
-                    if let Some(ref form) = normalization_form {
+                    if let Some(form) = normalization_form {
                         transformed = transformed.str().normalize(form.clone());
                     }
                     transformed
