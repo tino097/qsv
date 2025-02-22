@@ -225,7 +225,6 @@ pub fn infer_schema_from_stats(
         &mut low_cardinality_column_indices,
         args.flag_enum_threshold,
         &mut const_column_indices,
-        &csv_fields,
         &csv_stats,
     );
 
@@ -240,7 +239,6 @@ pub fn infer_schema_from_stats(
     let mut type_list: Vec<Value> = Vec::with_capacity(4);
     let mut enum_list: Vec<Value> = Vec::with_capacity(args.flag_enum_threshold as usize);
     let mut const_value: Value;
-    let mut header_byte_slice;
     let mut header_string;
     let mut stats_record;
     let mut col_type;
@@ -248,12 +246,9 @@ pub fn infer_schema_from_stats(
     let empty_string = String::new();
 
     // generate definition for each CSV column/field and add to properties_map
-    #[allow(clippy::needless_range_loop)]
-    for i in 0..csv_fields.len() {
-        header_byte_slice = csv_fields.get(i).unwrap();
-
+    for (i, csv_field) in csv_fields.iter().enumerate() {
         // convert csv header to string
-        header_string = convert_to_string(header_byte_slice)?;
+        header_string = convert_to_string(csv_field)?;
 
         // grab stats record for current column
         stats_record = csv_stats[i].clone();
@@ -432,16 +427,14 @@ fn build_low_cardinality_column_selector_arg(
     low_cardinality_column_indices: &mut Vec<u64>,
     enum_cardinality_threshold: u64,
     const_column_indices: &mut Vec<u64>,
-    csv_fields: &ByteRecord,
     csv_stats: &[StatsData],
 ) -> String {
     low_cardinality_column_indices.clear();
 
     // identify low cardinality columns
-    #[allow(clippy::needless_range_loop)]
-    for i in 0..csv_fields.len() {
+    csv_stats.iter().enumerate().for_each(|(i, stat)| {
         // get Cardinality
-        let col_cardinality = csv_stats[i].cardinality;
+        let col_cardinality = stat.cardinality;
 
         if col_cardinality == 1 {
             const_column_indices.push((i + 1) as u64);
@@ -449,7 +442,7 @@ fn build_low_cardinality_column_selector_arg(
             // column selector uses 1-based index
             low_cardinality_column_indices.push((i + 1) as u64);
         }
-    }
+    });
 
     debug!("low cardinality columns: {low_cardinality_column_indices:?}");
 
