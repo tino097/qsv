@@ -791,25 +791,32 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             }
 
             // we need to count the number of records in the file to calculate sparsity
-            // safety: we know util::count_rows() will not return an Err, so we can use unwrap
-            let record_count = RECORD_COUNT.get_or_init(|| util::count_rows(&rconfig).unwrap());
-            // log::info!("scanning {record_count} records...");
+            let mut record_count = 0;
 
             let (headers, stats) = match rconfig.indexed()? {
-                None => args.sequential_stats(&args.flag_dates_whitelist),
+                None => {
+                    // without an index, we need to count the number of records in the file
+                    // safety: we know util::count_rows() will not return an Err
+                    record_count = util::count_rows(&rconfig).unwrap();
+                    args.sequential_stats(&args.flag_dates_whitelist)
+                },
                 Some(idx) => {
-                    let idx_count = idx.count();
+                    // with an index, we get the rowcount instantaneously from the index
+                    record_count = idx.count();
                     if let Some(num_jobs) = args.flag_jobs {
                         if num_jobs == 1 {
                             args.sequential_stats(&args.flag_dates_whitelist)
                         } else {
-                            args.parallel_stats(&args.flag_dates_whitelist, idx_count)
+                            args.parallel_stats(&args.flag_dates_whitelist, record_count)
                         }
                     } else {
-                        args.parallel_stats(&args.flag_dates_whitelist, idx_count)
+                        args.parallel_stats(&args.flag_dates_whitelist, record_count)
                     }
                 },
             }?;
+            // we cache the record count so we don't have to count the records again
+            let _ = RECORD_COUNT.set(record_count);
+            // log::info!("scanned {record_count} records...");
 
             let stats_sr_vec = args.stats_to_records(stats, args.flag_vis_whitespace);
             let mut work_br;
@@ -854,7 +861,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             };
 
             // Write qsv__rowcount
-            write_dataset_stat(b"qsv__rowcount", *record_count)?;
+            write_dataset_stat(b"qsv__rowcount", record_count)?;
 
             // Write qsv__columncount
             let ds_column_count = headers.len() as u64;
@@ -915,7 +922,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 // safety: we know the path is a valid PathBuf, so we can use unwrap
                 current_stats_args.canonical_input_path =
                     path.canonicalize()?.to_str().unwrap().to_string();
-                current_stats_args.record_count = *record_count;
+                current_stats_args.record_count = record_count;
                 current_stats_args.date_generated = chrono::Utc::now().to_rfc3339();
             }
         }
