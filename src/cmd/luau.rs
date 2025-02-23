@@ -7,7 +7,7 @@ Luau is not just another qsv command. It is qsv's Domain-Specific Language (DSL)
 for data-wrangling. 👑
 
 The executed Luau has 3 ways to reference row columns (as strings):
-  1. Directly by using column name (e.g. Amount), can be disabled with -g
+  1. Directly by using column name (e.g. Amount), can be disabled with --no-globals
   2. Indexing col variable by column name: col.Amount or col["Total Balance"]
   3. Indexing col variable by column 1-based index: col[1], col[2], etc.
      This is only available with the --colindex or --no-headers options.
@@ -20,7 +20,7 @@ It has two subcommands:
   filter  - Filter rows by executing a Luau script for each row. Rows that return
             true are kept, the rest are filtered out.
 
-Some usage examples:
+Some examples:
 
   Sum numeric columns 'a' and 'b' and call new column 'c'
   $ qsv luau map c "a + b"
@@ -29,7 +29,8 @@ Some usage examples:
 
   There is some magic in the previous example as 'a' and 'b' are passed in
   as strings (not numbers), but Luau still manages to add them up.
-  A more explicit way of doing it, is by using tonumber
+  A more explicit way of doing it, is by using the tonumber() function.
+  See https://luau-lang.org/library for a list of built-in functions.
   $ qsv luau map c "tonumber(a) + tonumber(b)"
 
   Add running total column for Amount
@@ -41,6 +42,11 @@ Some usage examples:
 
   Add running total column for Amount when previous balance was 900
   $ qsv luau map Total "tot = (tot or 900) + Amount; return tot"
+
+  Use the qsv_cumsum() helper function to compute the running total.
+  See https://github.com/dathere/qsv/wiki/Luau-Helper-Functions-Examples for more examples.
+
+  $ qsv luau map Total "qsv_cumsum(Amount)"
 
   Convert Amount to always-positive AbsAmount and Type (debit/credit) columns
   $ qsv luau map Type \
@@ -135,7 +141,7 @@ There are more Luau helper functions in addition to "qsv_log", notably the power
 CSVs on the filesystem, a URL, datHere's lookup repo or CKAN instances.
 
 Detailed descriptions of these helpers can be found in the "setup_helpers" section at
-the bottom of this file and on the Wiki (https://github.com/dathere/qsv/wiki/Luau-Development)
+the bottom of this file and on the Wiki (https://github.com/dathere/qsv/wiki)
 
 For more detailed examples, see https://github.com/dathere/qsv/blob/master/tests/test_luau.rs.
 
@@ -169,8 +175,8 @@ Luau arguments:
     It can contain multiple statements.
 
     <new-columns> is a comma-separated list of new computed columns to add to the CSV
-    when using "luau map". Note that the new columns are added to the CSV after the
-    existing columns.
+    when using "luau map". The new columns are added to the CSV after the existing
+    columns, unless the --remap option is used.
 
 Luau options:
   -g, --no-globals        Don't create Luau global variables for each column,
@@ -200,7 +206,7 @@ Luau options:
                           [default: ?;?.luau;?.lua]
   --max-errors <count>    The maximum number of errors to tolerate before aborting.
                           Set to zero to disable error limit.
-                          [default: 100]
+                          [default: 10]
   --timeout <seconds>     Timeout for downloading lookup_tables using
                           the qsv_register_lookup() helper function.
                           [default: 30]
