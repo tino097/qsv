@@ -57,7 +57,7 @@ macro_rules! winfo {
     });
 }
 
-/// write to stderr and log::error
+/// write to stderr and log::error, returning Err(err)
 macro_rules! fail {
     ($e:expr) => {{
         use log::error;
@@ -111,7 +111,7 @@ macro_rules! fail_OOM_clierror {
     }};
 }
 
-/// write to stderr and log::error, using a format string
+/// write to stderr and log::error, returning Err(err) using a format string
 macro_rules! fail_format {
     ($($t:tt)*) => {{
         use log::error;
