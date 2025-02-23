@@ -1370,22 +1370,26 @@ impl Commute for WhichStats {
 }
 
 #[allow(clippy::unsafe_derive_deserialize)]
+#[repr(C)]
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
-pub struct Stats {
-    typ:           FieldType,
-    is_ascii:      bool,
-    sum:           Option<TypedSum>,
-    sum_stotlen:   u64,
-    minmax:        Option<TypedMinMax>,
-    online:        Option<OnlineStats>,
-    online_len:    Option<OnlineStats>,
-    nullcount:     u64,
-    max_precision: u16,
-    modes:         Option<Unsorted<Vec<u8>>>,
-    median:        Option<Unsorted<f64>>,
-    mad:           Option<Unsorted<f64>>,
-    quartiles:     Option<Unsorted<f64>>,
-    which:         WhichStats,
+struct Stats {
+    // optimal memory layout for this central struct
+    // this ordering consumes 720 bytes
+    // which is 16 bytes less than previous memory layout
+    typ:           FieldType,                 // 1 byte
+    is_ascii:      bool,                      // 1 byte
+    max_precision: u16,                       // 2 bytes
+    which:         WhichStats,                // 10 bytes
+    nullcount:     u64,                       // 8 bytes
+    sum_stotlen:   u64,                       // 8 bytes
+    sum:           Option<TypedSum>,          // 32 bytes
+    modes:         Option<Unsorted<Vec<u8>>>, // 32 bytes
+    median:        Option<Unsorted<f64>>,     // 32 bytes
+    mad:           Option<Unsorted<f64>>,     // 32 bytes
+    quartiles:     Option<Unsorted<f64>>,     // 32 bytes
+    online:        Option<OnlineStats>,       // 48 bytes
+    online_len:    Option<OnlineStats>,       // 48 bytes
+    minmax:        Option<TypedMinMax>,       // 432 bytes
 }
 
 #[inline]
@@ -1411,8 +1415,8 @@ impl Stats {
             mut online_len,
             mut modes,
             mut median,
-            mut quartiles,
             mut mad,
+            mut quartiles,
         ) = (None, None, None, None, None, None, None, None);
         if which.sum {
             sum = Some(TypedSum::default());
@@ -1438,18 +1442,18 @@ impl Stats {
         Stats {
             typ: FieldType::default(),
             is_ascii: true,
-            sum,
-            sum_stotlen: 0,
-            minmax,
-            online,
-            online_len,
-            nullcount: 0,
             max_precision: 0,
+            which,
+            nullcount: 0,
+            sum_stotlen: 0,
+            sum,
             modes,
             median,
             mad,
             quartiles,
-            which,
+            online,
+            online_len,
+            minmax,
         }
     }
 
@@ -2092,17 +2096,18 @@ impl Commute for Stats {
     fn merge(&mut self, other: Stats) {
         self.typ.merge(other.typ);
         self.is_ascii &= other.is_ascii;
-        self.sum.merge(other.sum);
-        self.sum_stotlen = self.sum_stotlen.saturating_add(other.sum_stotlen);
-        self.minmax.merge(other.minmax);
-        self.online.merge(other.online);
-        self.online_len.merge(other.online_len);
+        self.max_precision = self.max_precision.max(other.max_precision);
+        self.which.merge(other.which);
         self.nullcount += other.nullcount;
-        self.max_precision = std::cmp::max(self.max_precision, other.max_precision);
+        self.sum_stotlen = self.sum_stotlen.saturating_add(other.sum_stotlen);
+        self.sum.merge(other.sum);
         self.modes.merge(other.modes);
         self.median.merge(other.median);
+        self.mad.merge(other.mad);
         self.quartiles.merge(other.quartiles);
-        self.which.merge(other.which);
+        self.online.merge(other.online);
+        self.online_len.merge(other.online_len);
+        self.minmax.merge(other.minmax);
     }
 }
 
