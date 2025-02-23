@@ -28,8 +28,8 @@
         "null"
       ],
       "enum": [
-        "Adur",
-        null
+        null,
+        "Adur"
       ]
     },
     "ServiceTypeURI": {
@@ -254,11 +254,11 @@
         "null"
       ],
       "enum": [
+        null,
         "09.00 - 17.00",
         "S = 08:00 - 21:00 W = 08:00 - 17:00",
         "S = 09:00 - 15:00 W = 09:00 - 15:00",
-        "S = 09:00 - 21:00 W = 09:00 - 17:00",
-        null
+        "S = 09:00 - 21:00 W = 09:00 - 17:00"
       ]
     },
     "ManagedBy": {
@@ -270,8 +270,8 @@
         "null"
       ],
       "enum": [
-        "ADC",
-        null
+        null,
+        "ADC"
       ]
     },
     "ReportEmail": {
@@ -316,8 +316,8 @@
         "null"
       ],
       "enum": [
-        "Grounds staff only not public",
-        null
+        null,
+        "Grounds staff only not public"
       ]
     },
     "UPRN": {
@@ -360,6 +360,7 @@
         "null"
       ],
       "enum": [
+        null,
         "BEACH GREEN PUBLIC CONVENIENCES BRIGHTON ROAD LANCING",
         "BEACH TOILETS BASIN ROAD SOUTH SOUTHWICK",
         "PUBLIC CONVENIENCE NORTH PAVILION BUCKINGHAM PARK UPPER SHOREHAM ROAD SHOREHAM-BY-SEA",
@@ -373,8 +374,7 @@
         "PUBLIC CONVENIENCES MONKS RECREATION GROUND CRABTREE LANE LANCING",
         "PUBLIC CONVENIENCES SOUTH PAVILION BUCKINGHAM PARK UPPER SHOREHAM ROAD SHOREHAM-BY-SEA",
         "PUBLIC CONVENIENCES YEW TREE CLOSE LANCING",
-        "WEST BEACH PUBLIC CONVENIENCES WEST BEACH ROAD LANCING",
-        null
+        "WEST BEACH PUBLIC CONVENIENCES WEST BEACH ROAD LANCING"
       ]
     },
     "GeoAreaURI": {

@@ -406,6 +406,33 @@ pub fn infer_schema_from_stats(
                 }
             }
         } else {
+            // sort enum list
+            enum_list.sort_unstable_by(|a, b| {
+                match (a, b) {
+                    (Value::Null, Value::Null) => std::cmp::Ordering::Equal,
+                    (Value::Null, _) => std::cmp::Ordering::Less,
+                    (_, Value::Null) => std::cmp::Ordering::Greater,
+                    (Value::String(a_str), Value::String(b_str)) => a_str.cmp(b_str),
+                    (Value::Number(a_num), Value::Number(b_num)) => a_num
+                        .as_f64()
+                        .unwrap_or_default()
+                        .partial_cmp(&b_num.as_f64().unwrap_or_default())
+                        .unwrap_or(std::cmp::Ordering::Equal),
+                    // Compare types by their "priority"
+                    _ => {
+                        let type_priority = |v: &Value| match v {
+                            Value::Null => 0,
+                            Value::Bool(_) => 1,
+                            Value::Number(_) => 2,
+                            Value::String(_) => 3,
+                            Value::Array(_) => 4,
+                            Value::Object(_) => 5,
+                        };
+                        type_priority(a).cmp(&type_priority(b))
+                    },
+                }
+            });
+
             field_map.insert("enum".to_string(), Value::Array(enum_list.clone()));
             if !quiet {
                 winfo!(
