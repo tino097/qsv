@@ -791,7 +791,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             }
 
             // we need to count the number of records in the file to calculate sparsity
-            let mut record_count = 0;
+            let record_count: u64;
 
             let (headers, stats) = match rconfig.indexed()? {
                 None => {
