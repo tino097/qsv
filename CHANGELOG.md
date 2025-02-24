@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.1.0] - 2025-02-24
+## [3.1.1] - 2025-02-24
 
 ## Highlights:
 * `sample`: is now a "smart" command now uses the stats cache to validate and make sampling faster.
@@ -48,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * deps: use our patched fork of csvlens with ability to freeze columns https://github.com/dathere/qsv/commit/d66ec6df0e768f29b1102108152f28028da0ec8b
 * deps: bump polars to 0.46.0 at py-1.23.0 tag https://github.com/dathere/qsv/commit/6072aa22bed211cafa2fe90be58386acd8869415
 * deps: bump flate2 from 1.0.35 to 1.1.0 https://github.com/dathere/qsv/commit/eed471a441f031d0311849a13ac3efb116baa33d
+* deps: bump gzp from 0.11 to 1.0.0 https://github.com/dathere/qsv/commit/43c8a4a414484b9a3d573cb41a713ce838a2d425
 * build(deps): bump jaq-json from 1.1.0 to 1.1.1 by @dependabot in https://github.com/dathere/qsv/pull/2547
 * build(deps): bump jaq-core from 2.1.0 to 2.1.1 by @dependabot in https://github.com/dathere/qsv/pull/2546
 * build(deps): bump log from 0.4.25 to 0.4.26 by @dependabot in https://github.com/dathere/qsv/pull/2545
@@ -60,7 +61,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * build(deps): bump strum_macros from 0.27.0 to 0.27.1 by @dependabot in https://github.com/dathere/qsv/pull/2534
 * build(deps): bump uuid from 1.13.1 to 1.13.2 by @dependabot in https://github.com/dathere/qsv/pull/2538
 * build(deps): bump uuid from 1.13.2 to 1.14.0 by @dependabot in https://github.com/dathere/qsv/pull/2544
-* chore: use MSRV-aware dependency resolver https://github.com/dathere/qsv/commit/16f0ffd6998e4af917922a64aa3b042578e8afd8
 * chore: we now have ~1,800 tests! https://github.com/dathere/qsv/commit/f5d09ed76d8e0acb9052f89b6688a047c756b053
 * applied select clippy lint suggestions
 * bumped indirect dependencies to latest versions
@@ -71,13 +71,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `schema`: fixed off-by-one error https://github.com/dathere/qsv/commit/60de090bdf727dd0eaf79ba7058745fdacef07ef
 * ensured get_stats_record helper returns field/stats correctly https://github.com/dathere/qsv/commit/ad86a373d01ea45902d764a46c19f26ad5b01029
 * Fixed RUSTSEC-2025-0007: *ring* is unmaintained https://github.com/dathere/qsv/issues/2548
+* `stats`: only add `qsv__value` column when `--dataset-stats` is enabled https://github.com/dathere/qsv/commit/64267d38c4161b8591a6f81e36bea6c7fdbddc70
+* skip format check when path starts with temp dir or is a snappy file https://github.com/dathere/qsv/commit/ff8957e77ae4c28a24f323328c58a2549ff43c0c
 
 ### Removed
 * `frequency`: removed `--stats-mode` option now that we have a suite-wide QSV_STATSCACHE_MODE env var https://github.com/dathere/qsv/commit/ba75f0897e5a7e6579380a8a4c073a1af436648a https://github.com/dathere/qsv/commit/416abb7ce73f406c2a605cdca87d50c12723698a
 * chore: removed simdutf8 conditional directive for aarch64 architecture, now that its no longer needed https://github.com/dathere/qsv/commit/ec1e16c7a20a7458b560e3c78dfbd83fba82de29
 * removed publish-linux-qsvpy-glibc-231-musl-123.yml workflow as it was getting cross compilation errors and we have another musl workflow that works https://github.com/dathere/qsv/commit/7c08617132e8d7df069b7b3be160d3b348f44d53
 
-**Full Changelog**: https://github.com/dathere/qsv/compare/3.0.0...3.1.0
+**Full Changelog**: https://github.com/dathere/qsv/compare/3.0.0...3.1.1
 
 ## [3.0.0] - 2025-02-13
 
