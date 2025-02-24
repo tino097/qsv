@@ -1643,8 +1643,7 @@ dependencies = [
 [[package]]
 name = "csvlens"
 version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "447856cafc8a4a399f7c55fa26e5325c268fbff74db4f3b3cd03654fdfc23ab4"
+source = "git+https://github.com/jqnatividad/csvlens?branch=lib-freeze-cols-option#156cca65267a7f08054e606fec002c7ff3c5044e"
 dependencies = [
  "anyhow",
  "arboard",
