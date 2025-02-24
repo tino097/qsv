@@ -305,6 +305,9 @@ csv-index = { git = "https://github.com/dathere/rust-csv", branch = "qsv-optimiz
 # use latest upstream with bumped dependencies
 cached = { git = "https://github.com/jaemk/cached", rev = "d0eabce" }
 
+# use our tweaked fork of csvlens with the ability to freeze columns from the library
+csvlens = { git = "https://github.com/jqnatividad/csvlens", branch = "lib-freeze-cols-option" }
+
 # use latest upstream with upgraded quick-xml and accelerated int/float parsing
 # now that our PR has been merged
 calamine = { git = "https://github.com/tafia/calamine", rev = "5cda5c7" }
