@@ -96,7 +96,7 @@ csv = "1.3"
 csv-core = "0.1"
 csv-diff = "0.1"
 csv-index = "0.1"
-csvlens = { version = "0.11", optional = true, default-features = false, features = [
+csvlens = { version = "0.12", optional = true, default-features = false, features = [
     "clipboard",
 ] }
 csvs_convert = { version = "0.9.0", default-features = false, features = [
@@ -308,9 +308,6 @@ cached = { git = "https://github.com/jaemk/cached", rev = "d0eabce" }
 # use latest upstream with upgraded quick-xml and accelerated int/float parsing
 # now that our PR has been merged
 calamine = { git = "https://github.com/tafia/calamine", rev = "5cda5c7" }
-
-# use upstream of csvlens with unreleased fixes
-csvlens = { git = "https://github.com/YS-L/csvlens", rev = "f1efb7a" }
 
 # needed to get latest dependencies and unreleased fixes
 grex = { git = "https://github.com/jqnatividad/grex", branch = "bumped-dependencies-202502" }
