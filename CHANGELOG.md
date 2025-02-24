@@ -6,6 +6,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2025-02-24
+
+## What's Changed
+* build(deps): bump smallvec from 1.13.2 to 1.14.0 by @dependabot in https://github.com/dathere/qsv/pull/2528
+* feat: "smart" sample by @jqnatividad in https://github.com/dathere/qsv/pull/2529
+* feat: "smart" by default by @jqnatividad in https://github.com/dathere/qsv/pull/2530
+* build(deps): bump tempfile from 3.16.0 to 3.17.0 by @dependabot in https://github.com/dathere/qsv/pull/2532
+* build(deps): bump strum from 0.27.0 to 0.27.1 by @dependabot in https://github.com/dathere/qsv/pull/2533
+* build(deps): bump strum_macros from 0.27.0 to 0.27.1 by @dependabot in https://github.com/dathere/qsv/pull/2534
+* build(deps): bump tempfile from 3.17.0 to 3.17.1 by @dependabot in https://github.com/dathere/qsv/pull/2535
+* feat: `luau` add accumulate helper function by @jqnatividad in https://github.com/dathere/qsv/pull/2537
+* build(deps): bump uuid from 1.13.1 to 1.13.2 by @dependabot in https://github.com/dathere/qsv/pull/2538
+* feat: `luau` accumulate helper tweaks by @jqnatividad in https://github.com/dathere/qsv/pull/2539
+* refactor: `luau` all cumulative helper functions (cum_) now have name as an optional argument by @jqnatividad in https://github.com/dathere/qsv/pull/2540
+* build(deps): bump serde_json from 1.0.138 to 1.0.139 by @dependabot in https://github.com/dathere/qsv/pull/2541
+* build(deps): bump serde from 1.0.217 to 1.0.218 by @dependabot in https://github.com/dathere/qsv/pull/2542
+* build(deps): bump log from 0.4.25 to 0.4.26 by @dependabot in https://github.com/dathere/qsv/pull/2545
+* build(deps): bump uuid from 1.13.2 to 1.14.0 by @dependabot in https://github.com/dathere/qsv/pull/2544
+* build(deps): bump jaq-json from 1.1.0 to 1.1.1 by @dependabot in https://github.com/dathere/qsv/pull/2547
+* build(deps): bump jaq-core from 2.1.0 to 2.1.1 by @dependabot in https://github.com/dathere/qsv/pull/2546
+* `feat`: `schema` type-aware sort of JSON Schema enum list by @jqnatividad in https://github.com/dathere/qsv/pull/2551
+* feat: `lens` add `--freeze-columns` options by @jqnatividad in https://github.com/dathere/qsv/pull/2552
+* feat: `stats` add `--dataset-stats` option by @jqnatividad in https://github.com/dathere/qsv/pull/2555
+
+**Full Changelog**: https://github.com/dathere/qsv/compare/3.0.0...3.1.0
+
 ## [3.0.0] - 2025-02-13
 
 ## Highlights:
