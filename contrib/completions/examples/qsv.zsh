@@ -1089,6 +1089,7 @@ _arguments "${_arguments_options[@]}" : \
 '--filter[]' \
 '--find[]' \
 '--ignore-case[]' \
+'--freeze-columns[]' \
 '--echo-column[]' \
 '--debug[]' \
 '-h[Print help]' \
@@ -1751,6 +1752,8 @@ _arguments "${_arguments_options[@]}" : \
 '--jobs[]' \
 '--stats-jsonl[]' \
 '--cache-threshold[]' \
+'--vis-whitespace[]' \
+'--dataset-stats[]' \
 '--output[]' \
 '--no-headers[]' \
 '--delimiter[]' \

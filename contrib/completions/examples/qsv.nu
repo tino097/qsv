@@ -879,6 +879,7 @@ module completions {
     --filter
     --find
     --ignore-case
+    --freeze-columns
     --echo-column
     --debug
     --help(-h)                # Print help
@@ -1369,6 +1370,8 @@ module completions {
     --jobs
     --stats-jsonl
     --cache-threshold
+    --vis-whitespace
+    --dataset-stats
     --output
     --no-headers
     --delimiter

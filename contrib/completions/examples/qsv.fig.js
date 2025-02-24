@@ -2328,6 +2328,9 @@ const completion: Fig.Spec = {
           name: "--ignore-case",
         },
         {
+          name: "--freeze-columns",
+        },
+        {
           name: "--echo-column",
         },
         {
@@ -3589,6 +3592,12 @@ const completion: Fig.Spec = {
         },
         {
           name: "--cache-threshold",
+        },
+        {
+          name: "--vis-whitespace",
+        },
+        {
+          name: "--dataset-stats",
         },
         {
           name: "--output",
