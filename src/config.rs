@@ -170,18 +170,23 @@ impl Config {
             Some(s) if s == "-" => (None, default_delim, false),
             Some(ref s) => {
                 let path = PathBuf::from(s);
+                // if QSV_SKIP_FORMAT_CHECK is set or path is a temp file, we skip format check
+                skip_format_check = sniff
+                    || util::get_envvar_flag("QSV_SKIP_FORMAT_CHECK")
+                    || path.starts_with(std::env::temp_dir());
                 let (file_extension, delim, snappy) = get_delim_by_extension(&path, default_delim);
-                skip_format_check = sniff || util::get_envvar_flag("QSV_SKIP_FORMAT_CHECK");
-                if !skip_format_check {
-                    format_error = match file_extension.as_str() {
+                format_error = if skip_format_check {
+                    None
+                } else {
+                    match file_extension.as_str() {
                         "csv" | "tsv" | "tab" | "ssv" => None,
                         ext => Some(format!(
                             "{} is using an unsupported file format: {ext}. Set \
                              QSV_SKIP_FORMAT_CHECK to skip input format checking.",
                             path.display()
                         )),
-                    };
-                }
+                    }
+                };
                 (Some(path), delim, snappy || file_extension.ends_with("sz"))
             },
         };
