@@ -1109,6 +1109,7 @@ impl Args {
     fn stats_to_records(&self, stats: Vec<Stats>, visualize_ws: bool) -> Vec<csv::StringRecord> {
         let round_places = self.flag_round;
         let infer_boolean = self.flag_infer_boolean;
+        let dataset_stats = self.flag_dataset_stats;
         let mut records = Vec::with_capacity(stats.len());
         records.extend(repeat_n(csv::StringRecord::new(), stats.len()));
         let pool = ThreadPool::new(util::njobs(self.flag_jobs));
@@ -1119,7 +1120,7 @@ impl Args {
             pool.execute(move || {
                 // safety: this will only return an Error if the channel has been disconnected
                 // which will not happen in this case
-                send.send(stat.to_record(round_places, infer_boolean, visualize_ws))
+                send.send(stat.to_record(round_places, infer_boolean, visualize_ws, dataset_stats))
                     .unwrap();
             });
         }
@@ -1287,8 +1288,10 @@ impl Args {
             ]);
         }
 
-        // we add the qsv__value field at the end for dataset-level stats
-        fields.push("qsv__value");
+        if self.flag_dataset_stats {
+            // we add the qsv__value field at the end for dataset-level stats
+            fields.push("qsv__value");
+        }
 
         csv::StringRecord::from(fields)
     }
@@ -1587,6 +1590,7 @@ impl Stats {
         round_places: u32,
         infer_boolean: bool,
         visualize_ws: bool,
+        dataset_stats: bool,
     ) -> csv::StringRecord {
         // we're doing typesonly and not inferring boolean, just return the type
         if self.which.typesonly && !infer_boolean {
@@ -2090,8 +2094,10 @@ impl Stats {
         // append it here to preserve legacy ordering of columns
         pieces.extend_from_slice(&mc_pieces);
 
-        // add an empty field for qsv__value
-        pieces.push(empty());
+        if dataset_stats {
+            // add an empty field for qsv__value
+            pieces.push(empty());
+        }
 
         csv::StringRecord::from(pieces)
     }
