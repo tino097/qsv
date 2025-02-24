@@ -60,7 +60,7 @@ fn index_outdated_stats() {
     // even if the index is stale, stats should succeed
     // as the index is automatically updated
     let mut cmd = wrk.command("stats");
-    cmd.arg("in.csv");
+    cmd.args(&["--dataset-stats", "in.csv"]);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![

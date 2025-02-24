@@ -621,8 +621,8 @@ fn stats_prefer_dmy() {
     let mut cmd = wrk.command("stats");
     cmd.arg("--infer-dates")
         .arg("--prefer-dmy")
-        .arg("--dates-whitelist")
-        .arg("_dT")
+        .arg(&"--dataset-stats")
+        .args(&["--dates-whitelist", "_dT"])
         .arg(test_file);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
@@ -648,8 +648,8 @@ fn stats_prefer_mdy() {
 
     let mut cmd = wrk.command("stats");
     cmd.arg("--infer-dates")
-        .arg("--dates-whitelist")
-        .arg("_dt")
+        .arg(&"--dataset-stats")
+        .args(&["--dates-whitelist", "_dt"])
         .arg(test_file);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
@@ -675,8 +675,8 @@ fn stats_rounding() {
     let test_file = wrk.load_test_file("boston311-100.csv");
 
     let mut cmd = wrk.command("stats");
-    cmd.arg("--everything")
-        .args(["--round", "8"])
+    cmd.args(&["--everything", "--dataset-stats"])
+        .args(&["--round", "8"])
         .arg(test_file);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
@@ -722,7 +722,8 @@ fn stats_no_date_inference() {
     let test_file = wrk.load_test_file("boston311-100.csv");
 
     let mut cmd = wrk.command("stats");
-    cmd.arg("--everything").arg(test_file);
+    cmd.args(&["--everything", "--dataset-stats"])
+        .arg(test_file);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
 
@@ -749,8 +750,8 @@ fn stats_with_date_inference() {
     cmd.arg("--everything")
         .arg(test_file)
         .arg("--infer-dates")
-        .arg("--dates-whitelist")
-        .arg("all");
+        .arg(&"--dataset-stats")
+        .args(&["--dates-whitelist", "all"]);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
 
@@ -774,7 +775,9 @@ fn stats_with_date_inference_default_whitelist() {
     let test_file = wrk.load_test_file("boston311-100.csv");
 
     let mut cmd = wrk.command("stats");
-    cmd.arg("--everything").arg(test_file).arg("--infer-dates");
+    cmd.args(&["--everything", "--dataset-stats"])
+        .arg(test_file)
+        .arg("--infer-dates");
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
 
@@ -802,8 +805,8 @@ fn stats_with_date_inference_variance_stddev() {
     cmd.arg("--everything")
         .arg(test_file)
         .arg("--infer-dates")
-        .arg("--dates-whitelist")
-        .arg("aLL");
+        .args(&["--dates-whitelist", "all"])
+        .arg(&"--dataset-stats");
 
     wrk.assert_success(&mut cmd);
 
@@ -827,8 +830,8 @@ fn stats_with_date_type() {
     cmd.arg("--everything")
         .arg(test_file)
         .arg("--infer-dates")
-        .arg("--dates-whitelist")
-        .arg("all");
+        .args(&["--dates-whitelist", "all"])
+        .arg(&"--dataset-stats");
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
 
@@ -852,7 +855,7 @@ fn stats_typesonly() {
     let test_file = wrk.load_test_file("boston311-100.csv");
 
     let mut cmd = wrk.command("stats");
-    cmd.arg("--typesonly").arg(test_file);
+    cmd.args(&["--typesonly", "--dataset-stats"]).arg(test_file);
 
     let got: String = wrk.stdout(&mut cmd);
 
@@ -867,10 +870,9 @@ fn stats_typesonly_with_dates() {
     let test_file = wrk.load_test_file("boston311-100.csv");
 
     let mut cmd = wrk.command("stats");
-    cmd.arg("--typesonly")
+    cmd.args(&["--typesonly", "--dataset-stats"])
         .arg("--infer-dates")
-        .arg("--dates-whitelist")
-        .arg("all")
+        .args(&["--dates-whitelist", "all"])
         .arg(test_file);
 
     let got: String = wrk.stdout(&mut cmd);
@@ -888,11 +890,10 @@ fn stats_typesonly_cache_threshold_zero() {
     let test_file = wrk.load_test_file("boston311-100.csv");
 
     let mut cmd = wrk.command("stats");
-    cmd.arg("--typesonly")
+    cmd.args(&["--typesonly", "--dataset-stats"])
         .arg("--infer-dates")
-        .arg("--dates-whitelist")
-        .arg("all")
-        .args(["--cache-threshold", "0"])
+        .args(&["--dates-whitelist", "all"])
+        .args(&["--cache-threshold", "0"])
         .arg(test_file);
 
     let got: String = wrk.stdout(&mut cmd);
@@ -912,10 +913,9 @@ fn stats_typesonly_cache() {
     let test_file = wrk.load_test_file("boston311-100.csv");
 
     let mut cmd = wrk.command("stats");
-    cmd.arg("--typesonly")
+    cmd.args(&["--typesonly", "--dataset-stats"])
         .arg("--infer-dates")
-        .arg("--dates-whitelist")
-        .arg("all")
+        .args(&["--dates-whitelist", "all"])
         .arg(test_file);
 
     let got: String = wrk.stdout(&mut cmd);
@@ -934,10 +934,10 @@ fn stats_cache() {
 
     let mut cmd = wrk.command("stats");
     cmd.arg("--infer-dates")
-        .arg("--dates-whitelist")
-        .arg("all")
+        .args(&["--dates-whitelist", "all"])
+        .arg(&"--dataset-stats")
         // set cache threshold to 1 to force cache creation
-        .args(["--cache-threshold", "1"])
+        .args(&["--cache-threshold", "1"])
         .arg(test_file);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
@@ -1007,11 +1007,11 @@ fn stats_cache_negative_threshold_unmet() {
 
     let mut cmd = wrk.command("stats");
     cmd.arg("--infer-dates")
-        .arg("--dates-whitelist")
-        .arg("all")
+        .args(&["--dates-whitelist", "all"])
+        .arg(&"--dataset-stats")
         // set cache threshold to -51200 to set autoindex_size to 50 kb
         // and to force cache creation
-        .args(["--cache-threshold", "-51200"])
+        .args(&["--cache-threshold", "-51200"])
         .arg(test_file.clone());
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
@@ -1084,7 +1084,7 @@ fn stats_antimodes_len_500() {
 
     let mut cmd = wrk.command("stats");
     cmd.env("QSV_ANTIMODES_LEN", "500")
-        .arg("--everything")
+        .args(&["--everything", "--dataset-stats"])
         .arg(test_file);
 
     let got: String = wrk.stdout(&mut cmd);
@@ -1100,7 +1100,9 @@ fn stats_infer_boolean_1_0() {
     let test_file = wrk.load_test_file("boston311-10-boolean-1or0.csv");
 
     let mut cmd = wrk.command("stats");
-    cmd.arg("--infer-boolean").arg(test_file);
+    cmd.arg("--infer-boolean")
+        .arg(&"--dataset-stats")
+        .arg(test_file);
 
     let got: String = wrk.stdout(&mut cmd);
 
@@ -1115,7 +1117,9 @@ fn stats_infer_boolean_t_f() {
     let test_file = wrk.load_test_file("boston311-10-boolean-tf.csv");
 
     let mut cmd = wrk.command("stats");
-    cmd.arg("--infer-boolean").arg(test_file);
+    cmd.arg("--infer-boolean")
+        .arg(&"--dataset-stats")
+        .arg(test_file);
 
     let got: String = wrk.stdout(&mut cmd);
 
@@ -1130,7 +1134,10 @@ fn stats_typesonly_infer_boolean_t_f() {
     let test_file = wrk.load_test_file("boston311-10-boolean-tf.csv");
 
     let mut cmd = wrk.command("stats");
-    cmd.arg("--typesonly").arg("--infer-boolean").arg(test_file);
+    cmd.arg("--typesonly")
+        .arg("--infer-boolean")
+        .arg(&"--dataset-stats")
+        .arg(test_file);
 
     let got: String = wrk.stdout(&mut cmd);
 
@@ -1144,7 +1151,7 @@ fn stats_is_ascii() {
     let wrk = Workdir::new("stats_is_ascii");
     let test_file = wrk.load_test_file("boston311-100-with-nonascii.csv");
     let mut cmd = wrk.command("stats");
-    cmd.arg(test_file).arg("--force");
+    cmd.arg(test_file).arg(&"--dataset-stats").arg("--force");
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
 
@@ -1197,7 +1204,9 @@ fn stats_leading_zero_handling() {
     );
 
     let mut cmd = wrk.command("stats");
-    cmd.arg("--typesonly").arg("data.csv");
+    cmd.arg("--typesonly")
+        .arg(&"--dataset-stats")
+        .arg("data.csv");
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
@@ -1234,7 +1243,7 @@ fn stats_zero_cv() {
     );
 
     let mut cmd = wrk.command("stats");
-    cmd.arg("data.csv");
+    cmd.arg("data.csv").arg(&"--dataset-stats");
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
@@ -1498,7 +1507,9 @@ fn stats_output_tab_delimited() {
     let out_file = wrk.path("output.tab").to_string_lossy().to_string();
 
     let mut cmd = wrk.command("stats");
-    cmd.arg("data.csv").args(["--output", &out_file]);
+    cmd.arg("data.csv")
+        .args(&["--output", &out_file])
+        .arg(&"--dataset-stats");
 
     wrk.assert_success(&mut cmd);
 
@@ -1534,7 +1545,9 @@ fn stats_output_ssv_delimited() {
     let out_file = wrk.path("output.ssv").to_string_lossy().to_string();
 
     let mut cmd = wrk.command("stats");
-    cmd.arg("data.csv").args(["--output", &out_file]);
+    cmd.arg("data.csv")
+        .args(&["--output", &out_file])
+        .arg(&"--dataset-stats");
 
     wrk.assert_success(&mut cmd);
 
@@ -1570,7 +1583,9 @@ fn stats_output_csvsz_delimited() {
     let out_file = wrk.path("output.csv.sz").to_string_lossy().to_string();
 
     let mut cmd = wrk.command("stats");
-    cmd.arg("data.csv").args(["--output", &out_file]);
+    cmd.arg("data.csv")
+        .args(&["--output", &out_file])
+        .arg(&"--dataset-stats");
 
     wrk.assert_success(&mut cmd);
 
@@ -1658,6 +1673,7 @@ fn stats_vis_whitespace() {
     let mut cmd = wrk.command("stats");
     cmd.arg("--vis-whitespace")
         .arg("--everything")
+        .arg(&"--dataset-stats")
         .arg("data.csv");
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
