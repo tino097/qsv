@@ -3076,7 +3076,7 @@ _qsv() {
             return 0
             ;;
         qsv__lens)
-            opts="-h --delimiter --tab-separated --no-headers --columns --filter --find --ignore-case --echo-column --debug --help"
+            opts="-h --delimiter --tab-separated --no-headers --columns --filter --find --ignore-case --freeze-columns --echo-column --debug --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -3790,7 +3790,7 @@ _qsv() {
             return 0
             ;;
         qsv__stats)
-            opts="-h --select --everything --typesonly --infer-boolean --mode --cardinality --median --mad --quartiles --round --nulls --infer-dates --dates-whitelist --prefer-dmy --force --jobs --stats-jsonl --cache-threshold --output --no-headers --delimiter --memcheck --help"
+            opts="-h --select --everything --typesonly --infer-boolean --mode --cardinality --median --mad --quartiles --round --nulls --infer-dates --dates-whitelist --prefer-dmy --force --jobs --stats-jsonl --cache-threshold --vis-whitespace --dataset-stats --output --no-headers --delimiter --memcheck --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
