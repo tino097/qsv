@@ -2198,6 +2198,7 @@ pub fn get_stats_records(
             flag_delimiter:       args.flag_delimiter,
             flag_memcheck:        args.flag_memcheck,
             flag_vis_whitespace:  false,
+            flag_dataset_stats:   true,
         };
 
         let tempfile = tempfile::Builder::new()

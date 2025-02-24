@@ -218,6 +218,9 @@ stats options:
     --vis-whitespace          Visualize whitespace characters in the output.
                               See https://github.com/dathere/qsv/wiki/Supplemental#whitespace-markers
                               for the list of whitespace markers.
+    --dataset-stats           Compute dataset statistics (e.g. row count, column count, file size and
+                              fingerprint hash) and add them as additional rows to the output, with
+                              the qsv__ prefix and an additional qsv__value column.
 
 Common options:
     -h, --help             Display this message
@@ -307,6 +310,7 @@ pub struct Args {
     pub flag_delimiter:       Option<Delimiter>,
     pub flag_memcheck:        bool,
     pub flag_vis_whitespace:  bool,
+    pub flag_dataset_stats:   bool,
 }
 
 // this struct is used to serialize/deserialize the stats to
@@ -842,73 +846,75 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 stats_br_vec.push(work_br);
             }
 
-            // Add dataset-level stats as additional rows ====================
-            let num_stats_fields = stats_headers_sr.len();
-            let mut dataset_stats_br = csv::ByteRecord::with_capacity(128, num_stats_fields);
+            if args.flag_dataset_stats {
+                // Add dataset-level stats as additional rows ====================
+                let num_stats_fields = stats_headers_sr.len();
+                let mut dataset_stats_br = csv::ByteRecord::with_capacity(128, num_stats_fields);
 
-            // Helper closure to write a dataset stat row
-            let mut write_dataset_stat = |name: &[u8], value: u64| -> CliResult<()> {
+                // Helper closure to write a dataset stat row
+                let mut write_dataset_stat = |name: &[u8], value: u64| -> CliResult<()> {
+                    dataset_stats_br.clear();
+                    dataset_stats_br.push_field(name);
+                    // Fill middle columns with empty strings
+                    for _ in 2..num_stats_fields {
+                        dataset_stats_br.push_field(b"");
+                    }
+                    // write qsv__value as last column
+                    dataset_stats_br.push_field(itoa::Buffer::new().format(value).as_bytes());
+                    wtr.write_byte_record(&dataset_stats_br)
+                        .map_err(std::convert::Into::into)
+                };
+
+                // Write qsv__rowcount
+                write_dataset_stat(b"qsv__rowcount", record_count)?;
+
+                // Write qsv__columncount
+                let ds_column_count = headers.len() as u64;
+                write_dataset_stat(b"qsv__columncount", ds_column_count)?;
+
+                // Write qsv__filesize_bytes
+                let ds_filesize_bytes = fs::metadata(&path)?.len();
+                write_dataset_stat(b"qsv__filesize_bytes", ds_filesize_bytes)?;
+
+                // Compute hash of stats for data fingerprinting
+                let stats_hash = {
+                    // the first FINGERPRINT_HASH_COLUMNS are used for the fingerprint hash
+                    let mut hash_input = Vec::with_capacity(FINGERPRINT_HASH_COLUMNS);
+
+                    // First, create a stable representation of the stats
+                    for record in &stats_br_vec {
+                        // Take FINGERPRINT_HASH_COLUMNS columns only
+                        for field in record.iter().take(FINGERPRINT_HASH_COLUMNS) {
+                            let s = String::from_utf8_lossy(field);
+                            // Standardize number format
+                            if let Ok(f) = s.parse::<f64>() {
+                                hash_input.extend_from_slice(format!("{f:.10}").as_bytes());
+                            } else {
+                                hash_input.extend_from_slice(field);
+                            }
+                            hash_input.push(0x1F); // field separator
+                        }
+                        hash_input.push(b'\n');
+                    }
+
+                    // Add dataset stats
+                    hash_input.extend_from_slice(
+                        format!("{record_count}\x1F{ds_column_count}\x1F{ds_filesize_bytes}\n")
+                            .as_bytes(),
+                    );
+                    sha256::digest(hash_input.as_slice())
+                };
+
                 dataset_stats_br.clear();
-                dataset_stats_br.push_field(name);
+                dataset_stats_br.push_field(b"qsv__fingerprint_hash");
                 // Fill middle columns with empty strings
                 for _ in 2..num_stats_fields {
                     dataset_stats_br.push_field(b"");
                 }
                 // write qsv__value as last column
-                dataset_stats_br.push_field(itoa::Buffer::new().format(value).as_bytes());
-                wtr.write_byte_record(&dataset_stats_br)
-                    .map_err(std::convert::Into::into)
-            };
-
-            // Write qsv__rowcount
-            write_dataset_stat(b"qsv__rowcount", record_count)?;
-
-            // Write qsv__columncount
-            let ds_column_count = headers.len() as u64;
-            write_dataset_stat(b"qsv__columncount", ds_column_count)?;
-
-            // Write qsv__filesize_bytes
-            let ds_filesize_bytes = fs::metadata(&path)?.len();
-            write_dataset_stat(b"qsv__filesize_bytes", ds_filesize_bytes)?;
-
-            // Compute hash of stats for data fingerprinting
-            let stats_hash = {
-                // the first FINGERPRINT_HASH_COLUMNS are used for the fingerprint hash
-                let mut hash_input = Vec::with_capacity(FINGERPRINT_HASH_COLUMNS);
-
-                // First, create a stable representation of the stats
-                for record in &stats_br_vec {
-                    // Take FINGERPRINT_HASH_COLUMNS columns only
-                    for field in record.iter().take(FINGERPRINT_HASH_COLUMNS) {
-                        let s = String::from_utf8_lossy(field);
-                        // Standardize number format
-                        if let Ok(f) = s.parse::<f64>() {
-                            hash_input.extend_from_slice(format!("{f:.10}").as_bytes());
-                        } else {
-                            hash_input.extend_from_slice(field);
-                        }
-                        hash_input.push(0x1F); // field separator
-                    }
-                    hash_input.push(b'\n');
-                }
-
-                // Add dataset stats
-                hash_input.extend_from_slice(
-                    format!("{record_count}\x1F{ds_column_count}\x1F{ds_filesize_bytes}\n")
-                        .as_bytes(),
-                );
-                sha256::digest(hash_input.as_slice())
-            };
-
-            dataset_stats_br.clear();
-            dataset_stats_br.push_field(b"qsv__fingerprint_hash");
-            // Fill middle columns with empty strings
-            for _ in 2..num_stats_fields {
-                dataset_stats_br.push_field(b"");
+                dataset_stats_br.push_field(stats_hash.as_bytes());
+                wtr.write_byte_record(&dataset_stats_br)?;
             }
-            // write qsv__value as last column
-            dataset_stats_br.push_field(stats_hash.as_bytes());
-            wtr.write_byte_record(&dataset_stats_br)?;
 
             // update the stats args json metadata ===============
             // if the stats run took longer than the cache threshold and the threshold > 0,
