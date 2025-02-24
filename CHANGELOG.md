@@ -8,27 +8,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.1.0] - 2025-02-24
 
-## What's Changed
-* build(deps): bump smallvec from 1.13.2 to 1.14.0 by @dependabot in https://github.com/dathere/qsv/pull/2528
-* feat: "smart" sample by @jqnatividad in https://github.com/dathere/qsv/pull/2529
-* feat: "smart" by default by @jqnatividad in https://github.com/dathere/qsv/pull/2530
-* build(deps): bump tempfile from 3.16.0 to 3.17.0 by @dependabot in https://github.com/dathere/qsv/pull/2532
-* build(deps): bump strum from 0.27.0 to 0.27.1 by @dependabot in https://github.com/dathere/qsv/pull/2533
-* build(deps): bump strum_macros from 0.27.0 to 0.27.1 by @dependabot in https://github.com/dathere/qsv/pull/2534
-* build(deps): bump tempfile from 3.17.0 to 3.17.1 by @dependabot in https://github.com/dathere/qsv/pull/2535
-* feat: `luau` add accumulate helper function by @jqnatividad in https://github.com/dathere/qsv/pull/2537
-* build(deps): bump uuid from 1.13.1 to 1.13.2 by @dependabot in https://github.com/dathere/qsv/pull/2538
-* feat: `luau` accumulate helper tweaks by @jqnatividad in https://github.com/dathere/qsv/pull/2539
-* refactor: `luau` all cumulative helper functions (cum_) now have name as an optional argument by @jqnatividad in https://github.com/dathere/qsv/pull/2540
-* build(deps): bump serde_json from 1.0.138 to 1.0.139 by @dependabot in https://github.com/dathere/qsv/pull/2541
-* build(deps): bump serde from 1.0.217 to 1.0.218 by @dependabot in https://github.com/dathere/qsv/pull/2542
-* build(deps): bump log from 0.4.25 to 0.4.26 by @dependabot in https://github.com/dathere/qsv/pull/2545
-* build(deps): bump uuid from 1.13.2 to 1.14.0 by @dependabot in https://github.com/dathere/qsv/pull/2544
+## Highlights:
+* `sample`: is now a "smart" command now uses the stats cache to validate and make sampling faster.
+* With the QSV_STATSCACHE_MODE env var, you can now control the stats cache behavior suite-wide, making sure "smart" commands use it when appropriate.
+* `luau` command's capabilities have been significantly expanded with:
+  - New accumulate helper function for aggregating values across rows
+  - Optional naming for cumulative helper functions
+  - More robust error handling and improved docstrings
+  - Enhanced scripting performance with fast-float parsing
+  - new [Wiki section](https://github.com/dathere/qsv/wiki/Luau-Helper-Functions-Examples) with examples of using its helper functions
+* `schema`: now does type-aware sorting of enum lists, making JSON Schema enum list customization easier when fine-tuning it for JSON Schema validation with `validate`.
+* `lens`: adds `--freeze-columns` option with a default of 1, improving navigation of wide CSVs
+* `stats`: adds `--dataset-stats` option to explicitly compute dataset-level statistics. Starting with qsv 2.0.0, it was computed automatically to support Datapusher+ and the DRUF workflow, but it was causing confusion with some command-line users.
+
+---
+
+### Added
+* `lens`: added `--freeze-columns` option https://github.com/dathere/qsv/pull/2552
+* `luau`: added accumulate helper function https://github.com/dathere/qsv/pull/2537 https://github.com/dathere/qsv/pull/2539
+* `luau`: added a new section in the Wiki with examples of using the new helper functions https://github.com/dathere/qsv/wiki/Luau-Helper-Functions-Examples
+* `sample`: is now "smart" - using the stats cache to validate and make sampling faster https://github.com/dathere/qsv/pull/2529 https://github.com/dathere/qsv/pull/2530 https://github.com/dathere/qsv/commit/71ec7ede121ef1e09fb19af9bac3f52aa67a7f54
+* `schema`: added type-aware sort of JSON Schema enum list https://github.com/dathere/qsv/pull/2551
+* `stats`: added `--dataset-stats` option https://github.com/dathere/qsv/pull/2555
+* `python`: added precompiled qsvpy binary for Python 3.13 https://github.com/dathere/qsv/commit/c4087788b6fee64f358047ea8ef44a5450604ec1
+* added QSV_STATSCACHE_MODE env var to control stats cache suite-wide https://github.com/dathere/qsv/commit/4afb98d8729fa4c3c5f61e0a26347dad5aa1e9f8 https://github.com/dathere/qsv/commit/2adc313937ec8aa292976f8e5acf3a4e7756fd93 https://github.com/dathere/qsv/commit/ba75f0897e5a7e6579380a8a4c073a1af436648a
+* docs: updated PERFORMANCE docs and added a TLDR version https://github.com/dathere/qsv/commit/77ed167aef8f7307ec295616a8b96af2f3bb81fd https://github.com/dathere/qsv/commit/c61c249a8354ee7f4ab0d03464624f3dd3249d2b https://github.com/dathere/qsv/commit/db0bb3f147599ece48ca2e8ad1d54db83d7b897c
+* chore: added *.tab & *.ssv to typos config https://github.com/dathere/qsv/commits/523667520ac06a1c96942897aa9288fe7a9d1f5d/
+
+### Changed
+* `frequency`: made error handling more robust https://github.com/dathere/qsv/commit/b195519ec04efcba7cfa7f99e153818d03f419d0
+* `luau`: refactored all cumulative helper functions (cum_) now have name as an optional argument https://github.com/dathere/qsv/pull/2540
+* `schema`: refactored to use QSV_STATSCACHE_MODE env var https://github.com/dathere/qsv/commit/5771ff4892ab89f8ca7d6940aa02baaa0c9b1fa5
+* `select`: refactored select helper https://github.com/dathere/qsv/commit/bfbe64cc64a20006e4c93d8a3f6be3f326411fec
+* `stats`: optimized memory layout of central Stats struct https://github.com/dathere/qsv/commit/52f697e5828a5c3e059d7f25254e4aef840d8598
+* `stats`: optimized record_count functionality https://github.com/dathere/qsv/commit/0e3114a54a8340639c381a19251d03ab94496b04 https://github.com/dathere/qsv/commit/18791da0cc2972de2f5909fe1556d83c8b7e8f9f
+* deps: bump arrow and tempfile https://github.com/dathere/qsv/commit/4cc267972622dfb703779b3d18b084006369b449
+* deps: bump cached and redis crates https://github.com/dathere/qsv/commit/e622d1447a9a8ff4ecdb22d000335fb2d129683a
+* deps: bump csvlens from 0.11 to 0.12 https://github.com/dathere/qsv/commit/b2fd985bf51fac4ec224b4664cc2fe91d8676101
+* deps: use our patched fork of csvlens with ability to freeze columns https://github.com/dathere/qsv/commit/d66ec6df0e768f29b1102108152f28028da0ec8b
+* deps: bump polars to 0.46.0 at py-1.23.0 tag https://github.com/dathere/qsv/commit/6072aa22bed211cafa2fe90be58386acd8869415
+* deps: bump flate2 from 1.0.35 to 1.1.0 https://github.com/dathere/qsv/commit/eed471a441f031d0311849a13ac3efb116baa33d
 * build(deps): bump jaq-json from 1.1.0 to 1.1.1 by @dependabot in https://github.com/dathere/qsv/pull/2547
 * build(deps): bump jaq-core from 2.1.0 to 2.1.1 by @dependabot in https://github.com/dathere/qsv/pull/2546
-* `feat`: `schema` type-aware sort of JSON Schema enum list by @jqnatividad in https://github.com/dathere/qsv/pull/2551
-* feat: `lens` add `--freeze-columns` options by @jqnatividad in https://github.com/dathere/qsv/pull/2552
-* feat: `stats` add `--dataset-stats` option by @jqnatividad in https://github.com/dathere/qsv/pull/2555
+* build(deps): bump log from 0.4.25 to 0.4.26 by @dependabot in https://github.com/dathere/qsv/pull/2545
+* build(deps): bump tempfile from 3.16.0 to 3.17.0 by @dependabot in https://github.com/dathere/qsv/pull/2532
+* build(deps): bump tempfile from 3.17.0 to 3.17.1 by @dependabot in https://github.com/dathere/qsv/pull/2535
+* build(deps): bump serde_json from 1.0.138 to 1.0.139 by @dependabot in https://github.com/dathere/qsv/pull/2541
+* build(deps): bump serde from 1.0.217 to 1.0.218 by @dependabot in https://github.com/dathere/qsv/pull/2542
+* build(deps): bump smallvec from 1.13.2 to 1.14.0 by @dependabot in https://github.com/dathere/qsv/pull/2528
+* build(deps): bump strum from 0.27.0 to 0.27.1 by @dependabot in https://github.com/dathere/qsv/pull/2533
+* build(deps): bump strum_macros from 0.27.0 to 0.27.1 by @dependabot in https://github.com/dathere/qsv/pull/2534
+* build(deps): bump uuid from 1.13.1 to 1.13.2 by @dependabot in https://github.com/dathere/qsv/pull/2538
+* build(deps): bump uuid from 1.13.2 to 1.14.0 by @dependabot in https://github.com/dathere/qsv/pull/2544
+* chore: use MSRV-aware dependency resolver https://github.com/dathere/qsv/commit/16f0ffd6998e4af917922a64aa3b042578e8afd8
+* chore: we now have ~1,800 tests! https://github.com/dathere/qsv/commit/f5d09ed76d8e0acb9052f89b6688a047c756b053
+* applied select clippy lint suggestions
+* bumped indirect dependencies to latest versions
+* bumped MSRV to latest Rust stable - v1.85
+
+### Fixed
+* `count`: refactored to fall back to "regular" CSV reader when Polars counting returns a zero count https://github.com/dathere/qsv/commit/fd39bcbd9574d8d5ef1ddc5025eda4748f2a8652
+* `schema`: fixed off-by-one error https://github.com/dathere/qsv/commit/60de090bdf727dd0eaf79ba7058745fdacef07ef
+* ensured get_stats_record helper returns field/stats correctly https://github.com/dathere/qsv/commit/ad86a373d01ea45902d764a46c19f26ad5b01029
+* Fixed RUSTSEC-2025-0007: *ring* is unmaintained https://github.com/dathere/qsv/issues/2548
+
+### Removed
+* `frequency`: removed `--stats-mode` option now that we have a suite-wide QSV_STATSCACHE_MODE env var https://github.com/dathere/qsv/commit/ba75f0897e5a7e6579380a8a4c073a1af436648a https://github.com/dathere/qsv/commit/416abb7ce73f406c2a605cdca87d50c12723698a
+* chore: removed simdutf8 conditional directive for aarch64 architecture, now that its no longer needed https://github.com/dathere/qsv/commit/ec1e16c7a20a7458b560e3c78dfbd83fba82de29
+* removed publish-linux-qsvpy-glibc-231-musl-123.yml workflow as it was getting cross compilation errors and we have another musl workflow that works https://github.com/dathere/qsv/commit/7c08617132e8d7df069b7b3be160d3b348f44d53
 
 **Full Changelog**: https://github.com/dathere/qsv/compare/3.0.0...3.1.0
 
