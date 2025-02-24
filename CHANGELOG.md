@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `select`: refactored select helper https://github.com/dathere/qsv/commit/bfbe64cc64a20006e4c93d8a3f6be3f326411fec
 * `stats`: optimized memory layout of central Stats struct https://github.com/dathere/qsv/commit/52f697e5828a5c3e059d7f25254e4aef840d8598
 * `stats`: optimized record_count functionality https://github.com/dathere/qsv/commit/0e3114a54a8340639c381a19251d03ab94496b04 https://github.com/dathere/qsv/commit/18791da0cc2972de2f5909fe1556d83c8b7e8f9f
+* `contrib(completions)`: update qsv completions for qsv 3.1 by @rzmk in https://github.com/dathere/qsv/pull/2556
 * deps: bump arrow and tempfile https://github.com/dathere/qsv/commit/4cc267972622dfb703779b3d18b084006369b449
 * deps: bump cached and redis crates https://github.com/dathere/qsv/commit/e622d1447a9a8ff4ecdb22d000335fb2d129683a
 * deps: bump csvlens from 0.11 to 0.12 https://github.com/dathere/qsv/commit/b2fd985bf51fac4ec224b4664cc2fe91d8676101
