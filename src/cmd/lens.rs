@@ -17,6 +17,8 @@ lens options:
       --find <regex>               Use this regex to find and highlight matches by default
   -i, --ignore-case                Searches ignore case. Ignored if any uppercase letters
                                    are present in the search string
+  -f, --freeze-columns <num>       Freeze the first N columns
+                                   [default: 1]
       --echo-column <column_name>  Print the value of this column to stdout for the selected row
       --debug                      Show stats for debugging
 
@@ -34,16 +36,17 @@ use crate::{config::Config, util, CliError, CliResult};
 
 #[derive(Deserialize)]
 struct Args {
-    arg_input:          Option<String>,
-    flag_delimiter:     Option<String>,
-    flag_tab_separated: bool,
-    flag_no_headers:    bool,
-    flag_columns:       Option<String>,
-    flag_filter:        Option<String>,
-    flag_find:          Option<String>,
-    flag_ignore_case:   bool,
-    flag_echo_column:   Option<String>,
-    flag_debug:         bool,
+    arg_input:           Option<String>,
+    flag_delimiter:      Option<String>,
+    flag_tab_separated:  bool,
+    flag_no_headers:     bool,
+    flag_columns:        Option<String>,
+    flag_filter:         Option<String>,
+    flag_find:           Option<String>,
+    flag_ignore_case:    bool,
+    flag_freeze_columns: Option<u64>,
+    flag_echo_column:    Option<String>,
+    flag_debug:          bool,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -69,20 +72,21 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let config: Config = Config::new(Some(input.clone()).as_ref());
 
     let options = CsvlensOptions {
-        filename:      Some(input),
-        delimiter:     if let Some(delimiter) = args.flag_delimiter {
+        filename:           Some(input),
+        delimiter:          if let Some(delimiter) = args.flag_delimiter {
             Some(delimiter)
         } else {
             Some((config.get_delimiter() as char).to_string())
         },
-        tab_separated: args.flag_tab_separated,
-        no_headers:    args.flag_no_headers,
-        columns:       args.flag_columns,
-        filter:        args.flag_filter,
-        find:          args.flag_find,
-        ignore_case:   args.flag_ignore_case,
-        echo_column:   args.flag_echo_column,
-        debug:         args.flag_debug,
+        tab_separated:      args.flag_tab_separated,
+        no_headers:         args.flag_no_headers,
+        columns:            args.flag_columns,
+        filter:             args.flag_filter,
+        find:               args.flag_find,
+        ignore_case:        args.flag_ignore_case,
+        echo_column:        args.flag_echo_column,
+        debug:              args.flag_debug,
+        freeze_cols_offset: args.flag_freeze_columns,
     };
 
     let out = run_csvlens_with_options(options)
