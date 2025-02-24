@@ -123,7 +123,7 @@ geosuggest-core = { version = "0.6", optional = true }
 geosuggest-utils = { version = "0.6", optional = true }
 governor = { version = "0.8", optional = true }
 grex = { version = "1.4", default-features = false }
-gzp = { version = "0.11", default-features = false, features = [
+gzp = { version = "1", default-features = false, features = [
     "snappy_default",
 ] }
 hashbrown = { version = "0.15", optional = true }
