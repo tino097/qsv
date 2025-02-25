@@ -42,7 +42,7 @@
 arg_pat="$1"
 
 # the version of this script
-bm_version=6.3.0
+bm_version=6.4.0
 
 # CONFIGURABLE VARIABLES ---------------------------------------
 # change as needed to reflect your environment/workloads
@@ -176,7 +176,7 @@ if [[ "$arg_pat" == "setup" ]]; then
   fi
 
   # if all required tools are installed, exit
-  if [[ "$need_sevenz" -eq 0 && "$need_hyperfine" -eq 0 && "$need_awk" -eq 0 && "$need_sed" -eq 0 ]]; then
+  if [[ "$need_sevenz" -eq 0 && "$need_hyperfine" -eq 0 && "$need_awk" -eq 0 && "$need_sed" -eq 0 && "$need_duckdb" -eq 0 ]]; then
     echo "> All required tools are installed..."
     exit
   fi
@@ -553,6 +553,7 @@ run luau_filter_no_globals_no_colidx "$qsv_bin" luau filter --no-globals \"Locat
 run luau_multi_no_globals "$qsv_bin" luau map dow,hourday,weekno --no-globals "file:dt_format.luau" "$data"
 run luau_multi_no_globals_colidx "$qsv_bin" luau map dow,hourday,weekno --no-globals --colindex "file:dt_format.luau" "$data"
 run luau_script "$qsv_bin" luau map turnaround_time "file:turnaround_time.luau" "$data"
+run luau_script_debug QSV_LOG_LEVEL=debug"$qsv_bin" luau map turnaround_time "file:turnaround_time.luau" "$data"
 run luau_script_colidx "$qsv_bin" luau map turnaround_time --colindex "file:turnaround_time.luau" "$data"
 run luau_script_no_globals "$qsv_bin" luau map turnaround_time --no-globals "file:turnaround_time.luau" "$data"
 run luau_script_no_globals_colidx "$qsv_bin" luau map turnaround_time --no-globals --colindex "file:turnaround_time.luau" "$data"
