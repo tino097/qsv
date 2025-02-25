@@ -42,7 +42,7 @@
 arg_pat="$1"
 
 # the version of this script
-bm_version=6.2.0
+bm_version=6.3.0
 
 # CONFIGURABLE VARIABLES ---------------------------------------
 # change as needed to reflect your environment/workloads
@@ -510,9 +510,9 @@ run fmt_no_final_newline "$qsv_bin" fmt --no-final-newline "$data"
 run foreach "$qsv_bin" foreach City "echo {}" "$data"
 run frequency "$qsv_bin" frequency "$data"
 run --index frequency_index "$qsv_bin" frequency "$data"
-run --index frequency_index_stats_mode_auto "$qsv_bin" frequency --stats-mode auto "$data"
-run --index frequency_index_stats_mode_force "$qsv_bin" frequency --stats-mode force "$data"
-run --index frequency_index_stats_mode_none "$qsv_bin" frequency --stats-mode none "$data"
+run --index frequency_index_stats_mode_auto QSV_STATS_MODE=auto "$qsv_bin" frequency "$data"
+run --index frequency_index_stats_mode_force QSV_STATS_MODE=force "$qsv_bin" frequency "$data"
+run --index frequency_index_stats_mode_none QSV_STATS_MODE=none "$qsv_bin" frequency "$data"
 run frequency_no_limit "$qsv_bin" frequency --limit 0 "$data"
 run --index frequency_no_limit_index "$qsv_bin" frequency --limit 0 "$data"
 run frequency_other_sorted "$qsv_bin" frequency --other-sorted "$data"
