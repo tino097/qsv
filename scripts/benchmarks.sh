@@ -6,7 +6,7 @@
 #  if <argument> is omitted, all benchmarks are executed.
 #
 #  if <argument> is "reset", the benchmark data will be downloaded and prepared again.
-#   though the results/benchmark_results.csv and resutls/run_info_history.tsv historical
+#   though the results/benchmark_results.csv and results/run_info_history.tsv historical
 #   archives will be preserved.
 #  if <argument> is "clean", temporary files will be deleted.
 #  if <argument> is "setup", setup and install all the required tools.
@@ -24,8 +24,8 @@
 # Make sure you're using a release-optimized `qsv`.
 # If you can't use the prebuilt binaries at https://github.com/dathere/qsv/releases/latest,
 # build it to have at least the apply, geocode, luau, to and polars features enabled:
-# i.e. `cargo build --release --locked -F feature_capable,apply,geocode,luau,to,polars` or
-# `cargo install --locked qsv -F feature_capable,apply,geocode,luau,to,polars`
+# `CARGO_BUILD_RUSTFLAGS='-C target-cpu=native' cargo build --release --locked -F feature_capable,apply,geocode,luau,to,polars` or
+# `CARGO_BUILD_RUSTFLAGS='-C target-cpu=native' cargo install --locked qsv -F feature_capable,apply,geocode,luau,to,polars`
 #
 # This shell script has been tested on Linux and macOS. It should work on other Unix-like systems,
 # but will NOT run on native Windows. If you're on Windows, you can run it using Cygwin or WSL
@@ -42,7 +42,7 @@
 arg_pat="$1"
 
 # the version of this script
-bm_version=6.4.2
+bm_version=6.5.0
 
 # CONFIGURABLE VARIABLES ---------------------------------------
 # change as needed to reflect your environment/workloads
@@ -62,7 +62,7 @@ datazip=NYC_311_SR_2010-2020-sample-1M.7z
 # where to store the benchmark data
 data=NYC_311_SR_2010-2020-sample-1M.csv
 
-# Hyoerfine options - run `hyperfine --help`` for more info
+# Hyperfine options - run `hyperfine --help`` for more info
 # number of warmup runs for each benchmark.  A minimum of 2 is recommended
 warmup_runs=2
 # number of benchmark runs for each benchmark. A minimum of 3 is recommended
@@ -185,7 +185,7 @@ if [[ "$arg_pat" == "setup" ]]; then
   # as we need it to install the required tools
   if ! command -v brew &>/dev/null; then
     echo "INFO: Homebrew could not be found. Installing brew first. Please enter requested info when prompted."
-    curl -fsSL "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
+    bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   fi
 
   # if 7z is not installed, install it
