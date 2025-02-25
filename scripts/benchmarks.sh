@@ -42,7 +42,7 @@
 arg_pat="$1"
 
 # the version of this script
-bm_version=6.4.1
+bm_version=6.4.2
 
 # CONFIGURABLE VARIABLES ---------------------------------------
 # change as needed to reflect your environment/workloads
@@ -510,9 +510,9 @@ run fmt_no_final_newline "$qsv_bin" fmt --no-final-newline "$data"
 run foreach "$qsv_bin" foreach City "echo {}" "$data"
 run frequency "$qsv_bin" frequency "$data"
 run --index frequency_index "$qsv_bin" frequency "$data"
-run --index frequency_index_stats_mode_auto QSV_STATS_MODE=auto "$qsv_bin" frequency "$data"
-run --index frequency_index_stats_mode_force QSV_STATS_MODE=force "$qsv_bin" frequency "$data"
-run --index frequency_index_stats_mode_none QSV_STATS_MODE=none "$qsv_bin" frequency "$data"
+run --index frequency_index_stats_mode_auto env QSV_STATS_MODE=auto bash -c \'"$qsv_bin" frequency "$data"\'
+run --index frequency_index_stats_mode_force env QSV_STATS_MODE=force bash -c \'"$qsv_bin" frequency "$data"\'
+run --index frequency_index_stats_mode_none env QSV_STATS_MODE=none bash -c \'"$qsv_bin" frequency "$data"\'
 run frequency_no_limit "$qsv_bin" frequency --limit 0 "$data"
 run --index frequency_no_limit_index "$qsv_bin" frequency --limit 0 "$data"
 run frequency_other_sorted "$qsv_bin" frequency --other-sorted "$data"
@@ -553,7 +553,7 @@ run luau_filter_no_globals_no_colidx "$qsv_bin" luau filter --no-globals \"Locat
 run luau_multi_no_globals "$qsv_bin" luau map dow,hourday,weekno --no-globals "file:dt_format.luau" "$data"
 run luau_multi_no_globals_colidx "$qsv_bin" luau map dow,hourday,weekno --no-globals --colindex "file:dt_format.luau" "$data"
 run luau_script "$qsv_bin" luau map turnaround_time "file:turnaround_time.luau" "$data"
-run luau_script_debug QSV_LOG_LEVEL=debug "$qsv_bin" luau map turnaround_time "file:turnaround_time.luau" "$data"
+run luau_script_debug env QSV_LOG_LEVEL=debug bash -c \'"$qsv_bin" luau map turnaround_time "file:turnaround_time.luau" "$data"\'
 run luau_script_colidx "$qsv_bin" luau map turnaround_time --colindex "file:turnaround_time.luau" "$data"
 run luau_script_no_globals "$qsv_bin" luau map turnaround_time --no-globals "file:turnaround_time.luau" "$data"
 run luau_script_no_globals_colidx "$qsv_bin" luau map turnaround_time --no-globals --colindex "file:turnaround_time.luau" "$data"
