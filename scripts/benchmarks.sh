@@ -42,7 +42,7 @@
 arg_pat="$1"
 
 # the version of this script
-bm_version=6.4.0
+bm_version=6.4.1
 
 # CONFIGURABLE VARIABLES ---------------------------------------
 # change as needed to reflect your environment/workloads
@@ -553,7 +553,7 @@ run luau_filter_no_globals_no_colidx "$qsv_bin" luau filter --no-globals \"Locat
 run luau_multi_no_globals "$qsv_bin" luau map dow,hourday,weekno --no-globals "file:dt_format.luau" "$data"
 run luau_multi_no_globals_colidx "$qsv_bin" luau map dow,hourday,weekno --no-globals --colindex "file:dt_format.luau" "$data"
 run luau_script "$qsv_bin" luau map turnaround_time "file:turnaround_time.luau" "$data"
-run luau_script_debug QSV_LOG_LEVEL=debug"$qsv_bin" luau map turnaround_time "file:turnaround_time.luau" "$data"
+run luau_script_debug QSV_LOG_LEVEL=debug "$qsv_bin" luau map turnaround_time "file:turnaround_time.luau" "$data"
 run luau_script_colidx "$qsv_bin" luau map turnaround_time --colindex "file:turnaround_time.luau" "$data"
 run luau_script_no_globals "$qsv_bin" luau map turnaround_time --no-globals "file:turnaround_time.luau" "$data"
 run luau_script_no_globals_colidx "$qsv_bin" luau map turnaround_time --no-globals --colindex "file:turnaround_time.luau" "$data"
