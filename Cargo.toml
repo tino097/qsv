@@ -103,6 +103,7 @@ csvs_convert = { version = "0.9.0", default-features = false, features = [
     "converters",
 ], optional = true }
 data-encoding = { version = "2.8", optional = true }
+directories = "6.0"
 dotenvy = "0.15"
 dynfmt2 = { version = "0.2", default-features = false, features = ["curly"] }
 eudex = { version = "0.1", optional = true }
@@ -250,7 +251,6 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 serde_urlencoded = { version = "0.7", optional = true }
 simdutf8 = "0.1"
-simple-home-dir = "0.4"
 sled = { version = "0.34", optional = true }
 smallvec = "1"
 snap = "1"
