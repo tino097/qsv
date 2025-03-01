@@ -4,7 +4,7 @@
 [![Windows build status](https://github.com/dathere/qsv/actions/workflows/rust-windows.yml/badge.svg)](https://github.com/dathere/qsv/actions/workflows/rust-windows.yml)
 [![macOS build status](https://github.com/dathere/qsv/actions/workflows/rust-macos.yml/badge.svg)](https://github.com/dathere/qsv/actions/workflows/rust-macos.yml)
 [![Security audit](https://github.com/dathere/qsv/actions/workflows/security-audit.yml/badge.svg)](https://github.com/dathere/qsv/actions/workflows/security-audit.yml)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/05fdfbc6ddb24e7c829d0c6c3ce82d18)](https://app.codacy.com/gh/dathere/qsv/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+[![Codacy Badge][![Codacy Badge](https://app.codacy.com/project/badge/Grade/29e587760af64abcb115ba23efe1b365)](https://app.codacy.com/gh/dathere/qsv/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Clones](https://img.shields.io/badge/dynamic/json?color=success&label=clones&query=count&url=https://gist.githubusercontent.com/jqnatividad/13f60ad0b54856a55f60b8e653079349/raw/clone.json&logo=github)](https://github.com/MShawon/github-clone-count-badge)
 [![Discussions](https://img.shields.io/github/discussions/dathere/qsv)](https://github.com/dathere/qsv/discussions)
 [![Crates.io](https://img.shields.io/crates/v/qsv.svg?logo=crates.io)](https://crates.io/crates/qsv)
