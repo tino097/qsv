@@ -977,7 +977,7 @@ fn random_access_mode(
     // users can create an index file by calling qsv_autoindex() in their BEGIN script
     if begin_script.contains("qsv_autoindex()") {
         let result = create_index(args.arg_input.as_ref());
-        if result.is_err() || result.unwrap_or(false) == false {
+        if result.is_err() || !result.unwrap_or(false) {
             return fail_clierror!(
                 "Unable to create/update index file required for random access mode: {}",
                 args.arg_input.as_ref().unwrap_or(&String::new())
