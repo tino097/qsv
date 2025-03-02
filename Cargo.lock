@@ -1649,7 +1649,7 @@ dependencies = [
 [[package]]
 name = "csvlens"
 version = "0.12.0"
-source = "git+https://github.com/jqnatividad/csvlens?branch=lib-freeze-cols-option#156cca65267a7f08054e606fec002c7ff3c5044e"
+source = "git+https://github.com/YS-L/csvlens?rev=8544e9d#8544e9d4179eef10e8d1a625a41c0e1ef3eb188b"
 dependencies = [
  "anyhow",
  "arboard",
