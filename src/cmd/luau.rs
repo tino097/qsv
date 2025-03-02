@@ -209,7 +209,7 @@ Luau options:
                           [default: 10]
   --timeout <seconds>     Timeout for downloading lookup_tables using
                           the qsv_register_lookup() helper function.
-                          [default: 30]
+                          [default: 60]
   --ckan-api <url>        The URL of the CKAN API to use for downloading lookup_table
                           resources using the qsv_register_lookup() helper function
                           with the "ckan://" scheme.
@@ -350,7 +350,7 @@ impl Stage {
 
 static LUAU_STAGE: AtomicI8 = AtomicI8::new(0);
 
-static TIMEOUT_SECS: AtomicU16 = AtomicU16::new(30);
+static TIMEOUT_SECS: AtomicU16 = AtomicU16::new(60);
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
@@ -977,8 +977,11 @@ fn random_access_mode(
     // users can create an index file by calling qsv_autoindex() in their BEGIN script
     if begin_script.contains("qsv_autoindex()") {
         let result = create_index(args.arg_input.as_ref());
-        if result.is_err() {
-            return fail_clierror!("Unable to create/update index file");
+        if result.is_err() || result.unwrap_or(false) == false {
+            return fail_clierror!(
+                "Unable to create/update index file required for random access mode: {}",
+                args.arg_input.as_ref().unwrap_or(&String::new())
+            );
         }
     }
 
