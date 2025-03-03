@@ -1461,9 +1461,11 @@ fn create_index(arg_input: Option<&String>) -> Result<bool, CliError> {
     let mut wtr =
         io::BufWriter::with_capacity(DEFAULT_WTR_BUFFER_CAPACITY, fs::File::create(pidx)?);
     if RandomAccessSimple::create(&mut rdr, &mut wtr).is_err() {
+        drop(wtr);
         return Ok(false);
     }
-    if wtr.flush().is_err() {
+    if io::Write::flush(&mut wtr).is_err() {
+        drop(wtr);
         return Ok(false);
     }
 
