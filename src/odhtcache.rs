@@ -90,10 +90,7 @@ impl ExtDedupCache {
             mmap[..raw_bytes.len()].copy_from_slice(raw_bytes);
             mmap.flush()?;
         } else {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Mmap size too small for ODHT table",
-            ));
+            return Err(std::io::Error::other("Mmap size too small for ODHT table"));
         }
 
         self.mmap = Some(mmap);
