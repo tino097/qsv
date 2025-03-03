@@ -302,7 +302,7 @@ csv       = { git = "https://github.com/dathere/rust-csv", branch = "qsv-optimiz
 csv-core  = { git = "https://github.com/dathere/rust-csv", branch = "qsv-optimized-non-allocating-byterecord-trim" }
 csv-index = { git = "https://github.com/dathere/rust-csv", branch = "qsv-optimized-non-allocating-byterecord-trim" }
 
-# use latest upstream now that our PRs have been merged
+# use latest upstream now that our PRs have been merged, but not released yet
 csvlens = { git = "https://github.com/YS-L/csvlens", rev = "8544e9d" }
 
 # use latest upstream with upgraded quick-xml and accelerated int/float parsing
