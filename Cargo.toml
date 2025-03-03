@@ -79,7 +79,7 @@ bytemuck = { version = "1.22", features = [
 ], optional = true }
 byteorder = "1.5"
 bytes = "1"
-cached = { version = "0.54", features = [
+cached = { version = "0.55", features = [
     "ahash",
     "disk_store",
     "redis_ahash",
@@ -301,9 +301,6 @@ serial_test = { version = "3.2", features = ["file_locks"] }
 csv       = { git = "https://github.com/dathere/rust-csv", branch = "qsv-optimized-non-allocating-byterecord-trim" }
 csv-core  = { git = "https://github.com/dathere/rust-csv", branch = "qsv-optimized-non-allocating-byterecord-trim" }
 csv-index = { git = "https://github.com/dathere/rust-csv", branch = "qsv-optimized-non-allocating-byterecord-trim" }
-
-# use latest upstream with bumped dependencies
-cached = { git = "https://github.com/jaemk/cached", rev = "d0eabce" }
 
 # use latest upstream now that our PRs have been merged
 csvlens = { git = "https://github.com/YS-L/csvlens", rev = "8544e9d" }
