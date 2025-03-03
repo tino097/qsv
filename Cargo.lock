@@ -3741,12 +3741,11 @@ dependencies = [
 
 [[package]]
 name = "minijinja-contrib"
-version = "2.7.0"
+version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ac3e47a9006ed0500425a092c9f8b2e56d10f8aeec8ce870c5e8a7c6ef2d7c3"
+checksum = "8e807b6b15e36a4c808e92f78c2ac1f6776519a50d9cf6649819c759a8e7133c"
 dependencies = [
  "minijinja",
- "rand 0.8.5",
  "serde",
  "textwrap",
  "time",
@@ -6763,6 +6762,7 @@ checksum = "35e7868883861bd0e56d9ac6efcaaca0d6d5d82a2a7ec8209ff492c07cf37b21"
 dependencies = [
  "deranged",
  "itoa",
+ "js-sys",
  "num-conv",
  "powerfmt",
  "serde",
@@ -6788,9 +6788,9 @@ dependencies = [
 
 [[package]]
 name = "time-tz"
-version = "1.0.3"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a422f65dfdf08a81317d54fa00b45dc58cbccab69be78c1447391cc39ae8c9d4"
+checksum = "733bc522e97980eb421cbf381160ff225bd14262a48a739110f6653c6258d625"
 dependencies = [
  "cfg-if",
  "parse-zoneinfo",
@@ -6799,6 +6799,7 @@ dependencies = [
  "serde",
  "serde-xml-rs",
  "time",
+ "wasm-bindgen",
 ]
 
 [[package]]
