@@ -309,6 +309,9 @@ static QSV_V_ROWCOUNT: &str = "_ROWCOUNT";
 static QSV_V_LASTROW: &str = "_LASTROW";
 static QSV_V_INDEX: &str = "_INDEX";
 
+static SCRIPT_FILE_PREFIX: &str = "file:";
+static LUA_EXTENSION: &str = "lua";
+static LUAU_EXTENSION: &str = "luau";
 // there are 3 stages: 1-BEGIN, 2-MAIN, 3-END
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum Stage {
@@ -365,26 +368,26 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         .delimiter(args.flag_delimiter)
         .no_headers(args.flag_no_headers);
 
-    let mut luau_script = if let Some(script_filepath) = args.arg_main_script.strip_prefix("file:")
-    {
-        match fs::read_to_string(script_filepath) {
-            Ok(file_contents) => file_contents,
-            Err(e) => return fail_clierror!("Cannot load Luau file: {e}"),
-        }
-    } else if std::path::Path::new(&args.arg_main_script)
-        .extension()
-        .is_some_and(|ext| ext.eq_ignore_ascii_case("luau"))
-        || std::path::Path::new(&args.arg_main_script)
+    let mut luau_script =
+        if let Some(script_filepath) = args.arg_main_script.strip_prefix(SCRIPT_FILE_PREFIX) {
+            match fs::read_to_string(script_filepath) {
+                Ok(file_contents) => file_contents,
+                Err(e) => return fail_clierror!("Cannot load Luau file: {e}"),
+            }
+        } else if std::path::Path::new(&args.arg_main_script)
             .extension()
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("lua"))
-    {
-        match fs::read_to_string(args.arg_main_script.clone()) {
-            Ok(file_contents) => file_contents,
-            Err(e) => return fail_clierror!("Cannot load .lua/.luau file: {e}"),
-        }
-    } else {
-        args.arg_main_script.clone()
-    };
+            .is_some_and(|ext| ext.eq_ignore_ascii_case(LUAU_EXTENSION))
+            || std::path::Path::new(&args.arg_main_script)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case(LUA_EXTENSION))
+        {
+            match fs::read_to_string(args.arg_main_script.clone()) {
+                Ok(file_contents) => file_contents,
+                Err(e) => return fail_clierror!("Cannot load .lua/.luau file: {e}"),
+            }
+        } else {
+            args.arg_main_script.clone()
+        };
 
     // in Luau, comments begin with two consecutive hyphens
     // let's remove them, so we don't falsely trigger on commented special variables
@@ -435,17 +438,17 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     // check if a BEGIN script was specified
     let begin_script = if let Some(ref begin) = args.flag_begin {
-        let discrete_begin = if let Some(begin_filepath) = begin.strip_prefix("file:") {
+        let discrete_begin = if let Some(begin_filepath) = begin.strip_prefix(SCRIPT_FILE_PREFIX) {
             match fs::read_to_string(begin_filepath) {
                 Ok(begin) => begin,
                 Err(e) => return fail_clierror!("Cannot load Luau BEGIN script file: {e}"),
             }
         } else if std::path::Path::new(begin)
             .extension()
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("luau"))
+            .is_some_and(|ext| ext.eq_ignore_ascii_case(LUAU_EXTENSION))
             || std::path::Path::new(begin)
                 .extension()
-                .is_some_and(|ext| ext.eq_ignore_ascii_case("lua"))
+                .is_some_and(|ext| ext.eq_ignore_ascii_case(LUA_EXTENSION))
         {
             match fs::read_to_string(begin.clone()) {
                 Ok(file_contents) => file_contents,
@@ -471,17 +474,17 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     // check if an END script was specified
     let end_script = if let Some(ref end) = args.flag_end {
-        let discrete_end = if let Some(end_filepath) = end.strip_prefix("file:") {
+        let discrete_end = if let Some(end_filepath) = end.strip_prefix(SCRIPT_FILE_PREFIX) {
             match fs::read_to_string(end_filepath) {
                 Ok(end) => end,
                 Err(e) => return fail_clierror!("Cannot load Luau END script file: {e}"),
             }
         } else if std::path::Path::new(end)
             .extension()
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("luau"))
+            .is_some_and(|ext| ext.eq_ignore_ascii_case(LUAU_EXTENSION))
             || std::path::Path::new(end)
                 .extension()
-                .is_some_and(|ext| ext.eq_ignore_ascii_case("lua"))
+                .is_some_and(|ext| ext.eq_ignore_ascii_case(LUA_EXTENSION))
         {
             match fs::read_to_string(end.clone()) {
                 Ok(file_contents) => file_contents,
