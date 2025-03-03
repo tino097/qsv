@@ -428,7 +428,10 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     let debug_enabled = log_enabled!(log::Level::Debug) || log_enabled!(log::Level::Trace);
 
-    // add performance optimizations compiler directives if debug is off
+    // add performance optimizations compiler directives if debug is off and we're not on Windows
+    // as this might be causing concurrent access issues only on Windows as suggested by random
+    // access CI tests that only fails on Windows
+    #[cfg(not(target_os = "windows"))]
     if !debug_enabled {
         main_script = format!("--!optimize 2\n--!native\n{main_script}");
     }
