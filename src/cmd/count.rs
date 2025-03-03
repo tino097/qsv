@@ -343,7 +343,10 @@ fn count_input(conf: &Config, count_delims_mode: CountDelimsMode) -> CliResult<(
         // Calculate median width
         widths.par_sort_unstable();
         let median = if count % 2 == 0 {
-            (widths[(count / 2) as usize - 1] + widths[(count / 2) as usize]) / 2
+            usize::midpoint(
+                widths[(count / 2) as usize - 1],
+                widths[(count / 2) as usize],
+            )
         } else {
             widths[(count / 2) as usize]
         };
@@ -373,7 +376,10 @@ fn count_input(conf: &Config, count_delims_mode: CountDelimsMode) -> CliResult<(
                 .collect();
             abs_devs.par_sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
             if count % 2 == 0 {
-                (abs_devs[(count / 2) as usize - 1] + abs_devs[(count / 2) as usize]) / 2.0
+                f64::midpoint(
+                    abs_devs[(count / 2) as usize - 1],
+                    abs_devs[(count / 2) as usize],
+                )
             } else {
                 abs_devs[(count / 2) as usize]
             }
