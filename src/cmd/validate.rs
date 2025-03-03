@@ -628,6 +628,7 @@ fn test_parse_dynenum_uri() {
 /// * `Ok(Box<DynEnumValidator>)` - Validator initialized with values from first CSV column
 /// * `Err(ValidationError)` - If loading/parsing CSV fails or value is not a string
 #[cfg(not(feature = "lite"))]
+#[allow(clippy::result_large_err)]
 fn dyn_enum_validator_factory<'a>(
     _parent: &'a Map<String, Value>,
     value: &'a Value,
@@ -717,6 +718,7 @@ fn dyn_enum_validator_factory<'a>(
 }
 
 #[cfg(feature = "lite")]
+#[allow(clippy::result_large_err)]
 fn dyn_enum_validator_factory<'a>(
     _parent: &'a Map<String, Value>,
     value: &'a Value,
