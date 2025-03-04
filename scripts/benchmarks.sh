@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Usage: ./benchmarks.sh <argument>
 #  where <argument> is a substring pattern of the benchmark name.
@@ -109,10 +109,10 @@ fi
 
 # check if required tools/dependencies are installed ---------
 
-# check if benchmarker_bin has the apply feature enabled
-if [[ "$benchmarker_version" != *"apply;"* ]]; then
-  echo "ERROR: $qsv_benchmarker_bin does not have the apply feature enabled."
-  echo "The qsv apply command is needed to format the benchmarks results."
+  # check if benchmarker_bin has the apply feature enabled
+  if [[ "$benchmarker_version" != *"apply;"* ]]; then
+    echo "ERROR: $qsv_benchmarker_bin does not have the apply feature enabled."
+    echo "The qsv apply command is needed to format the benchmarks results."
   exit
 fi
 
@@ -184,8 +184,22 @@ if [[ "$arg_pat" == "setup" ]]; then
   # check if homebrew is installed, if not, install it
   # as we need it to install the required tools
   if ! command -v brew &>/dev/null; then
-    echo "INFO: Homebrew could not be found. Installing brew first. Please enter requested info when prompted."
-    bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    echo -n "INFO: Homebrew could not be found. Do you wish to install? "
+    read -p '(Requires sudo) (y/n)? ' -r CHOICE
+    case "$CHOICE" in
+    y | Y)
+      echo "Installing brew. Please enter requested info when prompted."
+      bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      ;;
+    n | N)
+      echo "Not installing brew. Review https://brew.sh/"
+      exit
+      ;;
+    *)
+      echo 'Invalid entry (only y/n)'
+      exit
+      ;;
+    esac
   fi
 
   # if 7z is not installed, install it
@@ -663,8 +677,8 @@ run --index stats_everything_index_j1_with_cache "$qsv_bin" stats "$data" --ever
 run --index stats_everything_sorted_index "$qsv_bin" stats data_sorted.csv --force --everything
 run --index stats_everything_sorted_index_with_cache "$qsv_bin" stats data_sorted.csv --everything --cache-threshold 1
 run table "$qsv_bin" table "$data"
-run template "$qsv_bin" template --template-file template.tpl "$data" > /dev/null
-run template_lookup_outdir "$qsv_bin" template --template-file template-with-cb-lookup.tpl "$data" > /dev/null
+run template "$qsv_bin" template --template-file template.tpl "$data" >/dev/null
+run template_lookup_outdir "$qsv_bin" template --template-file template-with-cb-lookup.tpl "$data" >/dev/null
 run to_xlsx "$qsv_bin" to xlsx benchmark_work.xlsx "$data"
 run to_sqlite "$qsv_bin" to sqlite benchmark_work.db "$data"
 run to_datapackage "$qsv_bin" to datapackage benchmark_work.json "$data"
