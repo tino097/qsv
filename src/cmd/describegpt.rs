@@ -235,14 +235,11 @@ fn is_valid_model(
     } else {
         args.flag_model.clone().unwrap()
     };
-    let models = match response_json["data"].as_array() {
-        Some(models) => models,
-        None => {
-            return fail_clierror!(
-                "Invalid response: 'data' field is not an array or is missing\n\n{}",
-                serde_json::to_string_pretty(&response_json).unwrap_or_default()
-            )
-        },
+    let Some(models) = response_json["data"].as_array() else {
+        return fail_clierror!(
+            "Invalid response: 'data' field is not an array or is missing\n\n{}",
+            serde_json::to_string_pretty(&response_json).unwrap_or_default()
+        );
     };
     for model in models {
         if model["id"].as_str().unwrap() == given_model {

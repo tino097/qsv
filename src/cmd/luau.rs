@@ -1049,9 +1049,8 @@ fn random_access_mode(
 
         if let Err(e) = luau.load(begin_script).exec() {
             return fail_clierror!("BEGIN error: Failed to execute \"{begin_script}\".\n{e}");
-        } else {
-            info!("BEGIN script executed.")
         }
+        info!("BEGIN script executed.");
     }
 
     let mut insertrecord = csv::StringRecord::new();
