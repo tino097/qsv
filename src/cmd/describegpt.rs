@@ -235,7 +235,14 @@ fn is_valid_model(
     } else {
         args.flag_model.clone().unwrap()
     };
-    let models = response_json["data"].as_array().unwrap();
+    let models = match response_json["data"].as_array() {
+        Some(models) => models,
+        None => {
+            return fail_clierror!(
+                "Invalid response: 'data' field is not an array or is missing\n{response_json:?}"
+            )
+        },
+    };
     for model in models {
         if model["id"].as_str().unwrap() == given_model {
             return Ok(true);
