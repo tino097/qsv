@@ -239,7 +239,8 @@ fn is_valid_model(
         Some(models) => models,
         None => {
             return fail_clierror!(
-                "Invalid response: 'data' field is not an array or is missing\n{response_json:?}"
+                "Invalid response: 'data' field is not an array or is missing\n\n{}",
+                serde_json::to_string_pretty(&response_json).unwrap_or_default()
             )
         },
     };
