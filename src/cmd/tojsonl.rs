@@ -304,6 +304,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
                 let mut header_key = Value::String(String::new());
                 let mut temp_val = Value::String(String::new());
+                let mut temp_numval: serde_json::Number;
 
                 if args.flag_trim {
                     record.trim();
@@ -324,7 +325,19 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                                 }
                             },
                             JsonlType::Null => "null",
-                            JsonlType::Integer | JsonlType::Number => field,
+                            JsonlType::Integer => field,
+                            JsonlType::Number => {
+                                // round-trip thru serde_json to parse the number per the json spec
+                                // safety: we know the number is a valid f64 and the inner
+                                // unwrap_or(0.0) covers the bare
+                                // outer unwrap()
+                                temp_numval = serde_json::Number::from_f64(
+                                    fast_float2::parse(field).unwrap_or(0.0),
+                                )
+                                .unwrap();
+                                temp_string2 = temp_numval.to_string();
+                                &temp_string2
+                            },
                             JsonlType::Boolean => {
                                 if let 't' | 'y' | '1' = boolcheck(field, &mut temp_string2) {
                                     "true"
