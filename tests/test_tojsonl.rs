@@ -31,6 +31,38 @@ fn tojsonl_simple() {
 
 #[test]
 #[serial]
+fn tojsonl_2579() {
+    let wrk = Workdir::new("tojsonl_2579");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["Date", "Product", "Unit", "Price"],
+            svec!["1937-01-01", "Milk", "1 gallon", ".1"],
+            svec!["1937-01-01", "Bread", "1 loaf", ".09"],
+            svec!["1937-01-01", "Movie ticket", "1 ticket", ".25"],
+            svec!["1937-01-01", "Milk", "10 gallons", "1.00000"],
+            svec!["1937-01-01", "Milk", "100 gallons", "10"],
+            svec!["1937-01-01", "Taxi", "1 mile", "0.90000"],
+        ],
+    );
+
+    let mut cmd = wrk.command("tojsonl");
+    cmd.arg("in.csv");
+
+    wrk.assert_success(&mut cmd);
+
+    let got: String = wrk.stdout(&mut cmd);
+    let expected = r#"{"Date":"1937-01-01","Product":"Milk","Unit":"1 gallon","Price":0.1}
+{"Date":"1937-01-01","Product":"Bread","Unit":"1 loaf","Price":0.09}
+{"Date":"1937-01-01","Product":"Movie ticket","Unit":"1 ticket","Price":0.25}
+{"Date":"1937-01-01","Product":"Milk","Unit":"10 gallons","Price":1.0}
+{"Date":"1937-01-01","Product":"Milk","Unit":"100 gallons","Price":10.0}
+{"Date":"1937-01-01","Product":"Taxi","Unit":"1 mile","Price":0.9}"#;
+    assert_eq!(got, expected);
+}
+
+#[test]
+#[serial]
 fn tojsonl_2294() {
     let wrk = Workdir::new("tojsonl_simple");
     wrk.create(
