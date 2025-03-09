@@ -56,7 +56,7 @@ use std::{
 
 use rfd::FileDialog;
 
-use crate::{util, CliResult, Deserialize};
+use crate::{CliResult, Deserialize, util};
 
 #[derive(Deserialize)]
 #[allow(clippy::struct_field_names)]

@@ -86,10 +86,10 @@ use grex::RegExpBuilder;
 use itertools::Itertools;
 use log::{debug, error, info, warn};
 use rayon::slice::ParallelSliceMut;
-use serde_json::{json, value::Number, Map, Value};
+use serde_json::{Map, Value, json, value::Number};
 use stats::Frequencies;
 
-use crate::{cmd::stats::StatsData, config::Config, util, util::StatsMode, CliResult};
+use crate::{CliResult, cmd::stats::StatsData, config::Config, util, util::StatsMode};
 
 const STDIN_CSV: &str = "stdin.csv";
 

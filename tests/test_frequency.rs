@@ -4,7 +4,7 @@ use ahash::AHashMap;
 use serde::Deserialize;
 use stats::Frequencies;
 
-use crate::{qcheck_sized, workdir::Workdir, Csv, CsvData};
+use crate::{Csv, CsvData, qcheck_sized, workdir::Workdir};
 
 fn setup(name: &str) -> (Workdir, process::Command) {
     let rows = vec![

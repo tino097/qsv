@@ -260,8 +260,9 @@ use mlua::{Lua, LuaSerdeExt, Value};
 use serde::Deserialize;
 
 use crate::{
-    config::{Config, Delimiter, DEFAULT_WTR_BUFFER_CAPACITY},
-    lookup, util, CliError, CliResult,
+    CliError, CliResult,
+    config::{Config, DEFAULT_WTR_BUFFER_CAPACITY, Delimiter},
+    lookup, util,
 };
 
 #[allow(dead_code)]
@@ -524,7 +525,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             Err(e) => {
                 return fail_clierror!(
                     "Cannot create temporary directory to copy luadate library to: {e}"
-                )
+                );
             },
         }
     } else {
@@ -806,11 +807,12 @@ fn sequential_mode(
                 Ok(result) => Ok(result),
                 Err(e) => {
                     // Extract line number if available
-                    let error_msg = match e.to_string().find("line") { Some(line) => {
-                        format!("Error at {}: {}", &e.to_string()[line..], e)
-                    } _ => {
-                        e.to_string()
-                    }};
+                    let error_msg = match e.to_string().find("line") {
+                        Some(line) => {
+                            format!("Error at {}: {}", &e.to_string()[line..], e)
+                        },
+                        _ => e.to_string(),
+                    };
                     Err(mlua::Error::RuntimeError(error_msg))
                 },
             }
@@ -1325,12 +1327,13 @@ fn map_computedvalue(
     new_column_count: u8,
 ) -> Result<(), CliError> {
     match computed_value {
-        Value::String(string) => {
-            match simdutf8::basic::from_utf8(&string.as_bytes()) { Ok(utf8) => {
+        Value::String(string) => match simdutf8::basic::from_utf8(&string.as_bytes()) {
+            Ok(utf8) => {
                 record.push_field(utf8);
-            } _ => {
+            },
+            _ => {
                 record.push_field(&string.to_string_lossy());
-            }}
+            },
         },
         Value::Number(number) => {
             record.push_field(ryu::Buffer::new().format_finite(*number));
@@ -1370,7 +1373,7 @@ fn map_computedvalue(
                     _ => {
                         return Err(mlua::Error::RuntimeError(format!(
                             "Unexpected value type returned by provided Luau expression: {v:?}"
-                        )))
+                        )));
                     },
                 }
                 columns_inserted += 1;
@@ -2559,25 +2562,29 @@ fn setup_helpers(
             let state_name = format!("_qsv_accumulate_{nm}", nm = name.unwrap_or_default());
 
             // Get existing accumulator value or use initial value
-            let prev_acc = match luau.globals().raw_get::<f64>(&*state_name) { Ok(prev) => {
-                prev
-            } _ => {
-                // Get initial value from optional argument or default to the first column value
-                let init_value = match init { Some(init) => {
-                    match init {
-                        mlua::Value::Number(n) => n,
-                        mlua::Value::Integer(i) => i as f64,
-                        mlua::Value::String(s) => fast_float2::parse(s.as_bytes()).unwrap_or(0.0),
-                        _ => 0.0,
-                    }
-                } _ => {
-                    // By default, the first column value is used as the initial value
-                    // unless the optional initial value is provided.
-                    curr_value
-                }};
-                luau.globals().raw_set(&*state_name, init_value)?;
-                init_value
-            }};
+            let prev_acc = match luau.globals().raw_get::<f64>(&*state_name) {
+                Ok(prev) => prev,
+                _ => {
+                    // Get initial value from optional argument or default to the first column value
+                    let init_value = match init {
+                        Some(init) => match init {
+                            mlua::Value::Number(n) => n,
+                            mlua::Value::Integer(i) => i as f64,
+                            mlua::Value::String(s) => {
+                                fast_float2::parse(s.as_bytes()).unwrap_or(0.0)
+                            },
+                            _ => 0.0,
+                        },
+                        _ => {
+                            // By default, the first column value is used as the initial value
+                            // unless the optional initial value is provided.
+                            curr_value
+                        },
+                    };
+                    luau.globals().raw_set(&*state_name, init_value)?;
+                    init_value
+                },
+            };
 
             // Call the accumulator function
             let result = match func.call::<mlua::Value>((prev_acc, curr_value)) {

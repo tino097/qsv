@@ -270,8 +270,8 @@ use serde::Deserialize;
 use tempfile::tempdir;
 
 use crate::{
-    cmd::sqlp::compress_output_if_needed, config::Delimiter, util, util::get_stats_records,
-    CliResult,
+    CliResult, cmd::sqlp::compress_output_if_needed, config::Delimiter, util,
+    util::get_stats_records,
 };
 
 #[derive(Deserialize)]
@@ -776,14 +776,15 @@ impl JoinStruct {
             }
         };
 
-        let mut results_df = match &self.sql_filter { Some(sql_filter) => {
-            let mut ctx = polars::sql::SQLContext::new();
-            ctx.register("join_result", join_results.lazy());
-            ctx.execute(sql_filter)
-                .and_then(polars::prelude::LazyFrame::collect)?
-        } _ => {
-            join_results
-        }};
+        let mut results_df = match &self.sql_filter {
+            Some(sql_filter) => {
+                let mut ctx = polars::sql::SQLContext::new();
+                ctx.register("join_result", join_results.lazy());
+                ctx.execute(sql_filter)
+                    .and_then(polars::prelude::LazyFrame::collect)?
+            },
+            _ => join_results,
+        };
 
         if keys_transformed {
             // Remove temporary transformed columns and
@@ -1049,7 +1050,7 @@ impl Args {
                     return fail_incorrectusage_clierror!(
                         "Invalid --cache-schema value: {cache_schema}. Valid values are 0, 1, -1 \
                          and -2"
-                    )
+                    );
                 },
             }
 

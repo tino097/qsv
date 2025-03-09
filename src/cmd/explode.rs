@@ -34,11 +34,11 @@ Common options:
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
     select::SelectColumns,
     util,
     util::replace_column_value,
-    CliResult,
 };
 #[derive(Deserialize)]
 struct Args {

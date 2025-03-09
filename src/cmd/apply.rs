@@ -336,18 +336,18 @@ use strsim::{
     sorensen_dice,
 };
 use strum_macros::EnumString;
-use thousands::{policies, Separable, SeparatorPolicy};
+use thousands::{Separable, SeparatorPolicy, policies};
 use titlecase::titlecase;
 use whatlang::detect;
 
 use crate::{
+    CliResult,
     clitypes::CliError,
     config::{Config, Delimiter},
     regex_oncelock,
     select::SelectColumns,
     util,
     util::replace_column_value,
-    CliResult,
 };
 
 #[derive(Clone, EnumString, PartialEq)]

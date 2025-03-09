@@ -40,7 +40,7 @@ Common options:
 
 use serde::Deserialize;
 
-use crate::{config::Config, util, CliResult};
+use crate::{CliResult, config::Config, util};
 
 #[allow(dead_code)]
 #[derive(Deserialize)]

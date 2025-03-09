@@ -61,7 +61,7 @@ use reqwest::blocking::Client;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::{util, util::process_input, CliResult};
+use crate::{CliResult, util, util::process_input};
 
 #[derive(Deserialize)]
 struct Args {
@@ -492,19 +492,22 @@ fn run_inference_options(
         // Process JSON output if expected or JSONL output is expected
         if is_json_output(args)? || is_jsonl_output(args)? {
             // Parse the completion JSON
-            let completion_json: serde_json::Value = match serde_json::from_str(output) { Ok(val) => {
-                // Output is valid JSON
-                val
-            } _ => {
-                // Output is invalid JSON
-                // Default error message in JSON format
-                let error_message = format!("Error: Invalid JSON output for {option}.");
-                let error_json = json!({"error": error_message});
-                // Print error message in JSON format
-                print_status(args, format!("{error_json}").as_str());
-                print_status(args, format!("Output: {output}").as_str());
-                error_json
-            }};
+            let completion_json: serde_json::Value = match serde_json::from_str(output) {
+                Ok(val) => {
+                    // Output is valid JSON
+                    val
+                },
+                _ => {
+                    // Output is invalid JSON
+                    // Default error message in JSON format
+                    let error_message = format!("Error: Invalid JSON output for {option}.");
+                    let error_json = json!({"error": error_message});
+                    // Print error message in JSON format
+                    print_status(args, format!("{error_json}").as_str());
+                    print_status(args, format!("Output: {output}").as_str());
+                    error_json
+                },
+            };
             total_json_output[option] = completion_json;
         }
         // Process plaintext output

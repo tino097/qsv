@@ -83,9 +83,10 @@ use regex::bytes::{NoExpand, Regex};
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
     select::SelectColumns,
-    util, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]

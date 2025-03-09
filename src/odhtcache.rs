@@ -3,7 +3,7 @@ use std::{collections::HashSet, path::PathBuf};
 
 use log::debug;
 use memmap2::MmapMut;
-use odht::{bytes_needed, Config, FxHashFn, HashTableOwned};
+use odht::{Config, FxHashFn, HashTableOwned, bytes_needed};
 use tempfile::NamedTempFile;
 
 struct ExtDedupConfig;
@@ -194,7 +194,7 @@ impl Drop for ExtDedupCache {
 
 #[cfg(test)]
 mod tests {
-    use rand::{distr::Alphanumeric, rng, Rng};
+    use rand::{Rng, distr::Alphanumeric, rng};
 
     use super::*;
 

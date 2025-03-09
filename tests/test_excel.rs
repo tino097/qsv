@@ -1842,11 +1842,12 @@ fn excel_range_empty_sheet() {
     cmd.arg("--range").arg("a2:b");
     cmd.arg("-s").arg("Sheet2");
 
-    assert!(wrk
-        .output_stderr(&mut cmd)
-        .matches("larger than sheet")
-        .min()
-        .is_some());
+    assert!(
+        wrk.output_stderr(&mut cmd)
+            .matches("larger than sheet")
+            .min()
+            .is_some()
+    );
     wrk.assert_err(&mut cmd);
 }
 

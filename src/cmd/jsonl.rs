@@ -43,8 +43,9 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use crate::{
-    config::{Config, Delimiter, DEFAULT_RDR_BUFFER_CAPACITY},
-    util, CliResult,
+    CliResult,
+    config::{Config, DEFAULT_RDR_BUFFER_CAPACITY, Delimiter},
+    util,
 };
 
 #[derive(Deserialize)]
@@ -121,27 +122,30 @@ fn json_line_to_csv_record(value: &Value, headers: &[Vec<String>]) -> csv::Strin
     for path in headers {
         let value = get_value_at_path(value, path);
 
-        match value { Some(value) => {
-            record.push_field(&match value {
-                Value::Bool(v) => {
-                    if v {
-                        String::from("true")
-                    } else {
-                        String::from("false")
-                    }
-                },
-                Value::Number(v) => v.to_string(),
-                Value::String(v) => v,
-                Value::Array(v) => v
-                    .iter()
-                    .map(std::string::ToString::to_string)
-                    .collect::<Vec<_>>()
-                    .join(","),
-                _ => String::new(),
-            });
-        } _ => {
-            record.push_field("");
-        }}
+        match value {
+            Some(value) => {
+                record.push_field(&match value {
+                    Value::Bool(v) => {
+                        if v {
+                            String::from("true")
+                        } else {
+                            String::from("false")
+                        }
+                    },
+                    Value::Number(v) => v.to_string(),
+                    Value::String(v) => v,
+                    Value::Array(v) => v
+                        .iter()
+                        .map(std::string::ToString::to_string)
+                        .collect::<Vec<_>>()
+                        .join(","),
+                    _ => String::new(),
+                });
+            },
+            _ => {
+                record.push_field("");
+            },
+        }
     }
 
     record

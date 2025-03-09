@@ -39,8 +39,9 @@ use serde::Deserialize;
 use tabwriter::{Alignment, TabWriter};
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
-    util, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]

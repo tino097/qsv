@@ -122,16 +122,16 @@ use crossbeam_channel;
 use indicatif::HumanCount;
 use rust_decimal::prelude::*;
 use serde::Deserialize;
-use stats::{merge_all, Frequencies};
+use stats::{Frequencies, merge_all};
 use threadpool::ThreadPool;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
     index::Indexed,
     select::{SelectColumns, Selection},
     util,
-    util::{get_stats_records, ByteString, StatsMode},
-    CliResult,
+    util::{ByteString, StatsMode, get_stats_records},
 };
 
 #[allow(clippy::unsafe_derive_deserialize)]

@@ -32,8 +32,9 @@ use csv::ByteRecord;
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
-    util, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]

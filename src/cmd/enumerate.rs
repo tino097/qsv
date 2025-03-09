@@ -96,9 +96,10 @@ use uuid::Uuid;
 use xxhash_rust::xxh3::xxh3_64;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
     select::SelectColumns,
-    util, CliResult,
+    util,
 };
 
 const NULL_VALUE: &str = "<NULL>";
@@ -218,10 +219,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 headers
             };
         }
-        let column_name = match args.flag_new_column { Some(new_column_name) => {
-            new_column_name
-        } _ => {
-            match enum_operation {
+        let column_name = match args.flag_new_column {
+            Some(new_column_name) => new_column_name,
+            _ => match enum_operation {
                 EnumOperation::Increment => "index".to_string(),
                 EnumOperation::Uuid4 => "uuid4".to_string(),
                 EnumOperation::Uuid7 => "uuid7".to_string(),
@@ -234,8 +234,8 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                     format!("{current_header}_copy")
                 },
                 EnumOperation::Hash => "hash".to_string(),
-            }
-        }};
+            },
+        };
         headers.push_field(column_name.as_bytes());
         wtr.write_byte_record(&headers)?;
     }

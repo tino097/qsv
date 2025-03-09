@@ -1736,7 +1736,9 @@ fn sqlp_length_fns() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
-        svec!["words", "n_chrs1", "n_chrs2", "n_chrs3", "n_bytes", "n_bits"],
+        svec![
+            "words", "n_chrs1", "n_chrs2", "n_chrs3", "n_bytes", "n_bits"
+        ],
         svec!["Cafe", "4", "4", "4", "4", "32"],
         svec!["", "0", "0", "0", "0", "0"],
         svec!["東京", "2", "2", "2", "6", "48"],
@@ -2255,7 +2257,9 @@ fn sqlp_stddev_variance() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
-        svec!["v1_std", "v2_std", "v3_std", "v4_std", "v1_var", "v2_var", "v3_var", "v4_var"],
+        svec![
+            "v1_std", "v2_std", "v3_std", "v4_std", "v1_var", "v2_var", "v3_var", "v4_var"
+        ],
         svec![
             "1.0",
             "2.753785273643051",

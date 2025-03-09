@@ -57,7 +57,7 @@ Common options:
 "#;
 
 use std::{
-    collections::{hash_map::Entry, HashSet},
+    collections::{HashSet, hash_map::Entry},
     fs, io,
     path::Path,
 };
@@ -67,10 +67,10 @@ use regex::Regex;
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
     select::SelectColumns,
     util::{self, FilenameTemplate},
-    CliResult,
 };
 
 #[derive(Clone, Deserialize)]
@@ -154,13 +154,13 @@ impl Args {
                     },
                 };
             if self.flag_drop {
-                wtr.write_record(row.iter().enumerate().filter_map(|(i, e)| {
-                    if i == key_col {
-                        None
-                    } else {
-                        Some(e)
-                    }
-                }))?;
+                wtr.write_record(
+                    row.iter().enumerate().filter_map(
+                        |(i, e)| {
+                            if i == key_col { None } else { Some(e) }
+                        },
+                    ),
+                )?;
             } else {
                 wtr.write_byte_record(&row)?;
             }

@@ -106,10 +106,10 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
     index::Indexed,
     util::{self, FilenameTemplate},
-    CliResult,
 };
 
 #[derive(Clone, Deserialize)]

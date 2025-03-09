@@ -96,12 +96,12 @@ Common options:
 
 use std::{env, io::Read};
 
-use jaq_core::{load, Compiler, Ctx, RcIter};
+use jaq_core::{Compiler, Ctx, RcIter, load};
 use jaq_json::Val;
-use json_objects_to_csv::{flatten_json_object::Flattener, Json2Csv};
+use json_objects_to_csv::{Json2Csv, flatten_json_object::Flattener};
 use serde::Deserialize;
 
-use crate::{config, select::SelectColumns, util, CliError, CliResult};
+use crate::{CliError, CliResult, config, select::SelectColumns, util};
 
 #[derive(Deserialize)]
 struct Args {

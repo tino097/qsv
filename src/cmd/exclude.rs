@@ -60,12 +60,12 @@ use byteorder::{BigEndian, WriteBytesExt};
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
     index::Indexed,
     select::{SelectColumns, Selection},
     util,
     util::ByteString,
-    CliResult,
 };
 
 #[derive(Deserialize)]
@@ -116,13 +116,18 @@ impl<R: io::Read + io::Seek, W: io::Write> IoState<R, W> {
         for row in self.rdr1.byte_records() {
             curr_row = row?;
             let key = get_row_key(&self.sel1, &curr_row, self.casei);
-            match validx.values.get(&key) { Some(_rows) => {
-                if invert {
-                    self.wtr.write_record(curr_row.iter())?;
-                }
-            } _ => if !invert {
-                self.wtr.write_record(curr_row.iter())?;
-            }}
+            match validx.values.get(&key) {
+                Some(_rows) => {
+                    if invert {
+                        self.wtr.write_record(curr_row.iter())?;
+                    }
+                },
+                _ => {
+                    if !invert {
+                        self.wtr.write_record(curr_row.iter())?;
+                    }
+                },
+            }
         }
         Ok(())
     }

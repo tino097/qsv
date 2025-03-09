@@ -197,13 +197,13 @@ use smallvec::SmallVec;
 use strum_macros::EnumString;
 
 use crate::{
+    CliResult,
     clitypes::CliError,
     config::{Config, Delimiter},
     regex_oncelock,
     select::SelectColumns,
     util,
     util::replace_column_value,
-    CliResult,
 };
 
 #[derive(Clone, EnumString, PartialEq)]

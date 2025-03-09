@@ -201,8 +201,8 @@ use std::{
     io::{BufReader, BufWriter, Read, Write},
     str,
     sync::{
-        atomic::{AtomicU16, Ordering},
         OnceLock,
+        atomic::{AtomicU16, Ordering},
     },
 };
 
@@ -212,9 +212,9 @@ use indicatif::HumanCount;
 #[cfg(any(feature = "feature_capable", feature = "lite"))]
 use indicatif::{ProgressBar, ProgressDrawTarget};
 use jsonschema::{
+    Keyword, ValidationError, Validator,
     output::BasicOutput,
     paths::{LazyLocation, Location},
-    Keyword, ValidationError, Validator,
 };
 use log::{debug, info, log_enabled};
 use qsv_currency::Currency;
@@ -223,17 +223,18 @@ use rayon::{
     prelude::IntoParallelRefIterator,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{json, value::Number, Map, Value};
+use serde_json::{Map, Value, json, value::Number};
 #[cfg(feature = "lite")]
 use tempfile::NamedTempFile;
 
 #[cfg(not(feature = "lite"))]
 use crate::lookup;
 #[cfg(not(feature = "lite"))]
-use crate::lookup::{load_lookup_table, LookupTableOptions};
+use crate::lookup::{LookupTableOptions, load_lookup_table};
 use crate::{
-    config::{Config, Delimiter, DEFAULT_WTR_BUFFER_CAPACITY},
-    util, CliError, CliResult,
+    CliError, CliResult,
+    config::{Config, DEFAULT_WTR_BUFFER_CAPACITY, Delimiter},
+    util,
 };
 
 // to save on repeated init/allocs
@@ -692,7 +693,7 @@ fn dyn_enum_validator_factory<'a>(
                             return fail_validation_error!(
                                 "Column '{}' not found in lookup table",
                                 col_name
-                            )
+                            );
                         },
                     }
                 },
@@ -1469,7 +1470,7 @@ fn to_json_instance(
                     return fail_clierror!(
                         "Can't cast into Number. key: {key}, value: {}",
                         String::from_utf8_lossy(value)
-                    )
+                    );
                 },
             },
             JSONtypes::Integer => match atoi_simd::parse::<i64>(value) {
@@ -1478,7 +1479,7 @@ fn to_json_instance(
                     return fail_clierror!(
                         "Can't cast into Integer. key: {key}, value: {}",
                         String::from_utf8_lossy(value)
-                    )
+                    );
                 },
             },
             JSONtypes::Boolean => match value {
@@ -1488,7 +1489,7 @@ fn to_json_instance(
                     return fail_clierror!(
                         "Can't cast into Boolean. key: {key}, value: {}",
                         String::from_utf8_lossy(value)
-                    )
+                    );
                 },
             },
             JSONtypes::Unsupported => unreachable!("we should never get an unsupported JSON type"),
@@ -2063,12 +2064,15 @@ fn test_dyn_enum_validator() {
     assert!(!validator.is_valid(&json!("bananana")));
     assert!(!validator.is_valid(&json!("")));
     assert!(!validator.is_valid(&json!(5)));
-    match validator.validate(&json!("lanzones")) { Err(e) => {
-        assert_eq!(
-            format!("{e:?}"),
-            r#"ValidationError { instance: String("lanzones"), kind: Custom { message: "\"lanzones\" is not a valid dynamicEnum value" }, instance_path: Location(""), schema_path: Location("") }"#
-        );
-    } _ => {
-        unreachable!("Expected an error, but validation succeeded.");
-    }};
+    match validator.validate(&json!("lanzones")) {
+        Err(e) => {
+            assert_eq!(
+                format!("{e:?}"),
+                r#"ValidationError { instance: String("lanzones"), kind: Custom { message: "\"lanzones\" is not a valid dynamicEnum value" }, instance_path: Location(""), schema_path: Location("") }"#
+            );
+        },
+        _ => {
+            unreachable!("Expected an error, but validation succeeded.");
+        },
+    };
 }

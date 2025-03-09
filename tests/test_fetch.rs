@@ -803,7 +803,7 @@ fn fetchpost_custom_user_agent() {
 use std::{sync::mpsc, thread};
 
 use actix_web::{
-    dev::ServerHandle, middleware, rt, web, App, HttpRequest, HttpServer, Responder, Result,
+    App, HttpRequest, HttpServer, Responder, Result, dev::ServerHandle, middleware, rt, web,
 };
 use serde::Serialize;
 #[derive(Serialize)]

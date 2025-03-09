@@ -294,11 +294,11 @@ use regex::Regex;
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     cmd::joinp::tsvssv_delim,
-    config::{Config, Delimiter, DEFAULT_WTR_BUFFER_CAPACITY},
+    config::{Config, DEFAULT_WTR_BUFFER_CAPACITY, Delimiter},
     util,
     util::{get_stats_records, process_input},
-    CliResult,
 };
 
 static DEFAULT_GZIP_COMPRESSION_LEVEL: u8 = 6;

@@ -97,12 +97,12 @@ use byteorder::{BigEndian, WriteBytesExt};
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter, SeekRead},
     index::Indexed,
     select::{SelectColumns, Selection},
     util,
     util::ByteString,
-    CliResult,
 };
 
 #[derive(Deserialize)]
@@ -271,24 +271,29 @@ impl<R: io::Read + io::Seek, W: io::Write> IoState<R, W> {
 
         while self.rdr1.read_byte_record(&mut row)? {
             key = get_row_key(&self.sel1, &row, self.casei, self.zerosi);
-            match validx.values.get(&key) { Some(rows) => {
-                self.keys_wtr.write_key(&key)?;
+            match validx.values.get(&key) {
+                Some(rows) => {
+                    self.keys_wtr.write_key(&key)?;
 
-                for &rowi in rows {
-                    validx.idx.seek(rowi as u64)?;
-                    let row1 = row.iter();
-                    validx.idx.read_byte_record(&mut scratch)?;
-                    if right {
-                        self.wtr.write_record(scratch.iter().chain(row1))?;
-                    } else {
-                        self.wtr.write_record(row1.chain(&scratch))?;
+                    for &rowi in rows {
+                        validx.idx.seek(rowi as u64)?;
+                        let row1 = row.iter();
+                        validx.idx.read_byte_record(&mut scratch)?;
+                        if right {
+                            self.wtr.write_record(scratch.iter().chain(row1))?;
+                        } else {
+                            self.wtr.write_record(row1.chain(&scratch))?;
+                        }
                     }
-                }
-            } _ => if right {
-                self.wtr.write_record(pad2.iter().chain(&row))?;
-            } else {
-                self.wtr.write_record(row.iter().chain(&pad2))?;
-            }}
+                },
+                _ => {
+                    if right {
+                        self.wtr.write_record(pad2.iter().chain(&row))?;
+                    } else {
+                        self.wtr.write_record(row.iter().chain(&pad2))?;
+                    }
+                },
+            }
         }
         self.wtr.flush()?;
         self.keys_wtr.flush()?;
@@ -330,19 +335,22 @@ impl<R: io::Read + io::Seek, W: io::Write> IoState<R, W> {
 
         while self.rdr1.read_byte_record(&mut row1)? {
             key = get_row_key(&self.sel1, &row1, self.casei, self.zerosi);
-            match validx.values.get(&key) { Some(rows) => {
-                self.keys_wtr.write_key(&key)?;
+            match validx.values.get(&key) {
+                Some(rows) => {
+                    self.keys_wtr.write_key(&key)?;
 
-                for &rowi in rows {
-                    rdr2_written[rowi] = true;
+                    for &rowi in rows {
+                        rdr2_written[rowi] = true;
 
-                    validx.idx.seek(rowi as u64)?;
-                    validx.idx.read_byte_record(&mut scratch)?;
-                    self.wtr.write_record(row1.iter().chain(&scratch))?;
-                }
-            } _ => {
-                self.wtr.write_record(row1.iter().chain(&pad2))?;
-            }}
+                        validx.idx.seek(rowi as u64)?;
+                        validx.idx.read_byte_record(&mut scratch)?;
+                        self.wtr.write_record(row1.iter().chain(&scratch))?;
+                    }
+                },
+                _ => {
+                    self.wtr.write_record(row1.iter().chain(&pad2))?;
+                },
+            }
         }
 
         // OK, now write any row from rdr2 that didn't get joined with a row

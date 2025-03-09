@@ -126,16 +126,16 @@ use std::{ffi::CString, fs};
 
 use indicatif::{ProgressBar, ProgressDrawTarget};
 use pyo3::{
-    intern,
+    PyErr, PyResult, Python, intern,
     prelude::*,
     types::{PyDict, PyModule},
-    PyErr, PyResult, Python,
 };
 use serde::Deserialize;
 
 use crate::{
+    CliError, CliResult,
     config::{Config, Delimiter},
-    util, CliError, CliResult,
+    util,
 };
 
 const HELPERS: &str = r#"

@@ -43,8 +43,9 @@ use serde::Deserialize;
 use tabwriter::TabWriter;
 
 use crate::{
-    config::{Config, Delimiter, DEFAULT_WTR_BUFFER_CAPACITY},
-    util, CliResult,
+    CliResult,
+    config::{Config, DEFAULT_WTR_BUFFER_CAPACITY, Delimiter},
+    util,
 };
 
 #[derive(Deserialize)]

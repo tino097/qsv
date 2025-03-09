@@ -460,7 +460,9 @@ fn input_headertrim() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
-        svec!["LatD", "LatM", "LatS", "NS", "LonD", "LonM", "LonS", "EW", "City", "State"],
+        svec![
+            "LatD", "LatM", "LatS", "NS", "LonD", "LonM", "LonS", "EW", "City", "State"
+        ],
         svec![
             "41",
             "5",

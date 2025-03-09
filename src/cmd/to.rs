@@ -164,17 +164,17 @@ Common options:
 use std::{io::Write, path::PathBuf};
 
 use csvs_convert::{
-    csvs_to_postgres_with_options, csvs_to_sqlite_with_options, csvs_to_xlsx_with_options,
-    make_datapackage, DescribeOptions, Options,
+    DescribeOptions, Options, csvs_to_postgres_with_options, csvs_to_sqlite_with_options,
+    csvs_to_xlsx_with_options, make_datapackage,
 };
 use log::debug;
 use serde::Deserialize;
 
 use crate::{
+    CliError, CliResult,
     config::{self, Delimiter},
     util,
     util::process_input,
-    CliError, CliResult,
 };
 
 #[allow(dead_code)]

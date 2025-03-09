@@ -74,8 +74,9 @@ use serde::Deserialize;
 use strum_macros::EnumString;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
-    util, CliResult,
+    util,
 };
 
 #[derive(EnumString, Clone, Copy)]

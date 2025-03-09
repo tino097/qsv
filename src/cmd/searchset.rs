@@ -94,14 +94,15 @@ use std::{
 #[cfg(any(feature = "feature_capable", feature = "lite"))]
 use indicatif::{HumanCount, ProgressBar, ProgressDrawTarget};
 use log::{debug, info};
-use regex::{bytes::RegexSetBuilder, Regex};
+use regex::{Regex, bytes::RegexSetBuilder};
 use serde::Deserialize;
 use serde_json::json;
 
 use crate::{
+    CliError, CliResult,
     config::{Config, Delimiter},
     select::SelectColumns,
-    util, CliError, CliResult,
+    util,
 };
 
 #[allow(dead_code)]

@@ -66,7 +66,7 @@ Common options:
 use std::{cmp, str::FromStr};
 
 // use fastrand; //DevSkim: ignore DS148264
-use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
+use rand::{Rng, SeedableRng, rngs::StdRng, seq::SliceRandom};
 use rand_hc::Hc128Rng;
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::slice::ParallelSliceMut;
@@ -76,10 +76,11 @@ use strum_macros::EnumString;
 
 use self::Number::{Float, Int};
 use crate::{
+    CliResult,
     cmd::dedup::iter_cmp_ignore_case,
     config::{Config, Delimiter},
     select::SelectColumns,
-    util, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]

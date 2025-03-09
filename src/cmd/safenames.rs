@@ -105,8 +105,9 @@ use ahash::RandomState;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
-    util, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]

@@ -270,17 +270,18 @@ use itertools::Itertools;
 use phf::phf_map;
 use qsv_dateparser::parse_with_preference;
 use serde::{Deserialize, Serialize};
-use simd_json::{prelude::ValueAsScalar, OwnedValue};
+use simd_json::{OwnedValue, prelude::ValueAsScalar};
 use smallvec::SmallVec;
-use stats::{merge_all, Commute, MinMax, OnlineStats, Unsorted};
+use stats::{Commute, MinMax, OnlineStats, Unsorted, merge_all};
 use tempfile::NamedTempFile;
 use threadpool::ThreadPool;
 
 use self::FieldType::{TDate, TDateTime, TFloat, TInteger, TNull, TString};
 use crate::{
-    config::{get_delim_by_extension, Config, Delimiter},
+    CliResult,
+    config::{Config, Delimiter, get_delim_by_extension},
     select::{SelectColumns, Selection},
-    util, CliResult,
+    util,
 };
 
 #[allow(clippy::unsafe_derive_deserialize)]
@@ -604,11 +605,10 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     // find the delimiter to use based on the extension of the output file
     // and if we need to snappy compress the output
-    let (output_extension, output_delim, snappy) = match args.flag_output { Some(ref output_path) => {
-        get_delim_by_extension(Path::new(&output_path), b',')
-    } _ => {
-        (String::new(), b',', false)
-    }};
+    let (output_extension, output_delim, snappy) = match args.flag_output {
+        Some(ref output_path) => get_delim_by_extension(Path::new(&output_path), b','),
+        _ => (String::new(), b',', false),
+    };
     let stats_csv_tempfile_fname = format!(
         "{stem}.{prime_ext}{snappy_ext}",
         //safety: we know the tempfile is a valid NamedTempFile, so we can use unwrap
@@ -807,15 +807,16 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 Some(idx) => {
                     // with an index, we get the rowcount instantaneously from the index
                     record_count = idx.count();
-                    match args.flag_jobs { Some(num_jobs) => {
-                        if num_jobs == 1 {
-                            args.sequential_stats(&args.flag_dates_whitelist)
-                        } else {
-                            args.parallel_stats(&args.flag_dates_whitelist, record_count)
-                        }
-                    } _ => {
-                        args.parallel_stats(&args.flag_dates_whitelist, record_count)
-                    }}
+                    match args.flag_jobs {
+                        Some(num_jobs) => {
+                            if num_jobs == 1 {
+                                args.sequential_stats(&args.flag_dates_whitelist)
+                            } else {
+                                args.parallel_stats(&args.flag_dates_whitelist, record_count)
+                            }
+                        },
+                        _ => args.parallel_stats(&args.flag_dates_whitelist, record_count),
+                    }
                 },
             }?;
             // we cache the record count so we don't have to count the records again
@@ -965,84 +966,95 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             stats_pathbuf,
             serde_json::to_string_pretty(&current_stats_args)?,
         )?;
-    } else { match rconfig.path { Some(path) => {
-        // if we read from a file, copy the temp stats file to "<FILESTEM>.stats.csv"
-        let mut stats_pathbuf = path.clone();
-        stats_pathbuf.set_extension("stats.csv");
-        // safety: we know the path is a valid PathBuf, so we can use unwrap
-        if currstats_filename != stats_pathbuf.to_str().unwrap() {
-            // if the stats file is not the same as the input file, copy it
-            fs::copy(currstats_filename.clone(), stats_pathbuf.clone())?;
-        }
-
-        if args.flag_cache_threshold == 0
-            || (args.flag_cache_threshold.is_negative() && args.flag_cache_threshold % 10 == -5)
-        {
-            // if the cache threshold zero or is a negative number ending in 5,
-            // delete both the index file and the stats cache file
-            if autoindex_set {
-                let index_file = path.with_extension("csv.idx");
-                log::debug!("deleting index file: {}", index_file.display());
-                if std::fs::remove_file(index_file.clone()).is_err() {
-                    // fails silently if it can't remove the index file
-                    log::warn!("Could not remove index file: {}", index_file.display());
+    } else {
+        match rconfig.path {
+            Some(path) => {
+                // if we read from a file, copy the temp stats file to "<FILESTEM>.stats.csv"
+                let mut stats_pathbuf = path.clone();
+                stats_pathbuf.set_extension("stats.csv");
+                // safety: we know the path is a valid PathBuf, so we can use unwrap
+                if currstats_filename != stats_pathbuf.to_str().unwrap() {
+                    // if the stats file is not the same as the input file, copy it
+                    fs::copy(currstats_filename.clone(), stats_pathbuf.clone())?;
                 }
-            }
 
-            // remove the stats cache file
-            if fs::remove_file(stats_pathbuf.clone()).is_err() {
-                // fails silently if it can't remove the stats file
-                log::warn!(
-                    "Could not remove stats cache file: {}",
-                    stats_pathbuf.display()
-                );
-            }
-            create_cache = false;
+                if args.flag_cache_threshold == 0
+                    || (args.flag_cache_threshold.is_negative()
+                        && args.flag_cache_threshold % 10 == -5)
+                {
+                    // if the cache threshold zero or is a negative number ending in 5,
+                    // delete both the index file and the stats cache file
+                    if autoindex_set {
+                        let index_file = path.with_extension("csv.idx");
+                        log::debug!("deleting index file: {}", index_file.display());
+                        if std::fs::remove_file(index_file.clone()).is_err() {
+                            // fails silently if it can't remove the index file
+                            log::warn!("Could not remove index file: {}", index_file.display());
+                        }
+                    }
+
+                    // remove the stats cache file
+                    if fs::remove_file(stats_pathbuf.clone()).is_err() {
+                        // fails silently if it can't remove the stats file
+                        log::warn!(
+                            "Could not remove stats cache file: {}",
+                            stats_pathbuf.display()
+                        );
+                    }
+                    create_cache = false;
+                }
+
+                if compute_stats && create_cache {
+                    // save the stats args to "<FILESTEM>.stats.csv.json"
+                    // if we computed the stats
+                    stats_pathbuf.set_extension("csv.json");
+                    // write empty file first so we can canonicalize it
+                    std::fs::File::create(stats_pathbuf.clone())?;
+                    // safety: we know the path is a valid PathBuf, so we can use unwrap
+                    current_stats_args.canonical_stats_path = stats_pathbuf
+                        .clone()
+                        .canonicalize()?
+                        .to_str()
+                        .unwrap()
+                        .to_string();
+                    std::fs::write(
+                        stats_pathbuf.clone(),
+                        serde_json::to_string_pretty(&current_stats_args)?,
+                    )?;
+
+                    // save the stats data to "<FILESTEM>.stats.csv.data.jsonl"
+                    if write_stats_jsonl {
+                        let mut stats_jsonl_pathbuf = stats_pathbuf.clone();
+                        stats_jsonl_pathbuf.set_extension("data.jsonl");
+                        util::csv_to_jsonl(
+                            &currstats_filename,
+                            &STATSDATA_TYPES_MAP,
+                            &stats_jsonl_pathbuf,
+                        )?;
+                    }
+                }
+            },
+            _ => {},
         }
-
-        if compute_stats && create_cache {
-            // save the stats args to "<FILESTEM>.stats.csv.json"
-            // if we computed the stats
-            stats_pathbuf.set_extension("csv.json");
-            // write empty file first so we can canonicalize it
-            std::fs::File::create(stats_pathbuf.clone())?;
-            // safety: we know the path is a valid PathBuf, so we can use unwrap
-            current_stats_args.canonical_stats_path = stats_pathbuf
-                .clone()
-                .canonicalize()?
-                .to_str()
-                .unwrap()
-                .to_string();
-            std::fs::write(
-                stats_pathbuf.clone(),
-                serde_json::to_string_pretty(&current_stats_args)?,
-            )?;
-
-            // save the stats data to "<FILESTEM>.stats.csv.data.jsonl"
-            if write_stats_jsonl {
-                let mut stats_jsonl_pathbuf = stats_pathbuf.clone();
-                stats_jsonl_pathbuf.set_extension("data.jsonl");
-                util::csv_to_jsonl(
-                    &currstats_filename,
-                    &STATSDATA_TYPES_MAP,
-                    &stats_jsonl_pathbuf,
-                )?;
-            }
-        }
-    } _ => {}}}
+    }
 
     if stdout_output_flag {
         // if we're outputting to stdout, copy the stats file to stdout
         let currstats = fs::read_to_string(currstats_filename)?;
         io::stdout().write_all(currstats.as_bytes())?;
         io::stdout().flush()?;
-    } else { match args.flag_output { Some(output) => {
-        // if we're outputting to a file, copy the stats file to the output file
-        if currstats_filename != output {
-            // if the stats file is not the same as the output file, copy it
-            fs::copy(currstats_filename, output)?;
+    } else {
+        match args.flag_output {
+            Some(output) => {
+                // if we're outputting to a file, copy the stats file to the output file
+                if currstats_filename != output {
+                    // if the stats file is not the same as the output file, copy it
+                    fs::copy(currstats_filename, output)?;
+                }
+            },
+            _ => {},
         }
-    } _ => {}}}
+    }
 
     Ok(())
 }
@@ -1717,11 +1729,7 @@ impl Stats {
                                     let parsed =
                                         val.parse::<usize>().unwrap_or(DEFAULT_ANTIMODES_LEN);
                                     // if 0, disable length limiting
-                                    if parsed == 0 {
-                                        usize::MAX
-                                    } else {
-                                        parsed
-                                    }
+                                    if parsed == 0 { usize::MAX } else { parsed }
                                 })
                                 .unwrap_or(DEFAULT_ANTIMODES_LEN)
                         });
