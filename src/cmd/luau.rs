@@ -387,6 +387,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 Err(e) => return fail_clierror!("Cannot load .lua/.luau file: {e}"),
             }
         } else {
+            #[allow(clippy::redundant_clone)]
             args.arg_main_script.clone()
         };
 
