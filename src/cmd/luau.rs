@@ -2733,6 +2733,7 @@ fn setup_helpers(
                 }
                 lookup_table.raw_set(key, inside_table)?;
             }
+            drop(rdr);
 
             luau.globals().raw_set(&*lookup_name, lookup_table)?;
 
