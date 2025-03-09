@@ -2562,28 +2562,25 @@ fn setup_helpers(
             let state_name = format!("_qsv_accumulate_{nm}", nm = name.unwrap_or_default());
 
             // Get existing accumulator value or use initial value
-            let prev_acc = match luau.globals().raw_get::<f64>(&*state_name) {
-                Ok(prev) => prev,
-                _ => {
-                    // Get initial value from optional argument or default to the first column value
-                    let init_value = match init {
-                        Some(init) => match init {
-                            mlua::Value::Number(n) => n,
-                            mlua::Value::Integer(i) => i as f64,
-                            mlua::Value::String(s) => {
-                                fast_float2::parse(s.as_bytes()).unwrap_or(0.0)
-                            },
-                            _ => 0.0,
+            let prev_acc = if let Ok(prev) = luau.globals().raw_get::<f64>(&*state_name) { prev } else {
+                // Get initial value from optional argument or default to the first column value
+                let init_value = match init {
+                    Some(init) => match init {
+                        mlua::Value::Number(n) => n,
+                        mlua::Value::Integer(i) => i as f64,
+                        mlua::Value::String(s) => {
+                            fast_float2::parse(s.as_bytes()).unwrap_or(0.0)
                         },
-                        _ => {
-                            // By default, the first column value is used as the initial value
-                            // unless the optional initial value is provided.
-                            curr_value
-                        },
-                    };
-                    luau.globals().raw_set(&*state_name, init_value)?;
-                    init_value
-                },
+                        _ => 0.0,
+                    },
+                    _ => {
+                        // By default, the first column value is used as the initial value
+                        // unless the optional initial value is provided.
+                        curr_value
+                    },
+                };
+                luau.globals().raw_set(&*state_name, init_value)?;
+                init_value
             };
 
             // Call the accumulator function

@@ -515,21 +515,18 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     let mut headers = rdr.byte_headers()?.clone();
 
-    let include_existing_columns = match args.flag_new_column {
-        Some(name) => {
-            // write header with new column
-            headers.push_field(name.as_bytes());
-            wtr.write_byte_record(&headers)?;
-            true
-        },
-        _ => {
-            if args.flag_pretty {
-                return fail_incorrectusage_clierror!(
-                    "The --pretty option requires the --new-column option."
-                );
-            }
-            false
-        },
+    let include_existing_columns = if let Some(name) = args.flag_new_column {
+        // write header with new column
+        headers.push_field(name.as_bytes());
+        wtr.write_byte_record(&headers)?;
+        true
+    } else {
+        if args.flag_pretty {
+            return fail_incorrectusage_clierror!(
+                "The --pretty option requires the --new-column option."
+            );
+        }
+        false
     };
 
     let mut column_index = 0_usize;
@@ -1265,83 +1262,80 @@ fn get_response(
         }
 
         // send the actual request
-        match client.get(&valid_url).send() {
-            Ok(resp) => {
-                // debug!("{resp:?}");
-                api_respheader.clone_from(resp.headers());
-                api_status = resp.status();
-                api_value = resp.text().unwrap_or_default();
+        if let Ok(resp) = client.get(&valid_url).send() {
+            // debug!("{resp:?}");
+            api_respheader.clone_from(resp.headers());
+            api_status = resp.status();
+            api_value = resp.text().unwrap_or_default();
 
-                if api_status.is_client_error() || api_status.is_server_error() {
-                    error_flag = true;
-                    error!(
-                        "HTTP error. url: {valid_url:?}, error: {:?}",
+            if api_status.is_client_error() || api_status.is_server_error() {
+                error_flag = true;
+                error!(
+                    "HTTP error. url: {valid_url:?}, error: {:?}",
+                    api_status.canonical_reason().unwrap_or("unknown error")
+                );
+
+                if flag_store_error {
+                    final_value = format!(
+                        "HTTP ERROR {} - {}",
+                        api_status.as_str(),
                         api_status.canonical_reason().unwrap_or("unknown error")
                     );
+                } else {
+                    final_value = String::new();
+                }
+            } else {
+                error_flag = false;
+                // apply jaq selector if provided
+                if let Some(selectors) = flag_jaq {
+                    match process_jaq(&api_value, selectors) {
+                        Ok(s) => {
+                            final_value = s;
+                        },
+                        Err(e) => {
+                            error!(
+                                "jaq error. json: {api_value:?}, selectors: {selectors:?}, \
+                                 error: {e:?}"
+                            );
 
-                    if flag_store_error {
-                        final_value = format!(
-                            "HTTP ERROR {} - {}",
-                            api_status.as_str(),
-                            api_status.canonical_reason().unwrap_or("unknown error")
-                        );
-                    } else {
-                        final_value = String::new();
+                            if flag_store_error {
+                                final_value = e.to_string();
+                            } else {
+                                final_value = String::new();
+                            }
+                            error_flag = true;
+                        },
                     }
                 } else {
-                    error_flag = false;
-                    // apply jaq selector if provided
-                    if let Some(selectors) = flag_jaq {
-                        match process_jaq(&api_value, selectors) {
-                            Ok(s) => {
-                                final_value = s;
-                            },
-                            Err(e) => {
-                                error!(
-                                    "jaq error. json: {api_value:?}, selectors: {selectors:?}, \
-                                     error: {e:?}"
-                                );
+                    // validate the JSON response
+                    api_value_json_result =
+                        serde_json::from_str::<serde_json::Value>(&api_value);
+                    match api_value_json_result {
+                        Ok(api_value_json) => {
+                            if flag_pretty {
+                                final_value = format!("{api_value_json:#}");
+                            } else {
+                                // use serde_json CompactFormatter to minify the JSON
+                                final_value = format!("{api_value_json}");
+                            }
+                        },
+                        Err(e) => {
+                            error!("json error. json: {api_value:?}, error: {e:?}");
 
-                                if flag_store_error {
-                                    final_value = e.to_string();
-                                } else {
-                                    final_value = String::new();
-                                }
-                                error_flag = true;
-                            },
-                        }
-                    } else {
-                        // validate the JSON response
-                        api_value_json_result =
-                            serde_json::from_str::<serde_json::Value>(&api_value);
-                        match api_value_json_result {
-                            Ok(api_value_json) => {
-                                if flag_pretty {
-                                    final_value = format!("{api_value_json:#}");
-                                } else {
-                                    // use serde_json CompactFormatter to minify the JSON
-                                    final_value = format!("{api_value_json}");
-                                }
-                            },
-                            Err(e) => {
-                                error!("json error. json: {api_value:?}, error: {e:?}");
-
-                                if flag_store_error {
-                                    final_value = e.to_string();
-                                } else {
-                                    final_value = String::new();
-                                }
-                                error_flag = true;
-                            },
-                        }
+                            if flag_store_error {
+                                final_value = e.to_string();
+                            } else {
+                                final_value = String::new();
+                            }
+                            error_flag = true;
+                        },
                     }
                 }
-            },
-            _ => {
-                error_flag = true;
-                api_respheader.clear();
-                api_status = reqwest::StatusCode::BAD_REQUEST;
-            },
+            }
+        } else {
+            error_flag = true;
+            api_respheader.clear();
+            api_status = reqwest::StatusCode::BAD_REQUEST;
         }
 
         // debug!("final value: {final_value}");

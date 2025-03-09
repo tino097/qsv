@@ -492,21 +492,18 @@ fn run_inference_options(
         // Process JSON output if expected or JSONL output is expected
         if is_json_output(args)? || is_jsonl_output(args)? {
             // Parse the completion JSON
-            let completion_json: serde_json::Value = match serde_json::from_str(output) {
-                Ok(val) => {
-                    // Output is valid JSON
-                    val
-                },
-                _ => {
-                    // Output is invalid JSON
-                    // Default error message in JSON format
-                    let error_message = format!("Error: Invalid JSON output for {option}.");
-                    let error_json = json!({"error": error_message});
-                    // Print error message in JSON format
-                    print_status(args, format!("{error_json}").as_str());
-                    print_status(args, format!("Output: {output}").as_str());
-                    error_json
-                },
+            let completion_json: serde_json::Value = if let Ok(val) = serde_json::from_str(output) {
+                // Output is valid JSON
+                val
+            } else {
+                // Output is invalid JSON
+                // Default error message in JSON format
+                let error_message = format!("Error: Invalid JSON output for {option}.");
+                let error_json = json!({"error": error_message});
+                // Print error message in JSON format
+                print_status(args, format!("{error_json}").as_str());
+                print_status(args, format!("Output: {output}").as_str());
+                error_json
             };
             total_json_output[option] = completion_json;
         }

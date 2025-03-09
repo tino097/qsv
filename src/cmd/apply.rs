@@ -1191,7 +1191,7 @@ fn apply_operations(
                             // use the same workaround as above to handle 3 decimal places
                             let numparts_str = numparts.as_str();
                             let numparts_val = if fract_3digits.is_match(numparts_str) {
-                                format!("{}0", numparts_str)
+                                format!("{numparts_str}0")
                             } else {
                                 numparts_str.to_string()
                             };
