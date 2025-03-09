@@ -17,6 +17,8 @@ It supports seven sampling methods:
   specified by the <sample-size> argument. For example, if p=0.1, then each record
   has a 10% chance of being selected, regardless of the other records. The final
   sample size is random and follows a binomial distribution. Uses CONSTANT MEMORY - O(1).
+  When sampling from a remote URL that supports range requests, processes the file in
+  chunks without downloading it entirely, making it especially efficient for large remote files.
   https://en.wikipedia.org/wiki/Bernoulli_sampling
 
 - SYSTEMATIC: the sampling method when the --systematic option is specified.
@@ -163,6 +165,7 @@ use rand::{
 use rand_hc::Hc128Rng;
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::ParallelSliceMut;
+use reqwest;
 use serde::Deserialize;
 use strum_macros::EnumString;
 use tempfile::NamedTempFile;
@@ -175,7 +178,6 @@ use crate::{
     util,
     util::{SchemaArgs, StatsMode, get_stats_records},
 };
-
 #[derive(Deserialize)]
 struct Args {
     arg_input:       Option<String>,
@@ -263,6 +265,7 @@ enum RngKind {
     Cryptosecure,
 }
 
+#[derive(PartialEq)]
 enum SamplingMethod {
     Bernoulli,
     Systematic,
@@ -417,6 +420,42 @@ fn check_stats_cache(
     }
 }
 
+/// Checks if a URL supports range requests and returns the content length if available
+async fn check_range_support(
+    url: &str,
+    client: &reqwest::Client,
+) -> CliResult<(bool, Option<u64>)> {
+    let res = client.head(url).send().await?;
+
+    // Check if server supports range requests
+    let supports_range = res
+        .headers()
+        .get("Accept-Ranges")
+        .map(|v| v.as_bytes() == b"bytes")
+        .unwrap_or(false);
+
+    let content_length = res.content_length();
+
+    Ok((supports_range, content_length))
+}
+
+/// Fetches a specific range of bytes from a URL
+async fn fetch_range(
+    url: &str,
+    client: &reqwest::Client,
+    start: u64,
+    end: u64,
+) -> CliResult<Vec<u8>> {
+    let range_header = format!("bytes={}-{}", start, end);
+    let res = client.get(url).header("Range", range_header).send().await?;
+
+    if !res.status().is_success() {
+        return fail_clierror!("Failed to fetch range: HTTP {}", res.status());
+    }
+
+    Ok(res.bytes().await?.to_vec())
+}
+
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let mut args: Args = util::get_args(USAGE, argv)?;
 
@@ -467,11 +506,121 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             let max_size_bytes = args.flag_max_size.map(|mb| mb * 1024 * 1024);
 
             // its a remote file, download it first
+            // Setup reqwest client
+            let client = reqwest::Client::builder()
+                .user_agent(util::set_user_agent(user_agent.clone())?)
+                .timeout(std::time::Duration::from_secs(
+                    util::timeout_secs(args.flag_timeout.unwrap_or(30)).unwrap_or(30),
+                ))
+                .build()?;
+
+            // Check if server supports range requests
+            let rt = tokio::runtime::Runtime::new()?;
+            let (supports_range, content_length) =
+                rt.block_on(check_range_support(&uri, &client))?;
+
+            // For bernoulli sampling with remote file with host that supports range requests
+            // handle specially
+            if supports_range
+                && content_length.is_some()
+                && sampling_method == SamplingMethod::Bernoulli
+            {
+                log::info!("Bernoulli sampling remote file with host that supports range requests");
+                let default_delim = match std::env::var("QSV_DEFAULT_DELIMITER") {
+                    Ok(delim) => Delimiter::decode_delimiter(&delim).unwrap().as_byte(),
+                    _ => b',',
+                };
+
+                // First download a small chunk to get headers and CSV structure
+                let initial_bytes = rt.block_on(fetch_range(&uri, &client, 0, 16384))?;
+                std::fs::write(&temp_download, &initial_bytes)?;
+
+                // Create temporary config to read headers
+                let temp_config =
+                    Config::new(Some(&temp_download.path().to_str().unwrap().to_string()))
+                        .delimiter(args.flag_delimiter)
+                        .no_headers(args.flag_no_headers)
+                        .flexible(true);
+
+                let mut temp_rdr = temp_config.reader()?;
+                let headers = if !args.flag_no_headers {
+                    Some(temp_rdr.headers()?.clone())
+                } else {
+                    None
+                };
+
+                // Create output writer
+                let mut wtr = Config::new(args.flag_output.as_ref())
+                    .delimiter(args.flag_delimiter)
+                    .writer()?;
+
+                // Write headers if present
+                if let Some(headers) = headers {
+                    wtr.write_record(&headers)?;
+                }
+
+                let total_size = content_length.unwrap();
+
+                let mut std_rng = StandardRng::create(args.flag_seed);
+                let mut faster_rng = FasterRng::create(args.flag_seed);
+                let mut crypto_rng = CryptoRng::create(args.flag_seed);
+
+                // Process in chunks
+                let chunk_size = 4 * 1024 * 1024; // 4MB chunks
+                let mut offset = if args.flag_no_headers {
+                    0
+                } else {
+                    initial_bytes.len() as u64
+                };
+
+                let mut record = csv::ByteRecord::new();
+
+                while offset < total_size {
+                    let end = std::cmp::min(offset + chunk_size, total_size);
+                    let chunk = rt.block_on(fetch_range(&uri, &client, offset, end))?;
+
+                    // Process chunk with bernoulli sampling
+                    let mut chunk_rdr = csv::ReaderBuilder::new()
+                        .has_headers(false)
+                        .delimiter(default_delim)
+                        .from_reader(chunk.as_slice());
+
+                    match rng_kind {
+                        RngKind::Standard => {
+                            while chunk_rdr.read_byte_record(&mut record)? {
+                                if std_rng.random_bool(args.arg_sample_size) {
+                                    wtr.write_byte_record(&record)?;
+                                }
+                            }
+                        },
+                        RngKind::Faster => {
+                            while chunk_rdr.read_byte_record(&mut record)? {
+                                if faster_rng.random_bool(args.arg_sample_size) {
+                                    wtr.write_byte_record(&record)?;
+                                }
+                            }
+                        },
+                        RngKind::Cryptosecure => {
+                            while chunk_rdr.read_byte_record(&mut record)? {
+                                if crypto_rng.random_bool(args.arg_sample_size) {
+                                    wtr.write_byte_record(&record)?;
+                                }
+                            }
+                        },
+                    }
+
+                    offset = end + 1;
+                }
+
+                return Ok(wtr.flush()?);
+            }
+
+            // For other cases or when range requests not supported, download entire file
             let future = util::download_file(
                 &uri,
                 temp_download.path().to_path_buf(),
                 false,
-                user_agent,
+                Some(util::set_user_agent(user_agent)?),
                 args.flag_timeout,
                 max_size_bytes,
             );
