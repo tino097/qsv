@@ -569,10 +569,8 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 row_writer.flush()?;
 
                 outpath.clear();
-            } else {
-                if let Some(ref mut w) = bulk_wtr {
-                    w.write_all(result_record.1.as_bytes())?;
-                }
+            } else if let Some(ref mut w) = bulk_wtr {
+                w.write_all(result_record.1.as_bytes())?;
             }
         }
 
