@@ -543,10 +543,10 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         .flexible(true);
 
                 let mut temp_rdr = temp_config.reader()?;
-                let headers = if !args.flag_no_headers {
-                    Some(temp_rdr.headers()?.clone())
-                } else {
+                let headers = if args.flag_no_headers {
                     None
+                } else {
+                    Some((&*temp_rdr.headers()?).clone())
                 };
 
                 // Create output writer
