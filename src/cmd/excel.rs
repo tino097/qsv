@@ -902,14 +902,12 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 );
             }
             range_result
+        } else if let Some(result) = sheets.worksheet_range_at(sheet_index) {
+            export_mode = ExportMode::Sheet;
+            result?
         } else {
-            if let Some(result) = sheets.worksheet_range_at(sheet_index) {
-                export_mode = ExportMode::Sheet;
-                result?
-            } else {
-                export_mode = ExportMode::NothingToExport;
-                Range::empty()
-            }
+            export_mode = ExportMode::NothingToExport;
+            Range::empty()
         }
     };
 
