@@ -669,8 +669,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                             },
                             _ => {
                                 return fail!(
-                                    "Cannot get rowcount. Percentage sampling requires a \
-                                     rowcount."
+                                    "Cannot get rowcount. Percentage sampling requires a rowcount."
                                 );
                             },
                         }

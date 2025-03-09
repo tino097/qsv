@@ -531,7 +531,9 @@ fn count_with_csv_reader(conf: &Config) -> Option<u64> {
 /// even if it's available
 #[inline]
 pub fn count_rows_regular(conf: &Config) -> Result<u64, CliError> {
-    if let Some(idx) = conf.indexed().unwrap_or(None) { Ok(idx.count()) } else {
+    if let Some(idx) = conf.indexed().unwrap_or(None) {
+        Ok(idx.count())
+    } else {
         // index does not exist or is stale,
         let count_opt =
             ROW_COUNT.get_or_init(|| match conf.clone().skip_format_check(true).reader() {

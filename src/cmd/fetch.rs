@@ -1294,8 +1294,8 @@ fn get_response(
                         },
                         Err(e) => {
                             error!(
-                                "jaq error. json: {api_value:?}, selectors: {selectors:?}, \
-                                 error: {e:?}"
+                                "jaq error. json: {api_value:?}, selectors: {selectors:?}, error: \
+                                 {e:?}"
                             );
 
                             if flag_store_error {
@@ -1308,8 +1308,7 @@ fn get_response(
                     }
                 } else {
                     // validate the JSON response
-                    api_value_json_result =
-                        serde_json::from_str::<serde_json::Value>(&api_value);
+                    api_value_json_result = serde_json::from_str::<serde_json::Value>(&api_value);
                     match api_value_json_result {
                         Ok(api_value_json) => {
                             if flag_pretty {
