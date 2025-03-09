@@ -431,8 +431,7 @@ async fn check_range_support(
     let supports_range = res
         .headers()
         .get("Accept-Ranges")
-        .map(|v| v.as_bytes() == b"bytes")
-        .unwrap_or(false);
+        .is_some_and(|v| v.as_bytes() == b"bytes");
 
     let content_length = res.content_length();
 
@@ -446,7 +445,7 @@ async fn fetch_range(
     start: u64,
     end: u64,
 ) -> CliResult<Vec<u8>> {
-    let range_header = format!("bytes={}-{}", start, end);
+    let range_header = format!("bytes={start}-{end}");
     let res = client.get(url).header("Range", range_header).send().await?;
 
     if !res.status().is_success() {
@@ -546,7 +545,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 let headers = if args.flag_no_headers {
                     None
                 } else {
-                    Some((&*temp_rdr.headers()?).clone())
+                    Some((*temp_rdr.headers()?).clone())
                 };
 
                 // Create output writer
