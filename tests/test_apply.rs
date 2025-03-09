@@ -1891,6 +1891,10 @@ fn apply_ops_currencytonum() {
             svec!["1,250,000"],
             svec!["$5"],
             svec!["0"],
+            svec!["$ 0.00"],
+            svec!["USD 0"],
+            svec!["USD 0.00"],
+            svec!["0.00 $"],
             svec!["5"],
             svec!["$0.25"],
             svec!["$ 10.05"],
@@ -1912,6 +1916,8 @@ fn apply_ops_currencytonum() {
             svec!["USD 10,000"],
             svec!["EUR 1234.50"],
             svec!["JPY 9,999,999.99"],
+            // RMB is not a valid ISO currency code
+            // but we handle it anyway
             svec!["RMB 6543.21"],
             svec!["$10.0099"],
             svec!["$10.0777"],
@@ -1936,7 +1942,11 @@ fn apply_ops_currencytonum() {
         svec!["12500.00"],
         svec!["1250000.00"],
         svec!["5.00"],
-        svec!["0"],
+        svec!["0.00"],
+        svec!["0.00"],
+        svec!["0.00"],
+        svec!["0.00"],
+        svec!["0.00"],
         svec!["5.00"],
         svec!["0.25"],
         svec!["10.05"],
@@ -1959,6 +1969,112 @@ fn apply_ops_currencytonum() {
         svec!["1234.50"],
         svec!["9999999.99"],
         svec!["6543.21"],
+        svec!["10.01"],
+        svec!["10.08"],
+        svec!["10.07"],
+        svec!["10.87"],
+        svec!["10.78"],
+        svec!["10.78"],
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn apply_ops_currencytonum_strict() {
+    let wrk = Workdir::new("apply_currencytonum_strict");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["money"],
+            svec!["$10.00"],
+            svec!["$-10.00"],
+            svec!["$ 12 500.00"],
+            svec!["12,500.00"],
+            svec!["1,250,000"],
+            svec!["$5"],
+            svec!["0"],
+            svec!["$ 0.00"],
+            svec!["USD 0"],
+            svec!["USD 0.00"],
+            // in strict mode this will be ignored
+            // because you can't have a trailing currency symbol
+            svec!["0.00 $"],
+            svec!["5"],
+            svec!["$0.25"],
+            svec!["$ 10.05"],
+            svec!["¥10,000,000.00"],
+            svec!["£423.56"],
+            svec!["€120.00"],
+            svec!["֏99,999.50"],
+            svec!["€300 999,55"],
+            svec!["This is not money. Leave untouched."],
+            svec!["₱1,234,567.89"],
+            svec!["₽234,567.89"],
+            svec!["₪ 567.89"],
+            svec!["₩ 567.89"],
+            svec!["₩ 89,123.0"],
+            svec!["ƒ 123,456.00"],
+            svec!["฿ 789,123"],
+            svec!["₫ 456"],
+            svec!["123,456.00 $"],
+            svec!["USD 10,000"],
+            svec!["EUR 1234.50"],
+            svec!["JPY 9,999,999.99"],
+            // RMB is not a valid ISO currency code
+            // so in strict mode it will be ignored
+            svec!["RMB 6543.21"],
+            svec!["$10.0099"],
+            svec!["$10.0777"],
+            svec!["$10.0723"],
+            svec!["$10.8723"],
+            svec!["$10.77777"],
+            svec!["$10.777"],
+        ],
+    );
+    let mut cmd = wrk.command("apply");
+    cmd.arg("operations")
+        .arg("currencytonum")
+        .arg("money")
+        .arg("--formatstr")
+        .arg("strict")
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["money"],
+        svec!["10.00"],
+        svec!["-10.00"],
+        svec!["12500.00"],
+        svec!["12,500.00"],
+        svec!["1,250,000"],
+        svec!["5.00"],
+        svec!["0"],
+        svec!["0.00"],
+        svec!["0.00"],
+        svec!["0.00"],
+        svec!["0.00 $"],
+        svec!["5"],
+        svec!["0.25"],
+        svec!["10.05"],
+        svec!["10000000.00"],
+        svec!["423.56"],
+        svec!["120.00"],
+        svec!["99999.50"],
+        svec!["300999.55"],
+        svec!["This is not money. Leave untouched."],
+        svec!["1234567.89"],
+        svec!["234567.89"],
+        svec!["567.89"],
+        svec!["567.89"],
+        svec!["89123.00"],
+        svec!["123456.00"],
+        svec!["789123.00"],
+        svec!["456.00"],
+        svec!["123,456.00 $"],
+        svec!["10000.00"],
+        svec!["1234.50"],
+        svec!["9999999.99"],
+        svec!["RMB 6543.21"],
         svec!["10.01"],
         svec!["10.08"],
         svec!["10.07"],
