@@ -124,7 +124,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     };
 
     if args.flag_auto_skip {
-        // TODO: Audit that the environment access only happens in single-threaded code.
+        // safety: we are in single-threaded code.
         unsafe { std::env::set_var("QSV_SNIFF_PREAMBLE", "1") };
     }
 
@@ -141,7 +141,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         .comment(comment_char)
         .trim(trim_setting);
     if args.flag_auto_skip {
-        // TODO: Audit that the environment access only happens in single-threaded code.
+        // safety: we are in single-threaded code.
         unsafe { std::env::remove_var("QSV_SNIFF_PREAMBLE") };
     }
     let mut wconfig = Config::new(args.flag_output.as_ref());

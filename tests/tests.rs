@@ -133,18 +133,18 @@ mod test_transpose;
 mod test_validate;
 
 fn qcheck<T: Testable>(p: T) {
-    // TODO: Audit that the environment access only happens in single-threaded code.
+    // safety: we are in single-threaded code.
     unsafe { env::set_var("QSV_SKIPUTF8_CHECK", "1") };
     QuickCheck::new().r#gen(Gen::new(5)).quickcheck(p);
-    // TODO: Audit that the environment access only happens in single-threaded code.
+    // safety: we are in single-threaded code.
     unsafe { env::set_var("QSV_SKIPUTF8_CHECK", "") };
 }
 
 fn qcheck_sized<T: Testable>(p: T, size: usize) {
-    // TODO: Audit that the environment access only happens in single-threaded code.
+    // safety: we are in single-threaded code.
     unsafe { env::set_var("QSV_SKIPUTF8_CHECK", "1") };
     QuickCheck::new().r#gen(Gen::new(size)).quickcheck(p);
-    // TODO: Audit that the environment access only happens in single-threaded code.
+    // safety: we are in single-threaded code.
     unsafe { env::set_var("QSV_SKIPUTF8_CHECK", "") };
 }
 

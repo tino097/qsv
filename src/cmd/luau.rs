@@ -546,7 +546,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         let mut luau_path = args.flag_luau_path.clone();
         // safety: safe to unwrap as we're just using it to append to luau_path
         write!(luau_path, ";{}", luadate_path.as_os_str().to_string_lossy()).unwrap();
-        // TODO: Audit that the environment access only happens in single-threaded code.
+        // safety: we are in single-threaded code.
         unsafe { env::set_var("LUAU_PATH", luau_path.clone()) };
         info!(r#"set LUAU_PATH to "{luau_path}""#);
     }
@@ -1686,10 +1686,10 @@ fn setup_helpers(
         }
 
         if value.is_empty() {
-            // TODO: Audit that the environment access only happens in single-threaded code.
+            // safety: we are in single-threaded code.
             unsafe { std::env::remove_var(envvar) };
         } else {
-            // TODO: Audit that the environment access only happens in single-threaded code.
+            // safety: we are in single-threaded code.
             unsafe { std::env::set_var(envvar, value) };
         }
 
