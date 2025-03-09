@@ -967,74 +967,71 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             serde_json::to_string_pretty(&current_stats_args)?,
         )?;
     } else {
-        match rconfig.path {
-            Some(path) => {
-                // if we read from a file, copy the temp stats file to "<FILESTEM>.stats.csv"
-                let mut stats_pathbuf = path.clone();
-                stats_pathbuf.set_extension("stats.csv");
+        if let Some(path) = rconfig.path {
+            // if we read from a file, copy the temp stats file to "<FILESTEM>.stats.csv"
+            let mut stats_pathbuf = path.clone();
+            stats_pathbuf.set_extension("stats.csv");
+            // safety: we know the path is a valid PathBuf, so we can use unwrap
+            if currstats_filename != stats_pathbuf.to_str().unwrap() {
+                // if the stats file is not the same as the input file, copy it
+                fs::copy(currstats_filename.clone(), stats_pathbuf.clone())?;
+            }
+
+            if args.flag_cache_threshold == 0
+                || (args.flag_cache_threshold.is_negative()
+                    && args.flag_cache_threshold % 10 == -5)
+            {
+                // if the cache threshold zero or is a negative number ending in 5,
+                // delete both the index file and the stats cache file
+                if autoindex_set {
+                    let index_file = path.with_extension("csv.idx");
+                    log::debug!("deleting index file: {}", index_file.display());
+                    if std::fs::remove_file(index_file.clone()).is_err() {
+                        // fails silently if it can't remove the index file
+                        log::warn!("Could not remove index file: {}", index_file.display());
+                    }
+                }
+
+                // remove the stats cache file
+                if fs::remove_file(stats_pathbuf.clone()).is_err() {
+                    // fails silently if it can't remove the stats file
+                    log::warn!(
+                        "Could not remove stats cache file: {}",
+                        stats_pathbuf.display()
+                    );
+                }
+                create_cache = false;
+            }
+
+            if compute_stats && create_cache {
+                // save the stats args to "<FILESTEM>.stats.csv.json"
+                // if we computed the stats
+                stats_pathbuf.set_extension("csv.json");
+                // write empty file first so we can canonicalize it
+                std::fs::File::create(stats_pathbuf.clone())?;
                 // safety: we know the path is a valid PathBuf, so we can use unwrap
-                if currstats_filename != stats_pathbuf.to_str().unwrap() {
-                    // if the stats file is not the same as the input file, copy it
-                    fs::copy(currstats_filename.clone(), stats_pathbuf.clone())?;
-                }
+                current_stats_args.canonical_stats_path = stats_pathbuf
+                    .clone()
+                    .canonicalize()?
+                    .to_str()
+                    .unwrap()
+                    .to_string();
+                std::fs::write(
+                    stats_pathbuf.clone(),
+                    serde_json::to_string_pretty(&current_stats_args)?,
+                )?;
 
-                if args.flag_cache_threshold == 0
-                    || (args.flag_cache_threshold.is_negative()
-                        && args.flag_cache_threshold % 10 == -5)
-                {
-                    // if the cache threshold zero or is a negative number ending in 5,
-                    // delete both the index file and the stats cache file
-                    if autoindex_set {
-                        let index_file = path.with_extension("csv.idx");
-                        log::debug!("deleting index file: {}", index_file.display());
-                        if std::fs::remove_file(index_file.clone()).is_err() {
-                            // fails silently if it can't remove the index file
-                            log::warn!("Could not remove index file: {}", index_file.display());
-                        }
-                    }
-
-                    // remove the stats cache file
-                    if fs::remove_file(stats_pathbuf.clone()).is_err() {
-                        // fails silently if it can't remove the stats file
-                        log::warn!(
-                            "Could not remove stats cache file: {}",
-                            stats_pathbuf.display()
-                        );
-                    }
-                    create_cache = false;
-                }
-
-                if compute_stats && create_cache {
-                    // save the stats args to "<FILESTEM>.stats.csv.json"
-                    // if we computed the stats
-                    stats_pathbuf.set_extension("csv.json");
-                    // write empty file first so we can canonicalize it
-                    std::fs::File::create(stats_pathbuf.clone())?;
-                    // safety: we know the path is a valid PathBuf, so we can use unwrap
-                    current_stats_args.canonical_stats_path = stats_pathbuf
-                        .clone()
-                        .canonicalize()?
-                        .to_str()
-                        .unwrap()
-                        .to_string();
-                    std::fs::write(
-                        stats_pathbuf.clone(),
-                        serde_json::to_string_pretty(&current_stats_args)?,
+                // save the stats data to "<FILESTEM>.stats.csv.data.jsonl"
+                if write_stats_jsonl {
+                    let mut stats_jsonl_pathbuf = stats_pathbuf.clone();
+                    stats_jsonl_pathbuf.set_extension("data.jsonl");
+                    util::csv_to_jsonl(
+                        &currstats_filename,
+                        &STATSDATA_TYPES_MAP,
+                        &stats_jsonl_pathbuf,
                     )?;
-
-                    // save the stats data to "<FILESTEM>.stats.csv.data.jsonl"
-                    if write_stats_jsonl {
-                        let mut stats_jsonl_pathbuf = stats_pathbuf.clone();
-                        stats_jsonl_pathbuf.set_extension("data.jsonl");
-                        util::csv_to_jsonl(
-                            &currstats_filename,
-                            &STATSDATA_TYPES_MAP,
-                            &stats_jsonl_pathbuf,
-                        )?;
-                    }
                 }
-            },
-            _ => {},
+            }
         }
     }
 
@@ -1044,15 +1041,12 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         io::stdout().write_all(currstats.as_bytes())?;
         io::stdout().flush()?;
     } else {
-        match args.flag_output {
-            Some(output) => {
-                // if we're outputting to a file, copy the stats file to the output file
-                if currstats_filename != output {
-                    // if the stats file is not the same as the output file, copy it
-                    fs::copy(currstats_filename, output)?;
-                }
-            },
-            _ => {},
+        if let Some(output) = args.flag_output {
+            // if we're outputting to a file, copy the stats file to the output file
+            if currstats_filename != output {
+                // if the stats file is not the same as the output file, copy it
+                fs::copy(currstats_filename, output)?;
+            }
         }
     }
 

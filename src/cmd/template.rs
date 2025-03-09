@@ -570,11 +570,8 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
                 outpath.clear();
             } else {
-                match bulk_wtr {
-                    Some(ref mut w) => {
-                        w.write_all(result_record.1.as_bytes())?;
-                    },
-                    _ => {},
+                if let Some(ref mut w) = bulk_wtr {
+                    w.write_all(result_record.1.as_bytes())?;
                 }
             }
         }

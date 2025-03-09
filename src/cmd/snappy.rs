@@ -118,8 +118,8 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             );
             tokio::runtime::Runtime::new()?.block_on(future)?;
             // safety: temp_download is a NamedTempFile, so we know that it can be converted
-            let temp_download_path = temp_download.path().to_str().unwrap().to_string();
-            temp_download_path
+            
+            temp_download.path().to_str().unwrap().to_string()
         } else {
             // its a local file
             uri.to_string()

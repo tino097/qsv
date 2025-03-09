@@ -161,7 +161,8 @@ impl ExtDedupCache {
     }
 
     fn item_to_keys(item: &str) -> impl Iterator<Item = [u8; CHUNK_SIZE + 1]> + '_ {
-        let res = item
+        
+        item
             .as_bytes()
             .chunks(CHUNK_SIZE)
             .enumerate()
@@ -170,8 +171,7 @@ impl ExtDedupCache {
                 key[CHUNK_SIZE] = i as u8;
                 key[..chunk.len()].copy_from_slice(chunk);
                 key
-            });
-        res
+            })
     }
 
     fn dump_to_disk(&mut self) {
