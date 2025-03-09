@@ -32,11 +32,11 @@ use sysinfo::System;
 #[cfg(feature = "polars")]
 use crate::cmd::count::polars_count_input;
 use crate::{
-    cmd::stats::{JsonTypes, StatsData, STATSDATA_TYPES_MAP},
+    CURRENT_COMMAND, CliError, CliResult,
+    cmd::stats::{JsonTypes, STATSDATA_TYPES_MAP, StatsData},
     config,
-    config::{Config, Delimiter, DEFAULT_RDR_BUFFER_CAPACITY, DEFAULT_WTR_BUFFER_CAPACITY},
+    config::{Config, DEFAULT_RDR_BUFFER_CAPACITY, DEFAULT_WTR_BUFFER_CAPACITY, Delimiter},
     select::SelectColumns,
-    CliError, CliResult, CURRENT_COMMAND,
 };
 
 #[macro_export]
@@ -237,13 +237,16 @@ pub fn njobs(flag_jobs: Option<usize>) -> usize {
                 jobs
             }
         });
-        if let Err(e) = rayon::ThreadPoolBuilder::new()
+        match rayon::ThreadPoolBuilder::new()
             .num_threads(jobs_to_use)
             .build_global()
         {
-            log::warn!("Failed to set global thread pool size to {jobs_to_use}: {e}");
-        } else {
-            log::info!("Using {jobs_to_use} jobs...");
+            Err(e) => {
+                log::warn!("Failed to set global thread pool size to {jobs_to_use}: {e}");
+            },
+            _ => {
+                log::info!("Using {jobs_to_use} jobs...");
+            },
         }
         jobs_to_use
     });
@@ -314,17 +317,20 @@ pub fn version() -> String {
         let luau = mlua::Lua::new();
         match luau.load("return _VERSION").eval() {
             Ok(version_info) => {
-                if let mlua::Value::String(luaustring_val) = version_info {
-                    let string_val = luaustring_val.to_string_lossy();
-                    if string_val == "Luau" {
-                        enabled_features.push_str("Luau - version not specified;");
-                    } else {
-                        // safety: safe to unwrap as we're just using it to append to
-                        // enabled_features
-                        write!(enabled_features, "{string_val};").unwrap();
-                    }
-                } else {
-                    enabled_features.push_str("Luau - ?;");
+                match version_info {
+                    mlua::Value::String(luaustring_val) => {
+                        let string_val = luaustring_val.to_string_lossy();
+                        if string_val == "Luau" {
+                            enabled_features.push_str("Luau - version not specified;");
+                        } else {
+                            // safety: safe to unwrap as we're just using it to append to
+                            // enabled_features
+                            write!(enabled_features, "{string_val};").unwrap();
+                        }
+                    },
+                    _ => {
+                        enabled_features.push_str("Luau - ?;");
+                    },
                 }
             },
             // safety: safe to unwrap as we're just using it to append to enabled_features
@@ -529,19 +535,19 @@ pub fn count_rows_regular(conf: &Config) -> Result<u64, CliError> {
         Ok(idx.count())
     } else {
         // index does not exist or is stale,
-        let count_opt = ROW_COUNT.get_or_init(|| {
-            if let Ok(mut rdr) = conf.clone().skip_format_check(true).reader() {
-                let mut count = 0_u64;
-                let mut _record = csv::ByteRecord::new();
-                #[allow(clippy::used_underscore_binding)]
-                while rdr.read_byte_record(&mut _record).unwrap_or_default() {
-                    count += 1;
-                }
-                Some(count)
-            } else {
-                None
-            }
-        });
+        let count_opt =
+            ROW_COUNT.get_or_init(|| match conf.clone().skip_format_check(true).reader() {
+                Ok(mut rdr) => {
+                    let mut count = 0_u64;
+                    let mut _record = csv::ByteRecord::new();
+                    #[allow(clippy::used_underscore_binding)]
+                    while rdr.read_byte_record(&mut _record).unwrap_or_default() {
+                        count += 1;
+                    }
+                    Some(count)
+                },
+                _ => None,
+            });
 
         match *count_opt {
             Some(count) => Ok(count),
@@ -593,7 +599,7 @@ pub fn finish_progress(progress: &ProgressBar) {
 
 #[cfg(all(any(feature = "fetch", feature = "geocode"), not(feature = "lite")))]
 macro_rules! update_cache_info {
-    ($progress:expr, $cache_instance:expr) => {
+    ($progress:expr_2021, $cache_instance:expr_2021) => {
         use cached::Cached;
         use indicatif::HumanCount;
 
@@ -618,7 +624,7 @@ macro_rules! update_cache_info {
             _ => {},
         }
     };
-    ($progress:expr, $cache_hits:expr, $num_rows:expr) => {
+    ($progress:expr_2021, $cache_hits:expr_2021, $num_rows:expr_2021) => {
         use indicatif::HumanCount;
 
         #[allow(clippy::cast_precision_loss)]
@@ -975,19 +981,20 @@ pub fn qsv_check_for_update(check_only: bool, no_confirm: bool) -> Result<bool, 
     winfo!("Checking GitHub for updates...");
 
     let curr_version = cargo_crate_version!();
-    let releases = if let Ok(releases_list) =
-        self_update::backends::github::ReleaseList::configure()
-            .repo_owner("dathere")
-            .repo_name("qsv")
-            .build()
+    let releases = match self_update::backends::github::ReleaseList::configure()
+        .repo_owner("dathere")
+        .repo_name("qsv")
+        .build()
     {
-        if let Ok(releases) = releases_list.fetch() {
-            releases
-        } else {
+        Ok(releases_list) => match releases_list.fetch() {
+            Ok(releases) => releases,
+            _ => {
+                return fail!(GITHUB_RATELIMIT_MSG);
+            },
+        },
+        _ => {
             return fail!(GITHUB_RATELIMIT_MSG);
-        }
-    } else {
-        return fail!(GITHUB_RATELIMIT_MSG);
+        },
     };
     let latest_release = &releases[0].version;
 
@@ -1029,7 +1036,7 @@ pub fn qsv_check_for_update(check_only: bool, no_confirm: bool) -> Result<bool, 
                     Err(e) => werr!("Update job error: {e}"),
                 },
                 Err(e) => werr!("Update builder error: {e}"),
-            };
+            }
         } else if check_only {
             winfo!("Use the --update option to upgrade {bin_name} to the latest release.");
         } else {
@@ -2446,12 +2453,11 @@ pub fn optimal_batch_size(rconfig: &Config, batch_size: usize, num_jobs: usize) 
 
     let num_rows = match ROW_COUNT.get() {
         Some(count) => count.unwrap() as usize,
-        None => {
-            if let Ok(Some(idx)) = rconfig.indexed() {
-                idx.count() as usize
-            } else {
+        None => match rconfig.indexed() {
+            Ok(Some(idx)) => idx.count() as usize,
+            _ => {
                 return DEFAULT_BATCH_SIZE;
-            }
+            },
         },
     };
 

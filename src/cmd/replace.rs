@@ -65,9 +65,10 @@ use regex::bytes::RegexBuilder;
 use serde::Deserialize;
 
 use crate::{
+    CliError, CliResult,
     config::{Config, Delimiter},
     select::SelectColumns,
-    util, CliError, CliResult,
+    util,
 };
 
 #[allow(dead_code)]

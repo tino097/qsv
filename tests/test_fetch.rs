@@ -803,7 +803,7 @@ fn fetchpost_custom_user_agent() {
 use std::{sync::mpsc, thread};
 
 use actix_web::{
-    dev::ServerHandle, middleware, rt, web, App, HttpRequest, HttpServer, Responder, Result,
+    App, HttpRequest, HttpServer, Responder, Result, dev::ServerHandle, middleware, rt, web,
 };
 use serde::Serialize;
 #[derive(Serialize)]
@@ -835,7 +835,7 @@ macro_rules! test_server {
 }
 
 macro_rules! test_url {
-    ($api_param:expr) => {
+    ($api_param:expr_2021) => {
         concat!("http://", test_server!(), "/", $api_param)
     };
 }

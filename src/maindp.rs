@@ -39,7 +39,7 @@ use docopt::Docopt;
 use serde::Deserialize;
 
 use crate::{
-    clitypes::{CliError, CliResult, QsvExitCode, CURRENT_COMMAND},
+    clitypes::{CURRENT_COMMAND, CliError, CliResult, QsvExitCode},
     config::SPONSOR_MESSAGE,
 };
 

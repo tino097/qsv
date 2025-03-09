@@ -235,23 +235,23 @@ Common options:
 use std::{fs, num::NonZeroU32, sync::OnceLock, thread, time};
 
 use cached::{
+    Cached, IOCached, RedisCache, Return, SizedCache,
     proc_macro::{cached, io_cached},
     stores::DiskCacheBuilder,
-    Cached, IOCached, RedisCache, Return, SizedCache,
 };
 use dynfmt2::Format;
 use governor::{
+    Quota, RateLimiter,
     clock::DefaultClock,
     middleware::NoOpMiddleware,
-    state::{direct::NotKeyed, InMemoryState},
-    Quota, RateLimiter,
+    state::{InMemoryState, direct::NotKeyed},
 };
 use indicatif::{HumanCount, MultiProgress, ProgressBar, ProgressDrawTarget};
-use jaq_core::{load, Compiler, Ctx, RcIter};
+use jaq_core::{Compiler, Ctx, RcIter, load};
 use jaq_json::Val;
 use log::{
-    debug, error, info, log_enabled, warn,
     Level::{Debug, Trace, Warn},
+    debug, error, info, log_enabled, warn,
 };
 use rand::Rng;
 use regex::Regex;
@@ -260,15 +260,16 @@ use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue},
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use url::Url;
 use util::expand_tilde;
 
 use crate::{
+    CliError, CliResult,
     config::{Config, Delimiter},
     regex_oncelock,
     select::SelectColumns,
-    util, CliError, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]
@@ -421,16 +422,17 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         .unwrap();
 
     // setup diskcache dir response caching
-    let diskcache_dir = if let Some(dir) = &args.flag_disk_cache_dir {
-        if dir.starts_with('~') {
-            // expand the tilde
-            let expanded_dir = expand_tilde(dir).unwrap();
-            expanded_dir.to_string_lossy().to_string()
-        } else {
-            dir.to_string()
-        }
-    } else {
-        String::new()
+    let diskcache_dir = match &args.flag_disk_cache_dir {
+        Some(dir) => {
+            if dir.starts_with('~') {
+                // expand the tilde
+                let expanded_dir = expand_tilde(dir).unwrap();
+                expanded_dir.to_string_lossy().to_string()
+            } else {
+                dir.to_string()
+            }
+        },
+        _ => String::new(),
     };
 
     let cache_type = if args.flag_no_cache {
@@ -467,14 +469,14 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             Err(e) => {
                 return fail_incorrectusage_clierror!(
                     r#"Invalid Redis connection string "{conn_str}": {e:?}"#
-                )
+                );
             },
         };
 
         let mut redis_conn;
         match redis_client.get_connection() {
             Err(e) => {
-                return fail_clierror!(r#"Cannot connect to Redis using "{conn_str}": {e:?}"#)
+                return fail_clierror!(r#"Cannot connect to Redis using "{conn_str}": {e:?}"#);
             },
             Ok(x) => redis_conn = x,
         }
@@ -572,7 +574,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         _ => {
             return fail_incorrectusage_clierror!(
                 "Rate Limit should be between 0 to 1000 queries per second."
-            )
+            );
         },
     };
     debug!("RATE LIMIT: {rate_limit}");
@@ -872,7 +874,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                             return fail_clierror!(
                                 "Cannot deserialize Redis cache value. Try flushing the Redis \
                                  cache with --flushdb: {e}"
-                            )
+                            );
                         },
                     };
                     if !args.flag_cache_error && final_response.status_code != 200 {

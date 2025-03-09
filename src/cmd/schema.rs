@@ -86,10 +86,10 @@ use grex::RegExpBuilder;
 use itertools::Itertools;
 use log::{debug, error, info, warn};
 use rayon::slice::ParallelSliceMut;
-use serde_json::{json, value::Number, Map, Value};
+use serde_json::{Map, Value, json, value::Number};
 use stats::Frequencies;
 
-use crate::{cmd::stats::StatsData, config::Config, util, util::StatsMode, CliResult};
+use crate::{CliResult, cmd::stats::StatsData, config::Config, util, util::StatsMode};
 
 const STDIN_CSV: &str = "stdin.csv";
 
@@ -511,13 +511,15 @@ fn get_unique_values(
     };
 
     let curr_mode = std::env::var("QSV_STATSCACHE_MODE");
-    std::env::set_var("QSV_STATSCACHE_MODE", "none");
+    // safety: we are in single-threaded code.
+    unsafe { std::env::set_var("QSV_STATSCACHE_MODE", "none") };
     let (headers, ftables) = match freq_args.rconfig().indexed()? {
         Some(ref mut idx) => freq_args.parallel_ftables(idx),
         _ => freq_args.sequential_ftables(),
     }?;
     if let Ok(orig_mode) = curr_mode {
-        std::env::set_var("QSV_STATSCACHE_MODE", orig_mode);
+        // safety: we are in single-threaded code.
+        unsafe { std::env::set_var("QSV_STATSCACHE_MODE", orig_mode) };
     }
 
     let unique_values_map = construct_map_of_unique_values(&headers, &ftables)?;

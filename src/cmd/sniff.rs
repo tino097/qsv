@@ -103,7 +103,7 @@ Common options:
 use std::{
     cmp::min,
     fmt, fs,
-    io::{copy, Seek, SeekFrom, Write},
+    io::{Seek, SeekFrom, Write, copy},
     path::PathBuf,
     time::Duration,
 };
@@ -124,10 +124,10 @@ use tempfile::NamedTempFile;
 use url::Url;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
     util,
     util::format_systemtime,
-    CliResult,
 };
 #[allow(dead_code)]
 #[derive(Deserialize)]

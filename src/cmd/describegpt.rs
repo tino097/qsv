@@ -61,7 +61,7 @@ use reqwest::blocking::Client;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::{util, util::process_input, CliResult};
+use crate::{CliResult, util, util::process_input};
 
 #[derive(Deserialize)]
 struct Args {

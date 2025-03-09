@@ -369,11 +369,11 @@ use std::{
 };
 
 use ahash::RandomState;
-use cached::{proc_macro::cached, SizedCache};
+use cached::{SizedCache, proc_macro::cached};
 use dynfmt2::Format;
 use geosuggest_core::{
-    storage::{self, IndexStorage},
     CitiesRecord, CountryRecord, Engine,
+    storage::{self, IndexStorage},
 };
 use geosuggest_utils::{IndexUpdater, IndexUpdaterSettings, SourceItem};
 use indicatif::{ProgressBar, ProgressDrawTarget};
@@ -392,13 +392,13 @@ use util::expand_tilde;
 use uuid::Uuid;
 
 use crate::{
+    CliResult,
     clitypes::CliError,
     config::{Config, Delimiter},
     regex_oncelock,
     select::SelectColumns,
     util,
     util::replace_column_value,
-    CliResult,
 };
 
 #[derive(Deserialize)]

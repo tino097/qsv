@@ -67,15 +67,15 @@ use std::{collections::HashMap, fs::File, io, io::Write, path::Path, sync::OnceL
 use csv::ByteRecord;
 use indicatif::HumanCount;
 use polars::prelude::*;
-use polars_ops::pivot::{pivot_stable, PivotAgg};
+use polars_ops::pivot::{PivotAgg, pivot_stable};
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     cmd::stats::StatsData,
     config::{Config, Delimiter},
     util,
-    util::{get_stats_records, StatsMode},
-    CliResult,
+    util::{StatsMode, get_stats_records},
 };
 
 static STATS_RECORDS: OnceLock<(ByteRecord, Vec<StatsData>, HashMap<String, String>)> =
@@ -477,16 +477,17 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 "smart" => {
                     if let Some(value_cols) = &value_cols {
                         // Try to suggest an appropriate aggregation function
-                        if let Some(suggested_agg) = suggest_agg_function(
+                        match suggest_agg_function(
                             &args,
                             &on_cols,
                             index_cols.as_deref(),
                             value_cols,
                         )? {
-                            suggested_agg
-                        } else {
-                            // fallback to first, which always works
-                            PivotAgg::First
+                            Some(suggested_agg) => suggested_agg,
+                            _ => {
+                                // fallback to first, which always works
+                                PivotAgg::First
+                            },
                         }
                     } else {
                         // Default to Count if no value columns specified
@@ -496,7 +497,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 _ => {
                     return fail_incorrectusage_clierror!(
                         "Invalid pivot aggregation function: {agg}"
-                    )
+                    );
                 },
             })
         }

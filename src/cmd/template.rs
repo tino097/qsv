@@ -123,28 +123,29 @@ use std::{
     io::{BufWriter, Write},
     path::PathBuf,
     sync::{
-        atomic::{AtomicBool, AtomicU16, Ordering},
         OnceLock, RwLock,
+        atomic::{AtomicBool, AtomicU16, Ordering},
     },
 };
 
 use ahash::{HashMap, HashMapExt};
 #[cfg(any(feature = "feature_capable", feature = "lite"))]
 use indicatif::{ProgressBar, ProgressDrawTarget};
-use minijinja::{value::ValueKind, Environment, Value};
+use minijinja::{Environment, Value, value::ValueKind};
 use minijinja_contrib::pycompat::unknown_method_callback;
 use rayon::{
     iter::{IndexedParallelIterator, ParallelIterator},
     prelude::IntoParallelRefIterator,
 };
 use serde::Deserialize;
-use simd_json::{json, BorrowedValue};
+use simd_json::{BorrowedValue, json};
 
 use crate::{
-    config::{Config, Delimiter, DEFAULT_WTR_BUFFER_CAPACITY},
+    CliError, CliResult,
+    config::{Config, DEFAULT_WTR_BUFFER_CAPACITY, Delimiter},
     lookup,
     lookup::LookupTableOptions,
-    util, CliError, CliResult,
+    util,
 };
 
 const QSV_ROWNO: &str = "QSV_ROWNO";
@@ -205,7 +206,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         _ => {
             return fail_incorrectusage_clierror!(
                 "Must provide either --template or --template-file"
-            )
+            );
         },
     };
 
@@ -951,11 +952,14 @@ fn lookup_filter(
                 itoa_buf.format(value.as_i64().unwrap())
             } else {
                 let float_num: f64;
-                if let Ok(num) = value.clone().try_into() {
-                    float_num = num;
-                    ryu_buf.format(float_num)
-                } else {
-                    unreachable!("Kind::Number should be integer or float")
+                match value.clone().try_into() {
+                    Ok(num) => {
+                        float_num = num;
+                        ryu_buf.format(float_num)
+                    },
+                    _ => {
+                        unreachable!("Kind::Number should be integer or float")
+                    },
                 }
             }
         },

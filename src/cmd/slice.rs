@@ -82,9 +82,10 @@ use std::{fs, path::PathBuf};
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
     index::Indexed,
-    util, CliResult,
+    util,
 };
 
 #[allow(clippy::unsafe_derive_deserialize)]
@@ -124,10 +125,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     args.arg_input = Some(input_filename);
 
-    if let Some(idxed) = args.rconfig().indexed()? {
-        args.with_index(idxed)
-    } else {
-        args.no_index()
+    match args.rconfig().indexed()? {
+        Some(idxed) => args.with_index(idxed),
+        _ => args.no_index(),
     }
 }
 

@@ -11,9 +11,9 @@ keywords      = ["csv", "geocode", "data-engineering", "etl", "opendata"]
 categories    = ["command-line-utilities", "parser-implementations"]
 license       = "MIT OR Unlicense"
 autotests     = false
-edition       = "2021"
+edition       = "2024"
 rust-version  = "1.85"
-resolver      = "2"
+resolver      = "3"
 autobins      = false
 
 include = [

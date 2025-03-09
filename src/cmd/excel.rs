@@ -161,7 +161,7 @@ Common options:
 use std::{cmp, fmt::Write, io::Read, path::PathBuf};
 
 use calamine::{
-    open_workbook, open_workbook_auto, Data, Error, HeaderRow, Range, Reader, SheetType, Sheets,
+    Data, Error, HeaderRow, Range, Reader, SheetType, Sheets, open_workbook, open_workbook_auto,
 };
 use file_format::FileFormat;
 use indicatif::HumanCount;
@@ -170,8 +170,9 @@ use rayon::prelude::{IndexedParallelIterator, ParallelIterator, ParallelSlice};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    CliError, CliResult,
     config::{Config, Delimiter},
-    util, CliError, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]
@@ -534,20 +535,25 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 || metadata_mode == MetadataMode::ShortJSON
             {
                 Range::empty()
-            } else if let Some(result) = sheets.worksheet_range_at(i) {
-                match result {
-                    Ok(result) => result,
-                    Err(e) => {
-                        if sheets.sheets_metadata()[i].typ == SheetType::ChartSheet {
-                            // return an empty range for ChartSheet
-                            Range::empty()
-                        } else {
-                            return fail_clierror!("Cannot retrieve range from {sheet_name}: {e}.");
+            } else {
+                match sheets.worksheet_range_at(i) {
+                    Some(result) => {
+                        match result {
+                            Ok(result) => result,
+                            Err(e) => {
+                                if sheets.sheets_metadata()[i].typ == SheetType::ChartSheet {
+                                    // return an empty range for ChartSheet
+                                    Range::empty()
+                                } else {
+                                    return fail_clierror!(
+                                        "Cannot retrieve range from {sheet_name}: {e}."
+                                    );
+                                }
+                            },
                         }
                     },
+                    _ => Range::empty(),
                 }
-            } else {
-                Range::empty()
             };
 
             let (header_vec, column_count, row_count, safenames_vec, unsafeheaders_vec, dupe_count) =
@@ -836,10 +842,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             let name_contains_exclamation: bool = requested_range.contains('!');
             let parsed_range = if requested_range.contains(':') && !name_contains_exclamation {
                 // if there is a colon, we treat it as a range for the current sheet
-                sheet_range = if let Some(result) = sheets.worksheet_range_at(sheet_index) {
-                    result?
-                } else {
-                    Range::empty()
+                sheet_range = match sheets.worksheet_range_at(sheet_index) {
+                    Some(result) => result?,
+                    _ => Range::empty(),
                 };
                 RequestedRange::from_string(requested_range, sheet_range.get_size())?
             } else if name_contains_exclamation {

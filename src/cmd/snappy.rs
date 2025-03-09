@@ -55,15 +55,15 @@ Common options:
 
 use std::{
     fs,
-    io::{self, stdin, BufRead, Read, Write},
+    io::{self, BufRead, Read, Write, stdin},
 };
 
-use gzp::{par::compress::ParCompressBuilder, snap::Snap, ZWriter};
+use gzp::{ZWriter, par::compress::ParCompressBuilder, snap::Snap};
 use serde::Deserialize;
 use tempfile::NamedTempFile;
 use url::Url;
 
-use crate::{config, util, CliError, CliResult};
+use crate::{CliError, CliResult, config, util};
 
 #[derive(Deserialize)]
 struct Args {
@@ -118,8 +118,8 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             );
             tokio::runtime::Runtime::new()?.block_on(future)?;
             // safety: temp_download is a NamedTempFile, so we know that it can be converted
-            let temp_download_path = temp_download.path().to_str().unwrap().to_string();
-            temp_download_path
+
+            temp_download.path().to_str().unwrap().to_string()
         } else {
             // its a local file
             uri.to_string()

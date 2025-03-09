@@ -10,7 +10,7 @@ use reqwest::blocking::Client;
 use serde_json::Value;
 use util::expand_tilde;
 
-use crate::{util, CliError};
+use crate::{CliError, util};
 
 pub struct LookupTableOptions {
     pub name:           String,

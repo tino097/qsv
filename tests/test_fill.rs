@@ -1,4 +1,4 @@
-use crate::{workdir::Workdir, CsvRecord};
+use crate::{CsvRecord, workdir::Workdir};
 
 fn compare_column(got: &[CsvRecord], expected: &[String], column: usize, skip_header: bool) {
     for (value, value_expected) in got
@@ -38,7 +38,9 @@ fn fill_forward() {
     let got: Vec<CsvRecord> = wrk.read_stdout(&mut cmd);
 
     // Filled target column
-    let expected = svec!["", "", "abc", "abc", "zap", "bar", "bongo", "bongo", "bongo", "bongo"];
+    let expected = svec![
+        "", "", "abc", "abc", "zap", "bar", "bongo", "bongo", "bongo", "bongo"
+    ];
     compare_column(&got, &expected, 0, true);
 
     // Left non-target column alone
@@ -57,10 +59,14 @@ fn fill_forward_both() {
     let got: Vec<CsvRecord> = wrk.read_stdout(&mut cmd);
 
     // Filled target column
-    let expected = svec!["", "", "abc", "abc", "zap", "bar", "bongo", "bongo", "bongo", "bongo"];
+    let expected = svec![
+        "", "", "abc", "abc", "zap", "bar", "bongo", "bongo", "bongo", "bongo"
+    ];
     compare_column(&got, &expected, 0, true);
 
-    let expected = svec!["egg", "egg", "foo", "egg", "foo", "foo", "foo", "jar", "jar", "jar"];
+    let expected = svec![
+        "egg", "egg", "foo", "egg", "foo", "foo", "foo", "jar", "jar", "jar"
+    ];
     compare_column(&got, &expected, 2, true);
 }
 
@@ -73,7 +79,9 @@ fn fill_forward_groupby() {
     cmd.args(&vec!["-g", "2"]).arg("--").arg("1").arg("in.csv");
 
     let got: Vec<CsvRecord> = wrk.read_stdout(&mut cmd);
-    let expected = svec!["", "", "abc", "abc", "zap", "bar", "bongo", "bongo", "zap", "bongo"];
+    let expected = svec![
+        "", "", "abc", "abc", "zap", "bar", "bongo", "bongo", "zap", "bongo"
+    ];
     compare_column(&got, &expected, 0, true);
 }
 
@@ -90,7 +98,9 @@ fn fill_first_groupby() {
         .arg("in.csv");
 
     let got: Vec<CsvRecord> = wrk.read_stdout(&mut cmd);
-    let expected = svec!["", "", "abc", "abc", "zap", "bar", "bongo", "bar", "abc", "bar"];
+    let expected = svec![
+        "", "", "abc", "abc", "zap", "bar", "bongo", "bar", "abc", "bar"
+    ];
     compare_column(&got, &expected, 0, true);
 }
 
@@ -103,7 +113,9 @@ fn fill_first() {
     cmd.arg("--first").arg("--").arg("1").arg("in.csv");
 
     let got: Vec<CsvRecord> = wrk.read_stdout(&mut cmd);
-    let expected = svec!["", "", "abc", "abc", "zap", "bar", "bongo", "abc", "abc", "abc"];
+    let expected = svec![
+        "", "", "abc", "abc", "zap", "bar", "bongo", "abc", "abc", "abc"
+    ];
     compare_column(&got, &expected, 0, true);
 }
 
@@ -116,8 +128,9 @@ fn fill_backfill() {
     cmd.arg("--backfill").arg("--").arg("1").arg("in.csv");
 
     let got: Vec<CsvRecord> = wrk.read_stdout(&mut cmd);
-    let expected =
-        svec!["abc", "abc", "abc", "abc", "zap", "bar", "bongo", "bongo", "bongo", "bongo"];
+    let expected = svec![
+        "abc", "abc", "abc", "abc", "zap", "bar", "bongo", "bongo", "bongo", "bongo"
+    ];
     compare_column(&got, &expected, 0, true);
 }
 
@@ -134,7 +147,9 @@ fn fill_backfill_first() {
         .arg("in.csv");
 
     let got: Vec<CsvRecord> = wrk.read_stdout(&mut cmd);
-    let expected = svec!["abc", "abc", "abc", "abc", "zap", "bar", "bongo", "abc", "abc", "abc"];
+    let expected = svec![
+        "abc", "abc", "abc", "abc", "zap", "bar", "bongo", "abc", "abc", "abc"
+    ];
     compare_column(&got, &expected, 0, true);
 }
 
@@ -151,6 +166,8 @@ fn fill_default() {
         .arg("in.csv");
 
     let got: Vec<CsvRecord> = wrk.read_stdout(&mut cmd);
-    let expected = svec!["dat", "dat", "abc", "dat", "zap", "bar", "bongo", "dat", "dat", "dat"];
+    let expected = svec![
+        "dat", "dat", "abc", "dat", "zap", "bar", "bongo", "dat", "dat", "dat"
+    ];
     compare_column(&got, &expected, 0, true);
 }

@@ -62,10 +62,11 @@ use indicatif::{HumanCount, ProgressBar, ProgressDrawTarget};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    CliResult,
     cmd::{dedup, sort::iter_cmp},
     config::{Config, Delimiter},
     select::SelectColumns,
-    util, CliResult,
+    util,
 };
 
 #[allow(dead_code)]

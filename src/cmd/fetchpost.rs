@@ -252,21 +252,21 @@ Common options:
 use std::{fs, io::Write, num::NonZeroU32, path::PathBuf, sync::OnceLock, thread, time};
 
 use cached::{
+    Cached, IOCached, RedisCache, Return, SizedCache,
     proc_macro::{cached, io_cached},
     stores::DiskCacheBuilder,
-    Cached, IOCached, RedisCache, Return, SizedCache,
 };
-use flate2::{write::GzEncoder, Compression};
+use flate2::{Compression, write::GzEncoder};
 use governor::{
+    Quota, RateLimiter,
     clock::DefaultClock,
     middleware::NoOpMiddleware,
-    state::{direct::NotKeyed, InMemoryState},
-    Quota, RateLimiter,
+    state::{InMemoryState, direct::NotKeyed},
 };
 use indicatif::{HumanCount, MultiProgress, ProgressBar, ProgressDrawTarget};
 use log::{
-    debug, error, info, log_enabled, warn,
     Level::{Debug, Trace, Warn},
+    debug, error, info, log_enabled, warn,
 };
 use minijinja::Environment;
 use minijinja_contrib::pycompat::unknown_method_callback;
@@ -277,19 +277,20 @@ use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue},
 };
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use url::Url;
 use util::expand_tilde;
 
 use crate::{
+    CliError, CliResult,
     cmd::fetch::{
-        compile_jaq_filter, get_ratelimit_header_value, parse_ratelimit_header_value, process_jaq,
-        CacheType, DiskCacheConfig, FetchResponse, RedisConfig, ReportKind,
-        DEFAULT_ACCEPT_ENCODING, JAQ_FILTER,
+        CacheType, DEFAULT_ACCEPT_ENCODING, DiskCacheConfig, FetchResponse, JAQ_FILTER,
+        RedisConfig, ReportKind, compile_jaq_filter, get_ratelimit_header_value,
+        parse_ratelimit_header_value, process_jaq,
     },
     config::{Config, Delimiter},
     select::SelectColumns,
-    util, CliError, CliResult,
+    util,
 };
 
 #[derive(PartialEq, Eq, Copy, Clone)]
@@ -381,16 +382,17 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         .unwrap();
 
     // setup diskcache dir response caching
-    let diskcache_dir = if let Some(dir) = &args.flag_disk_cache_dir {
-        if dir.starts_with('~') {
-            // expand the tilde
-            let expanded_dir = expand_tilde(dir).unwrap();
-            expanded_dir.to_string_lossy().to_string()
-        } else {
-            dir.to_string()
-        }
-    } else {
-        String::new()
+    let diskcache_dir = match &args.flag_disk_cache_dir {
+        Some(dir) => {
+            if dir.starts_with('~') {
+                // expand the tilde
+                let expanded_dir = expand_tilde(dir).unwrap();
+                expanded_dir.to_string_lossy().to_string()
+            } else {
+                dir.to_string()
+            }
+        },
+        _ => String::new(),
     };
 
     let cache_type = if args.flag_no_cache {
@@ -427,14 +429,14 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             Err(e) => {
                 return fail_incorrectusage_clierror!(
                     r#"Invalid Redis connection string "{conn_str}": {e:?}"#
-                )
+                );
             },
         };
 
         let mut redis_conn;
         match redis_client.get_connection() {
             Err(e) => {
-                return fail_clierror!(r#"Cannot connect to Redis using "{conn_str}": {e:?}"#)
+                return fail_clierror!(r#"Cannot connect to Redis using "{conn_str}": {e:?}"#);
             },
             Ok(x) => redis_conn = x,
         }
@@ -453,17 +455,20 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     // setup globals JSON context if specified
     let mut globals_flag = false;
-    let globals_ctx = if let Some(globals_json) = args.flag_globals_json {
-        globals_flag = true;
-        match std::fs::read(globals_json) {
-            Ok(mut bytes) => match simd_json::from_slice(&mut bytes) {
-                Ok(json) => json,
-                Err(e) => return fail_clierror!("Failed to parse globals JSON file: {e}"),
-            },
-            Err(e) => return fail_clierror!("Failed to read globals JSON file: {e}"),
-        }
-    } else {
-        json!("")
+    let globals_ctx = match args.flag_globals_json {
+        Some(globals_json) => {
+            globals_flag = true;
+            match std::fs::read(globals_json) {
+                Ok(mut bytes) => match simd_json::from_slice(&mut bytes) {
+                    Ok(json) => json,
+                    Err(e) => return fail_clierror!("Failed to parse globals JSON file: {e}"),
+                },
+                Err(e) => return fail_clierror!("Failed to read globals JSON file: {e}"),
+            }
+        },
+        _ => {
+            json!("")
+        },
     };
 
     let mut rconfig = Config::new(args.arg_input.as_ref())
@@ -523,10 +528,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     // or as a column selector
     let url_column_str = format!("{:?}", args.arg_url_column);
     let re = Regex::new(r"^IndexedName\((.*)\[0\]\)$").unwrap();
-    let literal_url = if let Some(caps) = re.captures(&url_column_str) {
-        caps[1].to_lowercase()
-    } else {
-        String::new()
+    let literal_url = match re.captures(&url_column_str) {
+        Some(caps) => caps[1].to_lowercase(),
+        _ => String::new(),
     };
     let literal_url_used = literal_url.starts_with("http");
 
@@ -546,7 +550,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         _ => {
             return fail_incorrectusage_clierror!(
                 "Rate Limit should be between 0 to 1000 queries per second."
-            )
+            );
         },
     };
     info!("RATE LIMIT: {rate_limit}");
@@ -602,29 +606,34 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             HeaderValue::from_str(DEFAULT_ACCEPT_ENCODING).unwrap(),
         );
 
-        if let Some(content_type) = args.flag_content_type {
-            // if the user set --content-type and uses one of these known content-types,
-            // change payload_content_type accordingly so it can take advantage of auto
-            // validation of JSON and url encoding of URL Forms.
-            payload_content_type = match content_type.to_lowercase().as_str() {
-                "application/json" => ContentType::Json,
-                "application/x-www-form-urlencoded" => ContentType::Form,
-                _ => ContentType::Manual,
-            };
-            map.append(
-                reqwest::header::CONTENT_TYPE,
-                HeaderValue::from_str(&content_type).unwrap(),
-            );
-        } else if payload_content_type == ContentType::Json {
-            map.append(
-                reqwest::header::CONTENT_TYPE,
-                HeaderValue::from_str("application/json").unwrap(),
-            );
-        } else {
-            map.append(
-                reqwest::header::CONTENT_TYPE,
-                HeaderValue::from_str("application/x-www-form-urlencoded").unwrap(),
-            );
+        match args.flag_content_type {
+            Some(content_type) => {
+                // if the user set --content-type and uses one of these known content-types,
+                // change payload_content_type accordingly so it can take advantage of auto
+                // validation of JSON and url encoding of URL Forms.
+                payload_content_type = match content_type.to_lowercase().as_str() {
+                    "application/json" => ContentType::Json,
+                    "application/x-www-form-urlencoded" => ContentType::Form,
+                    _ => ContentType::Manual,
+                };
+                map.append(
+                    reqwest::header::CONTENT_TYPE,
+                    HeaderValue::from_str(&content_type).unwrap(),
+                );
+            },
+            _ => {
+                if payload_content_type == ContentType::Json {
+                    map.append(
+                        reqwest::header::CONTENT_TYPE,
+                        HeaderValue::from_str("application/json").unwrap(),
+                    );
+                } else {
+                    map.append(
+                        reqwest::header::CONTENT_TYPE,
+                        HeaderValue::from_str("application/x-www-form-urlencoded").unwrap(),
+                    );
+                }
+            },
         }
         if args.flag_compress {
             map.append(
@@ -951,7 +960,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                             return fail_clierror!(
                                 "Cannot deserialize Redis cache value. Try flushing the Redis \
                                  cache with --flushdb: {e}"
-                            )
+                            );
                         },
                     };
                     if !args.flag_cache_error && final_response.status_code != 200 {

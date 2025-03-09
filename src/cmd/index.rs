@@ -35,8 +35,9 @@ use csv_index::RandomAccessSimple;
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     config::{Config, DEFAULT_WTR_BUFFER_CAPACITY},
-    util, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]

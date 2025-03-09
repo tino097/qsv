@@ -42,7 +42,7 @@ use std::{io, path::PathBuf};
 use serde::Deserialize;
 use tabwriter::TabWriter;
 
-use crate::{config::Delimiter, util, CliResult};
+use crate::{CliResult, config::Delimiter, util};
 
 #[derive(Deserialize)]
 struct Args {

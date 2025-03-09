@@ -10,9 +10,10 @@ use qsv_sniffer::{SampleSize, Sniffer};
 use serde::de::{Deserialize, Deserializer, Error};
 
 use crate::{
+    CliResult,
     index::Indexed,
     select::{SelectColumns, Selection},
-    util, CliResult,
+    util,
 };
 
 // rdr default is 8k in csv crate, we're making it 128k

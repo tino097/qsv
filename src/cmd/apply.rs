@@ -336,18 +336,18 @@ use strsim::{
     sorensen_dice,
 };
 use strum_macros::EnumString;
-use thousands::{policies, Separable, SeparatorPolicy};
+use thousands::{Separable, SeparatorPolicy, policies};
 use titlecase::titlecase;
 use whatlang::detect;
 
 use crate::{
+    CliResult,
     clitypes::CliError,
     config::{Config, Delimiter},
     regex_oncelock,
     select::SelectColumns,
     util,
     util::replace_column_value,
-    CliResult,
 };
 
 #[derive(Clone, EnumString, PartialEq)]
@@ -1191,7 +1191,7 @@ fn apply_operations(
                             // use the same workaround as above to handle 3 decimal places
                             let numparts_str = numparts.as_str();
                             let numparts_val = if fract_3digits.is_match(numparts_str) {
-                                format!("{}0", numparts_str)
+                                format!("{numparts_str}0")
                             } else {
                                 numparts_str.to_string()
                             };

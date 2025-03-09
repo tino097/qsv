@@ -27,7 +27,7 @@ use std::path::PathBuf;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::{util, CliResult};
+use crate::{CliResult, util};
 
 #[allow(dead_code)]
 #[derive(Deserialize)]

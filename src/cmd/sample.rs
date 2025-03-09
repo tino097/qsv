@@ -155,10 +155,10 @@ use std::{
 };
 
 use rand::{
+    Rng, SeedableRng,
     distr::{Bernoulli, Distribution},
     prelude::IndexedRandom,
     rngs::StdRng,
-    Rng, SeedableRng,
 };
 use rand_hc::Hc128Rng;
 use rand_xoshiro::Xoshiro256Plus;
@@ -169,11 +169,11 @@ use tempfile::NamedTempFile;
 use url::Url;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
     select::SelectColumns,
     util,
-    util::{get_stats_records, SchemaArgs, StatsMode},
-    CliResult,
+    util::{SchemaArgs, StatsMode, get_stats_records},
 };
 
 #[derive(Deserialize)]
@@ -341,80 +341,79 @@ fn check_stats_cache(
     };
 
     // Get stats records
-    if let Ok((csv_fields, stats, dataset_stats)) =
-        get_stats_records(&schema_args, StatsMode::Frequency)
-    {
-        // Get row count from stats cache
-        let rowcount = dataset_stats
-            .get("qsv__rowcount")
-            .and_then(|rc| rc.parse::<f64>().ok())
-            .map(|rc| rc as u64);
+    match get_stats_records(&schema_args, StatsMode::Frequency) {
+        Ok((csv_fields, stats, dataset_stats)) => {
+            // Get row count from stats cache
+            let rowcount = dataset_stats
+                .get("qsv__rowcount")
+                .and_then(|rc| rc.parse::<f64>().ok())
+                .map(|rc| rc as u64);
 
-        let mut max_weight = None;
-        let mut cardinality = None;
-        match method {
-            SamplingMethod::Weighted => {
-                // For weighted sampling, get max weight
-                max_weight = if let Some(weight_col) = &args.flag_weighted {
-                    let idx = if weight_col.chars().all(char::is_numeric) {
-                        weight_col.parse::<usize>().ok()
-                    } else {
-                        csv_fields
-                            .iter()
-                            .position(|field| field == weight_col.as_bytes())
-                    };
+            let mut max_weight = None;
+            let mut cardinality = None;
+            match method {
+                SamplingMethod::Weighted => {
+                    // For weighted sampling, get max weight
+                    max_weight = if let Some(weight_col) = &args.flag_weighted {
+                        let idx = if weight_col.chars().all(char::is_numeric) {
+                            weight_col.parse::<usize>().ok()
+                        } else {
+                            csv_fields
+                                .iter()
+                                .position(|field| field == weight_col.as_bytes())
+                        };
 
-                    if let Some(idx) = idx {
-                        if let Some(col_stats) = stats.get(idx) {
-                            let min_weight = col_stats
-                                .min
-                                .clone()
-                                .unwrap()
-                                .parse::<f64>()
-                                .unwrap_or_default();
-                            if min_weight < 0.0 {
-                                return fail_incorrectusage_clierror!(
-                                    "Weights must be non-negative. Lowest weight: {min_weight}"
-                                );
+                        if let Some(idx) = idx {
+                            if let Some(col_stats) = stats.get(idx) {
+                                let min_weight = col_stats
+                                    .min
+                                    .clone()
+                                    .unwrap()
+                                    .parse::<f64>()
+                                    .unwrap_or_default();
+                                if min_weight < 0.0 {
+                                    return fail_incorrectusage_clierror!(
+                                        "Weights must be non-negative. Lowest weight: {min_weight}"
+                                    );
+                                }
+
+                                col_stats.max.clone().unwrap().parse::<f64>().ok()
+                            } else {
+                                None
                             }
-
-                            col_stats.max.clone().unwrap().parse::<f64>().ok()
                         } else {
                             None
                         }
                     } else {
                         None
-                    }
-                } else {
-                    None
-                };
-            },
-            SamplingMethod::Cluster => {
-                // For cluster sampling, get cardinality
-                cardinality = if let Some(cluster_col) = &args.flag_cluster {
-                    let idx = if cluster_col.chars().all(char::is_numeric) {
-                        cluster_col.parse::<usize>().ok()
-                    } else {
-                        csv_fields
-                            .iter()
-                            .position(|field| field == cluster_col.as_bytes())
                     };
+                },
+                SamplingMethod::Cluster => {
+                    // For cluster sampling, get cardinality
+                    cardinality = if let Some(cluster_col) = &args.flag_cluster {
+                        let idx = if cluster_col.chars().all(char::is_numeric) {
+                            cluster_col.parse::<usize>().ok()
+                        } else {
+                            csv_fields
+                                .iter()
+                                .position(|field| field == cluster_col.as_bytes())
+                        };
 
-                    if let Some(idx) = idx {
-                        stats.get(idx).map(|col_stats| col_stats.cardinality)
+                        if let Some(idx) = idx {
+                            stats.get(idx).map(|col_stats| col_stats.cardinality)
+                        } else {
+                            None
+                        }
                     } else {
                         None
-                    }
-                } else {
-                    None
-                };
-            },
-            _ => {},
-        }
+                    };
+                },
+                _ => {},
+            }
 
-        Ok((rowcount, max_weight, cardinality))
-    } else {
-        Ok((None, None, None))
+            Ok((rowcount, max_weight, cardinality))
+        },
+        _ => Ok((None, None, None)),
     }
 }
 
@@ -522,7 +521,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 Some(_) => {
                     return fail_incorrectusage_clierror!(
                         "Systematic sampling starting point must be either 'random' or 'first'"
-                    )
+                    );
                 },
                 None => String::from("random"),
             };
@@ -530,10 +529,15 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             let (rowcount_stats, _, _) = check_stats_cache(&args, &SamplingMethod::Systematic)?;
             let row_count = if let Some(rc) = rowcount_stats {
                 rc
-            } else if let Ok(rc) = util::count_rows(&rconfig) {
-                rc
             } else {
-                return fail!("Cannot get rowcount. Systematic sampling requires a rowcount.");
+                match util::count_rows(&rconfig) {
+                    Ok(rc) => rc,
+                    _ => {
+                        return fail!(
+                            "Cannot get rowcount. Systematic sampling requires a rowcount."
+                        );
+                    },
+                }
             };
 
             sample_systematic(
@@ -656,13 +660,19 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
                     if let Some(rc) = rowcount_stats {
                         (rc as f64 * args.arg_sample_size).round() as u64
-                    } else if let Ok(rc) = util::count_rows(&rconfig) {
-                        // we don't have a stats cache, get the rowcount the "regular" way
-                        (rc as f64 * args.arg_sample_size).round() as u64
                     } else {
-                        return fail!(
-                            "Cannot get rowcount. Percentage sampling requires a rowcount."
-                        );
+                        match util::count_rows(&rconfig) {
+                            Ok(rc) => {
+                                // we don't have a stats cache, get the rowcount the "regular"
+                                // way
+                                (rc as f64 * args.arg_sample_size).round() as u64
+                            },
+                            _ => {
+                                return fail!(
+                                    "Cannot get rowcount. Percentage sampling requires a rowcount."
+                                );
+                            },
+                        }
                     }
                 } else {
                     args.arg_sample_size as u64

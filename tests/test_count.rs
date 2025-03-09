@@ -1,4 +1,4 @@
-use crate::{qcheck, workdir::Workdir, CsvData};
+use crate::{CsvData, qcheck, workdir::Workdir};
 
 #[test]
 fn count_simple() {

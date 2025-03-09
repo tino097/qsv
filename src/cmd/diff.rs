@@ -130,12 +130,12 @@ use serde::Deserialize;
 
 use super::rename::rename_headers_all_generic;
 use crate::{
+    CliResult,
     clitypes::CliError,
     config::{Config, Delimiter},
     select::SelectColumns,
     util,
-    util::{get_stats_records, SchemaArgs, StatsMode},
-    CliResult,
+    util::{SchemaArgs, StatsMode, get_stats_records},
 };
 
 #[derive(Deserialize)]
@@ -611,7 +611,7 @@ impl<W: Write> CsvDiffWriter<W> {
 
 trait WriteDiffResultHeader {
     fn write_diffresult_header<W: Write>(&self, csv_writer: &mut csv::Writer<W>)
-        -> csv::Result<()>;
+    -> csv::Result<()>;
 }
 
 impl WriteDiffResultHeader for csv::ByteRecord {

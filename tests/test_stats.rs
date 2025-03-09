@@ -5,10 +5,10 @@ use newline_converter::dos2unix;
 use crate::workdir::Workdir;
 
 macro_rules! stats_tests {
-    ($name:ident, $field:expr, $rows:expr, $expect:expr) => {
+    ($name:ident, $field:expr_2021, $rows:expr_2021, $expect:expr_2021) => {
         stats_tests!($name, $field, $rows, $expect, false, true);
     };
-    ($name:ident, $field:expr, $rows:expr, $expect:expr, $nulls:expr, $infer_dates:expr) => {
+    ($name:ident, $field:expr_2021, $rows:expr_2021, $expect:expr_2021, $nulls:expr_2021, $infer_dates:expr_2021) => {
         mod $name {
             use super::test_stats;
 
@@ -19,10 +19,10 @@ macro_rules! stats_tests {
 }
 
 macro_rules! stats_no_infer_dates_tests {
-    ($name:ident, $field:expr, $rows:expr, $expect:expr) => {
+    ($name:ident, $field:expr_2021, $rows:expr_2021, $expect:expr_2021) => {
         stats_tests!($name, $field, $rows, $expect, false, false);
     };
-    ($name:ident, $field:expr, $rows:expr, $expect:expr, $nulls:expr, $infer_dates:expr) => {
+    ($name:ident, $field:expr_2021, $rows:expr_2021, $expect:expr_2021, $nulls:expr_2021, $infer_dates:expr_2021) => {
         mod $name {
             use super::test_stats;
 
@@ -33,10 +33,10 @@ macro_rules! stats_no_infer_dates_tests {
 }
 
 macro_rules! stats_test_headers {
-    ($name:ident, $field:expr, $rows:expr, $expect:expr) => {
+    ($name:ident, $field:expr_2021, $rows:expr_2021, $expect:expr_2021) => {
         stats_test_headers!($name, $field, $rows, $expect, false, true);
     };
-    ($name:ident, $field:expr, $rows:expr, $expect:expr, $nulls:expr, $infer_dates:expr) => {
+    ($name:ident, $field:expr_2021, $rows:expr_2021, $expect:expr_2021, $nulls:expr_2021, $infer_dates:expr_2021) => {
         #[test]
         fn headers_no_index() {
             let name = concat!(stringify!($name), "_headers_no_index");
@@ -70,10 +70,10 @@ macro_rules! stats_test_headers {
 }
 
 macro_rules! stats_test_no_headers {
-    ($name:ident, $field:expr, $rows:expr, $expect:expr) => {
+    ($name:ident, $field:expr_2021, $rows:expr_2021, $expect:expr_2021) => {
         stats_test_no_headers!($name, $field, $rows, $expect, false, true);
     };
-    ($name:ident, $field:expr, $rows:expr, $expect:expr, $nulls:expr, $infer_dates:expr) => {
+    ($name:ident, $field:expr_2021, $rows:expr_2021, $expect:expr_2021, $nulls:expr_2021, $infer_dates:expr_2021) => {
         #[test]
         fn no_headers_no_index() {
             let name = concat!(stringify!($name), "_no_headers_no_index");
@@ -464,10 +464,7 @@ stats_tests!(
     stats_sum_overflow,
     "sum",
     &[
-        {
-            let i = i64::MAX;
-            &i.to_string()
-        },
+        "9223372036854775807", // i64::MAX
         "1",
         "2"
     ],
@@ -477,10 +474,7 @@ stats_tests!(
     stats_sum_negative_overflow,
     "sum",
     &[
-        {
-            let i = i64::MIN;
-            &i.to_string()
-        },
+        "-9223372036854775808", // i64::MIN
         "-1",
         "-2"
     ],

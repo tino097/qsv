@@ -57,11 +57,11 @@ use ahash::AHashMap;
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
     select::{SelectColumns, Selection},
     util,
     util::ByteString,
-    CliResult,
 };
 
 type BoxedWriter = csv::Writer<Box<dyn io::Write + 'static>>;

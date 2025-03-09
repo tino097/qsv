@@ -56,8 +56,9 @@ use strum_macros::EnumString;
 
 use super::schema::infer_schema_from_stats;
 use crate::{
+    CliError, CliResult,
     config::{Config, Delimiter},
-    util, CliError, CliResult,
+    util,
 };
 
 #[derive(Deserialize, Clone)]
@@ -204,32 +205,41 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         } else {
                             // check the first domain value, if its an integer
                             // see if its 1 or 0
-                            if let Some(int_val) = vals[0].as_u64() {
-                                match int_val {
-                                    1 => '1',
-                                    0 => '0',
-                                    _ => '*', // its something else
-                                }
-                            } else if let Some(str_val) = vals[0].as_str() {
-                                // else, if its a string, get the first character of val1 lowercase
-                                boolcheck(str_val, &mut lowercase_buffer)
-                            } else {
-                                '*'
+                            match vals[0].as_u64() {
+                                Some(int_val) => {
+                                    match int_val {
+                                        1 => '1',
+                                        0 => '0',
+                                        _ => '*', // its something else
+                                    }
+                                },
+                                _ => {
+                                    match vals[0].as_str() {
+                                        Some(str_val) => {
+                                            // else, if its a string, get the first character of
+                                            // val1 lowercase
+                                            boolcheck(str_val, &mut lowercase_buffer)
+                                        },
+                                        _ => '*',
+                                    }
+                                },
                             }
                         };
                         // same as above, but for the 2nd domain value
                         let val2 = if vals[1].is_null() {
                             '_'
-                        } else if let Some(int_val) = vals[1].as_u64() {
-                            match int_val {
-                                1 => '1',
-                                0 => '0',
-                                _ => '*',
-                            }
-                        } else if let Some(str_val) = vals[1].as_str() {
-                            boolcheck(str_val, &mut lowercase_buffer)
                         } else {
-                            '*'
+                            match vals[1].as_u64() {
+                                Some(int_val) => match int_val {
+                                    1 => '1',
+                                    0 => '0',
+                                    _ => '*',
+                                },
+                                _ => match vals[1].as_str() {
+                                    Some(str_val) => boolcheck(str_val, &mut lowercase_buffer),
+                                    _ => '*',
+                                },
+                            }
                         };
                         // log::debug!("val1: {val1} val2: {val2}");
 

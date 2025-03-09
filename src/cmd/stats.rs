@@ -270,17 +270,18 @@ use itertools::Itertools;
 use phf::phf_map;
 use qsv_dateparser::parse_with_preference;
 use serde::{Deserialize, Serialize};
-use simd_json::{prelude::ValueAsScalar, OwnedValue};
+use simd_json::{OwnedValue, prelude::ValueAsScalar};
 use smallvec::SmallVec;
-use stats::{merge_all, Commute, MinMax, OnlineStats, Unsorted};
+use stats::{Commute, MinMax, OnlineStats, Unsorted, merge_all};
 use tempfile::NamedTempFile;
 use threadpool::ThreadPool;
 
 use self::FieldType::{TDate, TDateTime, TFloat, TInteger, TNull, TString};
 use crate::{
-    config::{get_delim_by_extension, Config, Delimiter},
+    CliResult,
+    config::{Config, Delimiter, get_delim_by_extension},
     select::{SelectColumns, Selection},
-    util, CliResult,
+    util,
 };
 
 #[allow(clippy::unsafe_derive_deserialize)]
@@ -604,10 +605,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     // find the delimiter to use based on the extension of the output file
     // and if we need to snappy compress the output
-    let (output_extension, output_delim, snappy) = if let Some(ref output_path) = args.flag_output {
-        get_delim_by_extension(Path::new(&output_path), b',')
-    } else {
-        (String::new(), b',', false)
+    let (output_extension, output_delim, snappy) = match args.flag_output {
+        Some(ref output_path) => get_delim_by_extension(Path::new(&output_path), b','),
+        _ => (String::new(), b',', false),
     };
     let stats_csv_tempfile_fname = format!(
         "{stem}.{prime_ext}{snappy_ext}",
@@ -807,14 +807,15 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 Some(idx) => {
                     // with an index, we get the rowcount instantaneously from the index
                     record_count = idx.count();
-                    if let Some(num_jobs) = args.flag_jobs {
-                        if num_jobs == 1 {
-                            args.sequential_stats(&args.flag_dates_whitelist)
-                        } else {
-                            args.parallel_stats(&args.flag_dates_whitelist, record_count)
-                        }
-                    } else {
-                        args.parallel_stats(&args.flag_dates_whitelist, record_count)
+                    match args.flag_jobs {
+                        Some(num_jobs) => {
+                            if num_jobs == 1 {
+                                args.sequential_stats(&args.flag_dates_whitelist)
+                            } else {
+                                args.parallel_stats(&args.flag_dates_whitelist, record_count)
+                            }
+                        },
+                        _ => args.parallel_stats(&args.flag_dates_whitelist, record_count),
                     }
                 },
             }?;
@@ -1717,11 +1718,7 @@ impl Stats {
                                     let parsed =
                                         val.parse::<usize>().unwrap_or(DEFAULT_ANTIMODES_LEN);
                                     // if 0, disable length limiting
-                                    if parsed == 0 {
-                                        usize::MAX
-                                    } else {
-                                        parsed
-                                    }
+                                    if parsed == 0 { usize::MAX } else { parsed }
                                 })
                                 .unwrap_or(DEFAULT_ANTIMODES_LEN)
                         });

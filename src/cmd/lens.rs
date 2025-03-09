@@ -28,11 +28,11 @@ Common options:
 
 use std::path::PathBuf;
 
-use csvlens::{run_csvlens_with_options, CsvlensOptions};
+use csvlens::{CsvlensOptions, run_csvlens_with_options};
 use serde::Deserialize;
 use tempfile;
 
-use crate::{config::Config, util, CliError, CliResult};
+use crate::{CliError, CliResult, config::Config, util};
 
 #[derive(Deserialize)]
 struct Args {

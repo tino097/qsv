@@ -260,8 +260,9 @@ use mlua::{Lua, LuaSerdeExt, Value};
 use serde::Deserialize;
 
 use crate::{
-    config::{Config, Delimiter, DEFAULT_WTR_BUFFER_CAPACITY},
-    lookup, util, CliError, CliResult,
+    CliError, CliResult,
+    config::{Config, DEFAULT_WTR_BUFFER_CAPACITY, Delimiter},
+    lookup, util,
 };
 
 #[allow(dead_code)]
@@ -386,6 +387,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 Err(e) => return fail_clierror!("Cannot load .lua/.luau file: {e}"),
             }
         } else {
+            #[allow(clippy::redundant_clone)]
             args.arg_main_script.clone()
         };
 
@@ -524,7 +526,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             Err(e) => {
                 return fail_clierror!(
                     "Cannot create temporary directory to copy luadate library to: {e}"
-                )
+                );
             },
         }
     } else {
@@ -544,7 +546,8 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         let mut luau_path = args.flag_luau_path.clone();
         // safety: safe to unwrap as we're just using it to append to luau_path
         write!(luau_path, ";{}", luadate_path.as_os_str().to_string_lossy()).unwrap();
-        env::set_var("LUAU_PATH", luau_path.clone());
+        // safety: we are in single-threaded code.
+        unsafe { env::set_var("LUAU_PATH", luau_path.clone()) };
         info!(r#"set LUAU_PATH to "{luau_path}""#);
     }
 
@@ -805,10 +808,11 @@ fn sequential_mode(
                 Ok(result) => Ok(result),
                 Err(e) => {
                     // Extract line number if available
-                    let error_msg = if let Some(line) = e.to_string().find("line") {
-                        format!("Error at {}: {}", &e.to_string()[line..], e)
-                    } else {
-                        e.to_string()
+                    let error_msg = match e.to_string().find("line") {
+                        Some(line) => {
+                            format!("Error at {}: {}", &e.to_string()[line..], e)
+                        },
+                        _ => e.to_string(),
                     };
                     Err(mlua::Error::RuntimeError(error_msg))
                 },
@@ -1324,12 +1328,13 @@ fn map_computedvalue(
     new_column_count: u8,
 ) -> Result<(), CliError> {
     match computed_value {
-        Value::String(string) => {
-            if let Ok(utf8) = simdutf8::basic::from_utf8(&string.as_bytes()) {
+        Value::String(string) => match simdutf8::basic::from_utf8(&string.as_bytes()) {
+            Ok(utf8) => {
                 record.push_field(utf8);
-            } else {
+            },
+            _ => {
                 record.push_field(&string.to_string_lossy());
-            }
+            },
         },
         Value::Number(number) => {
             record.push_field(ryu::Buffer::new().format_finite(*number));
@@ -1369,7 +1374,7 @@ fn map_computedvalue(
                     _ => {
                         return Err(mlua::Error::RuntimeError(format!(
                             "Unexpected value type returned by provided Luau expression: {v:?}"
-                        )))
+                        )));
                     },
                 }
                 columns_inserted += 1;
@@ -1681,9 +1686,11 @@ fn setup_helpers(
         }
 
         if value.is_empty() {
-            std::env::remove_var(envvar);
+            // safety: we are in single-threaded code.
+            unsafe { std::env::remove_var(envvar) };
         } else {
-            std::env::set_var(envvar, value);
+            // safety: we are in single-threaded code.
+            unsafe { std::env::set_var(envvar, value) };
         }
 
         Ok(())
@@ -2560,17 +2567,18 @@ fn setup_helpers(
                 prev
             } else {
                 // Get initial value from optional argument or default to the first column value
-                let init_value = if let Some(init) = init {
-                    match init {
+                let init_value = match init {
+                    Some(init) => match init {
                         mlua::Value::Number(n) => n,
                         mlua::Value::Integer(i) => i as f64,
                         mlua::Value::String(s) => fast_float2::parse(s.as_bytes()).unwrap_or(0.0),
                         _ => 0.0,
-                    }
-                } else {
-                    // By default, the first column value is used as the initial value
-                    // unless the optional initial value is provided.
-                    curr_value
+                    },
+                    _ => {
+                        // By default, the first column value is used as the initial value
+                        // unless the optional initial value is provided.
+                        curr_value
+                    },
                 };
                 luau.globals().raw_set(&*state_name, init_value)?;
                 init_value

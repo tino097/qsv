@@ -27,8 +27,9 @@ Common options:
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
-    util, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]

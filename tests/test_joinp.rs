@@ -1,7 +1,7 @@
 use crate::workdir::Workdir;
 
 macro_rules! joinp_test {
-    ($name:ident, $fun:expr) => {
+    ($name:ident, $fun:expr_2021) => {
         mod $name {
             use std::process;
 
@@ -21,7 +21,7 @@ macro_rules! joinp_test {
 }
 
 macro_rules! joinp_test_cache_schema {
-    ($name:ident, $fun:expr) => {
+    ($name:ident, $fun:expr_2021) => {
         mod $name {
             use std::process;
 
@@ -48,7 +48,7 @@ macro_rules! joinp_test_cache_schema {
 }
 
 macro_rules! joinp_test_tab {
-    ($name0:ident, $fun:expr) => {
+    ($name0:ident, $fun:expr_2021) => {
         mod $name0 {
             use std::process;
 
@@ -68,7 +68,7 @@ macro_rules! joinp_test_tab {
 }
 
 macro_rules! joinp_test_comments {
-    ($name2:ident, $fun:expr) => {
+    ($name2:ident, $fun:expr_2021) => {
         mod $name2 {
             use std::process;
 
@@ -89,7 +89,7 @@ macro_rules! joinp_test_comments {
 }
 
 macro_rules! joinp_test_compressed {
-    ($name3:ident, $fun:expr) => {
+    ($name3:ident, $fun:expr_2021) => {
         mod $name3 {
             use std::process;
 

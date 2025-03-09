@@ -3,7 +3,7 @@ use std::process;
 
 use serial_test::serial;
 
-use crate::{qcheck, quickcheck::TestResult, workdir::Workdir, Csv, CsvData};
+use crate::{Csv, CsvData, qcheck, quickcheck::TestResult, workdir::Workdir};
 
 fn no_headers(cmd: &mut process::Command) {
     cmd.arg("--no-headers");

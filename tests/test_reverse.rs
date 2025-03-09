@@ -1,4 +1,4 @@
-use crate::{qcheck, workdir::Workdir, Csv, CsvData};
+use crate::{Csv, CsvData, qcheck, workdir::Workdir};
 
 fn prop_reverse(name: &str, rows: CsvData, headers: bool) -> bool {
     if rows.is_empty()

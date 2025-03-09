@@ -3,7 +3,7 @@ use std::{collections::HashSet, path::PathBuf};
 
 use log::debug;
 use memmap2::MmapMut;
-use odht::{bytes_needed, Config, FxHashFn, HashTableOwned};
+use odht::{Config, FxHashFn, HashTableOwned, bytes_needed};
 use tempfile::NamedTempFile;
 
 struct ExtDedupConfig;
@@ -161,8 +161,7 @@ impl ExtDedupCache {
     }
 
     fn item_to_keys(item: &str) -> impl Iterator<Item = [u8; CHUNK_SIZE + 1]> + '_ {
-        let res = item
-            .as_bytes()
+        item.as_bytes()
             .chunks(CHUNK_SIZE)
             .enumerate()
             .map(|(i, chunk)| {
@@ -170,8 +169,7 @@ impl ExtDedupCache {
                 key[CHUNK_SIZE] = i as u8;
                 key[..chunk.len()].copy_from_slice(chunk);
                 key
-            });
-        res
+            })
     }
 
     fn dump_to_disk(&mut self) {
@@ -194,7 +192,7 @@ impl Drop for ExtDedupCache {
 
 #[cfg(test)]
 mod tests {
-    use rand::{distr::Alphanumeric, rng, Rng};
+    use rand::{Rng, distr::Alphanumeric, rng};
 
     use super::*;
 

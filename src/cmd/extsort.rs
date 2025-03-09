@@ -46,7 +46,7 @@ Common options:
 
 use std::{
     fs,
-    io::{self, stdin, stdout, BufRead, Write},
+    io::{self, BufRead, Write, stdin, stdout},
     path,
 };
 
@@ -54,11 +54,12 @@ use ext_sort::{ExternalSorter, ExternalSorterBuilder, LimitedBufferBuilder};
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     cmd::extdedup::calculate_memory_limit,
     config,
     config::{Config, Delimiter},
     select::SelectColumns,
-    util, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]
@@ -129,13 +130,16 @@ fn sort_csv(
         .no_headers(args.flag_no_headers)
         .select(args.flag_select.clone().unwrap());
 
-    let mut idxfile = if let Ok(idx) = rconfig.indexed() {
-        if idx.is_none() {
+    let mut idxfile = match rconfig.indexed() {
+        Ok(idx) => {
+            if idx.is_none() {
+                return fail_incorrectusage_clierror!("extsort CSV mode requires an index");
+            }
+            idx.unwrap()
+        },
+        _ => {
             return fail_incorrectusage_clierror!("extsort CSV mode requires an index");
-        }
-        idx.unwrap()
-    } else {
-        return fail_incorrectusage_clierror!("extsort CSV mode requires an index");
+        },
     };
 
     let mut input_rdr = rconfig.reader()?;

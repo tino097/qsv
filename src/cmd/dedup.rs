@@ -58,10 +58,11 @@ use rayon::slice::ParallelSliceMut;
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     cmd::sort::{iter_cmp, iter_cmp_num},
     config::{Config, Delimiter},
     select::SelectColumns,
-    util, CliResult,
+    util,
 };
 #[derive(Deserialize)]
 struct Args {
