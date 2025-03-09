@@ -977,8 +977,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         }
 
         if args.flag_cache_threshold == 0
-            || (args.flag_cache_threshold.is_negative()
-                && args.flag_cache_threshold % 10 == -5)
+            || (args.flag_cache_threshold.is_negative() && args.flag_cache_threshold % 10 == -5)
         {
             // if the cache threshold zero or is a negative number ending in 5,
             // delete both the index file and the stats cache file

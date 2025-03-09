@@ -161,9 +161,7 @@ impl ExtDedupCache {
     }
 
     fn item_to_keys(item: &str) -> impl Iterator<Item = [u8; CHUNK_SIZE + 1]> + '_ {
-        
-        item
-            .as_bytes()
+        item.as_bytes()
             .chunks(CHUNK_SIZE)
             .enumerate()
             .map(|(i, chunk)| {
