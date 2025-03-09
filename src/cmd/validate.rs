@@ -2063,12 +2063,12 @@ fn test_dyn_enum_validator() {
     assert!(!validator.is_valid(&json!("bananana")));
     assert!(!validator.is_valid(&json!("")));
     assert!(!validator.is_valid(&json!(5)));
-    if let Err(e) = validator.validate(&json!("lanzones")) {
+    match validator.validate(&json!("lanzones")) { Err(e) => {
         assert_eq!(
             format!("{e:?}"),
             r#"ValidationError { instance: String("lanzones"), kind: Custom { message: "\"lanzones\" is not a valid dynamicEnum value" }, instance_path: Location(""), schema_path: Location("") }"#
         );
-    } else {
+    } _ => {
         unreachable!("Expected an error, but validation succeeded.");
-    };
+    }};
 }

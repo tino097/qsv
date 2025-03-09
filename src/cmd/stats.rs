@@ -604,11 +604,11 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     // find the delimiter to use based on the extension of the output file
     // and if we need to snappy compress the output
-    let (output_extension, output_delim, snappy) = if let Some(ref output_path) = args.flag_output {
+    let (output_extension, output_delim, snappy) = match args.flag_output { Some(ref output_path) => {
         get_delim_by_extension(Path::new(&output_path), b',')
-    } else {
+    } _ => {
         (String::new(), b',', false)
-    };
+    }};
     let stats_csv_tempfile_fname = format!(
         "{stem}.{prime_ext}{snappy_ext}",
         //safety: we know the tempfile is a valid NamedTempFile, so we can use unwrap
@@ -807,15 +807,15 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 Some(idx) => {
                     // with an index, we get the rowcount instantaneously from the index
                     record_count = idx.count();
-                    if let Some(num_jobs) = args.flag_jobs {
+                    match args.flag_jobs { Some(num_jobs) => {
                         if num_jobs == 1 {
                             args.sequential_stats(&args.flag_dates_whitelist)
                         } else {
                             args.parallel_stats(&args.flag_dates_whitelist, record_count)
                         }
-                    } else {
+                    } _ => {
                         args.parallel_stats(&args.flag_dates_whitelist, record_count)
-                    }
+                    }}
                 },
             }?;
             // we cache the record count so we don't have to count the records again
@@ -965,7 +965,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             stats_pathbuf,
             serde_json::to_string_pretty(&current_stats_args)?,
         )?;
-    } else if let Some(path) = rconfig.path {
+    } else { match rconfig.path { Some(path) => {
         // if we read from a file, copy the temp stats file to "<FILESTEM>.stats.csv"
         let mut stats_pathbuf = path.clone();
         stats_pathbuf.set_extension("stats.csv");
@@ -1029,20 +1029,20 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 )?;
             }
         }
-    }
+    } _ => {}}}
 
     if stdout_output_flag {
         // if we're outputting to stdout, copy the stats file to stdout
         let currstats = fs::read_to_string(currstats_filename)?;
         io::stdout().write_all(currstats.as_bytes())?;
         io::stdout().flush()?;
-    } else if let Some(output) = args.flag_output {
+    } else { match args.flag_output { Some(output) => {
         // if we're outputting to a file, copy the stats file to the output file
         if currstats_filename != output {
             // if the stats file is not the same as the output file, copy it
             fs::copy(currstats_filename, output)?;
         }
-    }
+    } _ => {}}}
 
     Ok(())
 }

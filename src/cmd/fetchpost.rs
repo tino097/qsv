@@ -381,7 +381,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         .unwrap();
 
     // setup diskcache dir response caching
-    let diskcache_dir = if let Some(dir) = &args.flag_disk_cache_dir {
+    let diskcache_dir = match &args.flag_disk_cache_dir { Some(dir) => {
         if dir.starts_with('~') {
             // expand the tilde
             let expanded_dir = expand_tilde(dir).unwrap();
@@ -389,9 +389,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         } else {
             dir.to_string()
         }
-    } else {
+    } _ => {
         String::new()
-    };
+    }};
 
     let cache_type = if args.flag_no_cache {
         CacheType::None
@@ -453,7 +453,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     // setup globals JSON context if specified
     let mut globals_flag = false;
-    let globals_ctx = if let Some(globals_json) = args.flag_globals_json {
+    let globals_ctx = match args.flag_globals_json { Some(globals_json) => {
         globals_flag = true;
         match std::fs::read(globals_json) {
             Ok(mut bytes) => match simd_json::from_slice(&mut bytes) {
@@ -462,9 +462,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             },
             Err(e) => return fail_clierror!("Failed to read globals JSON file: {e}"),
         }
-    } else {
+    } _ => {
         json!("")
-    };
+    }};
 
     let mut rconfig = Config::new(args.arg_input.as_ref())
         .delimiter(args.flag_delimiter)
@@ -488,19 +488,19 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     let mut headers = rdr.byte_headers()?.clone();
 
-    let include_existing_columns = if let Some(name) = args.flag_new_column {
+    let include_existing_columns = match args.flag_new_column { Some(name) => {
         // write header with new column
         headers.push_field(name.as_bytes());
         wtr.write_byte_record(&headers)?;
         true
-    } else {
+    } _ => {
         if args.flag_pretty {
             return fail_incorrectusage_clierror!(
                 "The --pretty option requires the --new-column option."
             );
         }
         false
-    };
+    }};
 
     // validate column-list is a list of valid column names
     let cl_config = if args.flag_payload_tpl.is_none() {
@@ -523,11 +523,11 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     // or as a column selector
     let url_column_str = format!("{:?}", args.arg_url_column);
     let re = Regex::new(r"^IndexedName\((.*)\[0\]\)$").unwrap();
-    let literal_url = if let Some(caps) = re.captures(&url_column_str) {
+    let literal_url = match re.captures(&url_column_str) { Some(caps) => {
         caps[1].to_lowercase()
-    } else {
+    } _ => {
         String::new()
-    };
+    }};
     let literal_url_used = literal_url.starts_with("http");
 
     let mut column_index = 0;
@@ -555,17 +555,17 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let mut template_content = String::new();
     let mut payload_content_type: ContentType;
     let mut rendered_json: Value;
-    let payload_env = if let Some(template_file) = args.flag_payload_tpl {
+    let payload_env = match args.flag_payload_tpl { Some(template_file) => {
         template_content = fs::read_to_string(template_file)?;
         let mut env = Environment::new();
         env.set_unknown_method_callback(unknown_method_callback);
         env.add_template("template", &template_content)?;
         payload_content_type = ContentType::Json;
         env
-    } else {
+    } _ => {
         payload_content_type = ContentType::Form;
         Environment::empty()
-    };
+    }};
 
     let http_headers: HeaderMap = {
         let mut map = HeaderMap::with_capacity(args.flag_http_header.len() + 1);
@@ -602,7 +602,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             HeaderValue::from_str(DEFAULT_ACCEPT_ENCODING).unwrap(),
         );
 
-        if let Some(content_type) = args.flag_content_type {
+        match args.flag_content_type { Some(content_type) => {
             // if the user set --content-type and uses one of these known content-types,
             // change payload_content_type accordingly so it can take advantage of auto
             // validation of JSON and url encoding of URL Forms.
@@ -615,7 +615,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 reqwest::header::CONTENT_TYPE,
                 HeaderValue::from_str(&content_type).unwrap(),
             );
-        } else if payload_content_type == ContentType::Json {
+        } _ => if payload_content_type == ContentType::Json {
             map.append(
                 reqwest::header::CONTENT_TYPE,
                 HeaderValue::from_str("application/json").unwrap(),
@@ -625,7 +625,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 reqwest::header::CONTENT_TYPE,
                 HeaderValue::from_str("application/x-www-form-urlencoded").unwrap(),
             );
-        }
+        }}
         if args.flag_compress {
             map.append(
                 reqwest::header::CONTENT_ENCODING,
@@ -1379,7 +1379,7 @@ fn get_response(
             client.post(&valid_url).body(form_body_raw).send()
         };
 
-        if let Ok(resp) = resp_result {
+        match resp_result { Ok(resp) => {
             // debug!("{resp:?}");
             api_respheader.clone_from(resp.headers());
             api_status = resp.status();
@@ -1448,11 +1448,11 @@ fn get_response(
                     }
                 }
             }
-        } else {
+        } _ => {
             error_flag = true;
             api_respheader.clear();
             api_status = reqwest::StatusCode::BAD_REQUEST;
-        }
+        }}
 
         // debug!("final value: {final_value}");
 

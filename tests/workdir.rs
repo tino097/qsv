@@ -294,12 +294,12 @@ impl fmt::Debug for Workdir {
 fn create_dir_all<P: AsRef<Path>>(p: P) -> io::Result<()> {
     let mut last_err = None;
     for _ in 0..10 {
-        if let Err(err) = fs::create_dir_all(&p) {
+        match fs::create_dir_all(&p) { Err(err) => {
             last_err = Some(err);
             ::std::thread::sleep(Duration::from_millis(500));
-        } else {
+        } _ => {
             return Ok(());
-        }
+        }}
     }
     Err(last_err.unwrap())
 }

@@ -233,7 +233,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             duplicate_count:   dupe_count,
             duplicate_headers: checkednames_map
                 .iter()
-                .filter(|(_, &v)| v > 1)
+                .filter(|&(_, &v)| v > 1)
                 .map(|(k, v)| format!("{k}:{v}"))
                 .collect(),
             unsafe_headers:    unsafenames_vec.clone(),

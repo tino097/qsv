@@ -49,7 +49,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let mut rdr = rconfig.reader()?;
     let mut wtr = Config::new(args.flag_output.as_ref()).writer()?;
 
-    if let Some(mut idx_file) = rconfig.indexed()? {
+    match rconfig.indexed()? { Some(mut idx_file) => {
         // we have an index, no need to check avail mem,
         // we're reading the file in reverse streaming
         rconfig.write_headers(&mut rdr, &mut wtr)?;
@@ -61,7 +61,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             wtr.write_byte_record(&record)?;
             pos -= 1;
         }
-    } else {
+    } _ => {
         // we don't have an index, we need to read the entire file into memory
         // we're loading the entire file into memory, we need to check avail mem
         if let Some(ref path) = rconfig.path {
@@ -75,7 +75,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         for r in all {
             wtr.write_byte_record(&r)?;
         }
-    }
+    }}
 
     Ok(wtr.flush()?)
 }

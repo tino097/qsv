@@ -3,7 +3,7 @@ use crate::workdir::Workdir;
 // This macro takes *two* identifiers: one for the test with headers
 // and another for the test without headers.
 macro_rules! exclude_test {
-    ($name:ident, $fun:expr) => {
+    ($name:ident, $fun:expr_2021) => {
         mod $name {
             use std::process;
 

@@ -218,9 +218,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 headers
             };
         }
-        let column_name = if let Some(new_column_name) = args.flag_new_column {
+        let column_name = match args.flag_new_column { Some(new_column_name) => {
             new_column_name
-        } else {
+        } _ => {
             match enum_operation {
                 EnumOperation::Increment => "index".to_string(),
                 EnumOperation::Uuid4 => "uuid4".to_string(),
@@ -235,7 +235,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 },
                 EnumOperation::Hash => "hash".to_string(),
             }
-        };
+        }};
         headers.push_field(column_name.as_bytes());
         wtr.write_byte_record(&headers)?;
     }

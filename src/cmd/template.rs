@@ -568,9 +568,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 row_writer.flush()?;
 
                 outpath.clear();
-            } else if let Some(ref mut w) = bulk_wtr {
+            } else { match bulk_wtr { Some(ref mut w) => {
                 w.write_all(result_record.1.as_bytes())?;
-            }
+            } _ => {}}}
         }
 
         #[cfg(any(feature = "feature_capable", feature = "lite"))]
@@ -951,12 +951,12 @@ fn lookup_filter(
                 itoa_buf.format(value.as_i64().unwrap())
             } else {
                 let float_num: f64;
-                if let Ok(num) = value.clone().try_into() {
+                match value.clone().try_into() { Ok(num) => {
                     float_num = num;
                     ryu_buf.format(float_num)
-                } else {
+                } _ => {
                     unreachable!("Kind::Number should be integer or float")
-                }
+                }}
             }
         },
         _ => value.as_str().unwrap_or_default(),

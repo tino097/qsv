@@ -3,7 +3,7 @@ use std::borrow::ToOwned;
 use crate::workdir::Workdir;
 
 macro_rules! split_eq {
-    ($wrk:expr, $path:expr, $expected:expr) => {
+    ($wrk:expr_2021, $path:expr_2021, $expected:expr_2021) => {
         // assert_eq!($wrk.path($path).into_os_string().into_string().unwrap(),
         // $expected.to_owned());
         assert_eq!(

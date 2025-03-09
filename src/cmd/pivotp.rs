@@ -477,17 +477,17 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 "smart" => {
                     if let Some(value_cols) = &value_cols {
                         // Try to suggest an appropriate aggregation function
-                        if let Some(suggested_agg) = suggest_agg_function(
+                        match suggest_agg_function(
                             &args,
                             &on_cols,
                             index_cols.as_deref(),
                             value_cols,
-                        )? {
+                        )? { Some(suggested_agg) => {
                             suggested_agg
-                        } else {
+                        } _ => {
                             // fallback to first, which always works
                             PivotAgg::First
-                        }
+                        }}
                     } else {
                         // Default to Count if no value columns specified
                         PivotAgg::Count

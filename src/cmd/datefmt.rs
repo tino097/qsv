@@ -279,9 +279,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         None => chrono_tz::UTC,
     };
 
-    let mut input_tz = if let Ok(tz) = args.flag_input_tz.parse::<Tz>() {
+    let mut input_tz = match args.flag_input_tz.parse::<Tz>() { Ok(tz) => {
         tz
-    } else if args.flag_input_tz.eq_ignore_ascii_case("local") {
+    } _ => if args.flag_input_tz.eq_ignore_ascii_case("local") {
         if let Some(tz) = localzone::get_local_zone() {
             log::info!("input-tz local timezone: {tz}");
             tz.parse::<Tz>()?
@@ -290,11 +290,11 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         }
     } else {
         default_tz
-    };
+    }};
     #[allow(clippy::useless_let_if_seq)] // more readable this way
-    let mut output_tz = if let Ok(tz) = args.flag_output_tz.parse::<Tz>() {
+    let mut output_tz = match args.flag_output_tz.parse::<Tz>() { Ok(tz) => {
         tz
-    } else if args.flag_output_tz.eq_ignore_ascii_case("local") {
+    } _ => if args.flag_output_tz.eq_ignore_ascii_case("local") {
         if let Some(tz) = localzone::get_local_zone() {
             log::info!("output-tz local timezone: {tz}");
             tz.parse::<Tz>()?
@@ -303,7 +303,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         }
     } else {
         default_tz
-    };
+    }};
 
     if args.flag_utc {
         input_tz = chrono_tz::UTC;

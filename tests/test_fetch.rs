@@ -835,7 +835,7 @@ macro_rules! test_server {
 }
 
 macro_rules! test_url {
-    ($api_param:expr) => {
+    ($api_param:expr_2021) => {
         concat!("http://", test_server!(), "/", $api_param)
     };
 }

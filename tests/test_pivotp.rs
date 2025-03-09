@@ -1,7 +1,7 @@
 use crate::workdir::Workdir;
 
 macro_rules! pivotp_test {
-    ($name:ident, $fun:expr) => {
+    ($name:ident, $fun:expr_2021) => {
         mod $name {
             use std::process;
 

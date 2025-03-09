@@ -3,7 +3,7 @@ use crate::workdir::Workdir;
 // This macro takes *two* identifiers: one for the test with headers
 // and another for the test without headers.
 macro_rules! join_test {
-    ($name:ident, $fun:expr) => {
+    ($name:ident, $fun:expr_2021) => {
         mod $name {
             use std::process;
 
@@ -57,7 +57,7 @@ fn setup(name: &str, headers: bool) -> Workdir {
 }
 
 macro_rules! join_test_with_zeros {
-    ($name:ident, $fun:expr) => {
+    ($name:ident, $fun:expr_2021) => {
         mod $name {
             use std::process;
 

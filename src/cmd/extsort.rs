@@ -129,14 +129,14 @@ fn sort_csv(
         .no_headers(args.flag_no_headers)
         .select(args.flag_select.clone().unwrap());
 
-    let mut idxfile = if let Ok(idx) = rconfig.indexed() {
+    let mut idxfile = match rconfig.indexed() { Ok(idx) => {
         if idx.is_none() {
             return fail_incorrectusage_clierror!("extsort CSV mode requires an index");
         }
         idx.unwrap()
-    } else {
+    } _ => {
         return fail_incorrectusage_clierror!("extsort CSV mode requires an index");
-    };
+    }};
 
     let mut input_rdr = rconfig.reader()?;
 

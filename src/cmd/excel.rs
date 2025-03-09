@@ -534,7 +534,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 || metadata_mode == MetadataMode::ShortJSON
             {
                 Range::empty()
-            } else if let Some(result) = sheets.worksheet_range_at(i) {
+            } else { match sheets.worksheet_range_at(i) { Some(result) => {
                 match result {
                     Ok(result) => result,
                     Err(e) => {
@@ -546,9 +546,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         }
                     },
                 }
-            } else {
+            } _ => {
                 Range::empty()
-            };
+            }}};
 
             let (header_vec, column_count, row_count, safenames_vec, unsafeheaders_vec, dupe_count) =
                 if range.is_empty() {
@@ -836,11 +836,11 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             let name_contains_exclamation: bool = requested_range.contains('!');
             let parsed_range = if requested_range.contains(':') && !name_contains_exclamation {
                 // if there is a colon, we treat it as a range for the current sheet
-                sheet_range = if let Some(result) = sheets.worksheet_range_at(sheet_index) {
+                sheet_range = match sheets.worksheet_range_at(sheet_index) { Some(result) => {
                     result?
-                } else {
+                } _ => {
                     Range::empty()
-                };
+                }};
                 RequestedRange::from_string(requested_range, sheet_range.get_size())?
             } else if name_contains_exclamation {
                 // if there is an exclamation mark, we treat it as a range in an explicitly named
@@ -897,13 +897,13 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 );
             }
             range_result
-        } else if let Some(result) = sheets.worksheet_range_at(sheet_index) {
+        } else { match sheets.worksheet_range_at(sheet_index) { Some(result) => {
             export_mode = ExportMode::Sheet;
             result?
-        } else {
+        } _ => {
             export_mode = ExportMode::NothingToExport;
             Range::empty()
-        }
+        }}}
     };
 
     let (row_count, col_count) = range.get_size();

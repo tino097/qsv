@@ -341,19 +341,19 @@ impl Args {
             while rdr.read_byte_record(&mut row)? {
                 new_row.clear();
                 for (col_idx, c) in columns_global.iter().enumerate() {
-                    if let Some(idx) = columns_of_this_file.get(c) {
+                    match columns_of_this_file.get(c) { Some(idx) => {
                         if let Some(d) = row.get(*idx) {
                             new_row.push_field(d);
                         } else {
                             new_row.push_field(b"");
                         }
-                    } else if group_flag && col_idx == 0 {
+                    } _ => if group_flag && col_idx == 0 {
                         // we are in the first column, and --group is set
                         // so we write the grouping value
                         new_row.push_field(grouping_value_bytes);
                     } else {
                         new_row.push_field(b"");
-                    }
+                    }}
                 }
                 wtr.write_byte_record(&new_row)?;
             }

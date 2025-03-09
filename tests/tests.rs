@@ -13,16 +13,16 @@ use quickcheck::{Arbitrary, Gen, QuickCheck, Testable};
 use rand::Rng;
 
 macro_rules! svec[
-    ($($x:expr),*) => (
+    ($($x:expr_2021),*) => (
         vec![$($x),*].into_iter()
                      .map(|s: &'static str| s.to_string())
                      .collect::<Vec<String>>()
     );
-    ($($x:expr,)*) => (svec![$($x),*]);
+    ($($x:expr_2021,)*) => (svec![$($x),*]);
 ];
 
 macro_rules! rassert_eq {
-    ($given:expr, $expected:expr) => {{
+    ($given:expr_2021, $expected:expr_2021) => {{
         assert_eq!($given, $expected);
         true
     }};
@@ -133,15 +133,19 @@ mod test_transpose;
 mod test_validate;
 
 fn qcheck<T: Testable>(p: T) {
-    env::set_var("QSV_SKIPUTF8_CHECK", "1");
-    QuickCheck::new().gen(Gen::new(5)).quickcheck(p);
-    env::set_var("QSV_SKIPUTF8_CHECK", "");
+    // TODO: Audit that the environment access only happens in single-threaded code.
+    unsafe { env::set_var("QSV_SKIPUTF8_CHECK", "1") };
+    QuickCheck::new().r#gen(Gen::new(5)).quickcheck(p);
+    // TODO: Audit that the environment access only happens in single-threaded code.
+    unsafe { env::set_var("QSV_SKIPUTF8_CHECK", "") };
 }
 
 fn qcheck_sized<T: Testable>(p: T, size: usize) {
-    env::set_var("QSV_SKIPUTF8_CHECK", "1");
-    QuickCheck::new().gen(Gen::new(size)).quickcheck(p);
-    env::set_var("QSV_SKIPUTF8_CHECK", "");
+    // TODO: Audit that the environment access only happens in single-threaded code.
+    unsafe { env::set_var("QSV_SKIPUTF8_CHECK", "1") };
+    QuickCheck::new().r#gen(Gen::new(size)).quickcheck(p);
+    // TODO: Audit that the environment access only happens in single-threaded code.
+    unsafe { env::set_var("QSV_SKIPUTF8_CHECK", "") };
 }
 
 pub type CsvVecs = Vec<Vec<String>>;

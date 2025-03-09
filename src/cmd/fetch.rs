@@ -421,7 +421,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         .unwrap();
 
     // setup diskcache dir response caching
-    let diskcache_dir = if let Some(dir) = &args.flag_disk_cache_dir {
+    let diskcache_dir = match &args.flag_disk_cache_dir { Some(dir) => {
         if dir.starts_with('~') {
             // expand the tilde
             let expanded_dir = expand_tilde(dir).unwrap();
@@ -429,9 +429,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         } else {
             dir.to_string()
         }
-    } else {
+    } _ => {
         String::new()
-    };
+    }};
 
     let cache_type = if args.flag_no_cache {
         CacheType::None
@@ -513,19 +513,19 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     let mut headers = rdr.byte_headers()?.clone();
 
-    let include_existing_columns = if let Some(name) = args.flag_new_column {
+    let include_existing_columns = match args.flag_new_column { Some(name) => {
         // write header with new column
         headers.push_field(name.as_bytes());
         wtr.write_byte_record(&headers)?;
         true
-    } else {
+    } _ => {
         if args.flag_pretty {
             return fail_incorrectusage_clierror!(
                 "The --pretty option requires the --new-column option."
             );
         }
         false
-    };
+    }};
 
     let mut column_index = 0_usize;
     if args.flag_url_template.is_none() {
@@ -1260,7 +1260,7 @@ fn get_response(
         }
 
         // send the actual request
-        if let Ok(resp) = client.get(&valid_url).send() {
+        match client.get(&valid_url).send() { Ok(resp) => {
             // debug!("{resp:?}");
             api_respheader.clone_from(resp.headers());
             api_status = resp.status();
@@ -1329,11 +1329,11 @@ fn get_response(
                     }
                 }
             }
-        } else {
+        } _ => {
             error_flag = true;
             api_respheader.clear();
             api_status = reqwest::StatusCode::BAD_REQUEST;
-        }
+        }}
 
         // debug!("final value: {final_value}");
 

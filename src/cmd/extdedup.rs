@@ -216,18 +216,18 @@ fn dedup_lines(args: Args, mem_limited_buffer: u64) -> Result<u64, crate::clityp
     };
     let mut write_dupes = false;
     #[cfg(target_family = "unix")]
-    let mut dupes_writer = if let Some(dupes_output) = args.flag_dupes_output {
+    let mut dupes_writer = match args.flag_dupes_output { Some(dupes_output) => {
         write_dupes = true;
         io::BufWriter::with_capacity(
             config::DEFAULT_WTR_BUFFER_CAPACITY,
             fs::File::create(dupes_output)?,
         )
-    } else {
+    } _ => {
         io::BufWriter::with_capacity(
             config::DEFAULT_WTR_BUFFER_CAPACITY,
             fs::File::create("/dev/null")?,
         )
-    };
+    }};
     #[cfg(target_family = "windows")]
     let mut dupes_writer = if let Some(dupes_output) = args.flag_dupes_output {
         write_dupes = true;

@@ -776,14 +776,14 @@ impl JoinStruct {
             }
         };
 
-        let mut results_df = if let Some(sql_filter) = &self.sql_filter {
+        let mut results_df = match &self.sql_filter { Some(sql_filter) => {
             let mut ctx = polars::sql::SQLContext::new();
             ctx.register("join_result", join_results.lazy());
             ctx.execute(sql_filter)
                 .and_then(polars::prelude::LazyFrame::collect)?
-        } else {
+        } _ => {
             join_results
-        };
+        }};
 
         if keys_transformed {
             // Remove temporary transformed columns and

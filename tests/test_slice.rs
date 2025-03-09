@@ -3,7 +3,7 @@ use std::{borrow::ToOwned, process};
 use crate::workdir::Workdir;
 
 macro_rules! slice_tests {
-    ($name:ident, $start:expr, $end:expr, $expected:expr) => {
+    ($name:ident, $start:expr_2021, $end:expr_2021, $expected:expr_2021) => {
         mod $name {
             use super::test_slice;
 

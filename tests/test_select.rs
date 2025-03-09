@@ -1,8 +1,8 @@
 use crate::workdir::Workdir;
 
 macro_rules! select_test {
-    ($name:ident, $select:expr, $select_no_headers:expr,
-     $expected_headers:expr, $expected_rows:expr) => {
+    ($name:ident, $select:expr_2021, $select_no_headers:expr_2021,
+     $expected_headers:expr_2021, $expected_rows:expr_2021) => {
         mod $name {
             use super::data;
             use crate::workdir::Workdir;
@@ -50,7 +50,7 @@ macro_rules! select_test {
 }
 
 macro_rules! select_test_err {
-    ($name:ident, $select:expr) => {
+    ($name:ident, $select:expr_2021) => {
         #[test]
         fn $name() {
             let wrk = Workdir::new(stringify!($name));

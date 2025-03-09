@@ -259,13 +259,13 @@ fn count_input(conf: &Config, count_delims_mode: CountDelimsMode) -> CliResult<(
 
     // if conf is indexed, we still get the count from the index
     let mut use_index_count = false;
-    let mut count = if let Some(idx) = conf.indexed()? {
+    let mut count = match conf.indexed()? { Some(idx) => {
         use_index_count = true;
         info!("index used");
         idx.count()
-    } else {
+    } _ => {
         0_u64
-    };
+    }};
 
     let mut rdr = conf.reader()?;
     let mut record = csv::ByteRecord::new();

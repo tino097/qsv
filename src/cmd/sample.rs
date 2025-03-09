@@ -341,9 +341,8 @@ fn check_stats_cache(
     };
 
     // Get stats records
-    if let Ok((csv_fields, stats, dataset_stats)) =
-        get_stats_records(&schema_args, StatsMode::Frequency)
-    {
+    match get_stats_records(&schema_args, StatsMode::Frequency)
+    { Ok((csv_fields, stats, dataset_stats)) => {
         // Get row count from stats cache
         let rowcount = dataset_stats
             .get("qsv__rowcount")
@@ -413,9 +412,9 @@ fn check_stats_cache(
         }
 
         Ok((rowcount, max_weight, cardinality))
-    } else {
+    } _ => {
         Ok((None, None, None))
-    }
+    }}
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -530,11 +529,11 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             let (rowcount_stats, _, _) = check_stats_cache(&args, &SamplingMethod::Systematic)?;
             let row_count = if let Some(rc) = rowcount_stats {
                 rc
-            } else if let Ok(rc) = util::count_rows(&rconfig) {
+            } else { match util::count_rows(&rconfig) { Ok(rc) => {
                 rc
-            } else {
+            } _ => {
                 return fail!("Cannot get rowcount. Systematic sampling requires a rowcount.");
-            };
+            }}};
 
             sample_systematic(
                 &mut rdr,
@@ -609,7 +608,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         SamplingMethod::Default => {
             // no sampling method is specified, so we do indexed sampling
             // if an index is present
-            if let Some(mut idx) = rconfig.indexed()? {
+            match rconfig.indexed()? { Some(mut idx) => {
                 #[allow(clippy::cast_precision_loss)]
                 if sample_size < 1.0 {
                     sample_size *= idx.count() as f64;
@@ -644,7 +643,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         })?;
                     },
                 }
-            } else {
+            } _ => {
                 // No sampling method is specified and no index is present
                 // do reservoir sampling
 
@@ -656,20 +655,20 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
                     if let Some(rc) = rowcount_stats {
                         (rc as f64 * args.arg_sample_size).round() as u64
-                    } else if let Ok(rc) = util::count_rows(&rconfig) {
+                    } else { match util::count_rows(&rconfig) { Ok(rc) => {
                         // we don't have a stats cache, get the rowcount the "regular" way
                         (rc as f64 * args.arg_sample_size).round() as u64
-                    } else {
+                    } _ => {
                         return fail!(
                             "Cannot get rowcount. Percentage sampling requires a rowcount."
                         );
-                    }
+                    }}}
                 } else {
                     args.arg_sample_size as u64
                 };
 
                 sample_reservoir(&mut rdr, &mut wtr, sample_size, args.flag_seed, &rng_kind)?;
-            }
+            }}
         },
     }
 

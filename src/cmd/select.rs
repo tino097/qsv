@@ -127,13 +127,13 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let headers = rdr.byte_headers()?.clone();
     let sel = if args.flag_random {
         // Use seed if it is provided when initializing the random number generator.
-        let mut rng = if let Some(seed) = args.flag_seed {
+        let mut rng = match args.flag_seed { Some(seed) => {
             // we add the DevSkim ignore comment here because we don't need to worry about
             // cryptographic security in this context.
             rand::rngs::StdRng::seed_from_u64(seed) // DevSkim: ignore DS148264
-        } else {
+        } _ => {
             rand::rngs::StdRng::from_os_rng()
-        };
+        }};
 
         let initial_selection = rconfig.selection(&headers)?;
 

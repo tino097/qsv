@@ -121,7 +121,7 @@ fn json_line_to_csv_record(value: &Value, headers: &[Vec<String>]) -> csv::Strin
     for path in headers {
         let value = get_value_at_path(value, path);
 
-        if let Some(value) = value {
+        match value { Some(value) => {
             record.push_field(&match value {
                 Value::Bool(v) => {
                     if v {
@@ -139,9 +139,9 @@ fn json_line_to_csv_record(value: &Value, headers: &[Vec<String>]) -> csv::Strin
                     .join(","),
                 _ => String::new(),
             });
-        } else {
+        } _ => {
             record.push_field("");
-        }
+        }}
     }
 
     record

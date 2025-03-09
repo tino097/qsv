@@ -59,7 +59,7 @@ macro_rules! winfo {
 
 /// write to stderr and log::error, returning Err(err)
 macro_rules! fail {
-    ($e:expr) => {{
+    ($e:expr_2021) => {{
         use log::error;
         let err = ::std::convert::From::from($e);
         error!("{err}");

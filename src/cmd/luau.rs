@@ -544,7 +544,8 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         let mut luau_path = args.flag_luau_path.clone();
         // safety: safe to unwrap as we're just using it to append to luau_path
         write!(luau_path, ";{}", luadate_path.as_os_str().to_string_lossy()).unwrap();
-        env::set_var("LUAU_PATH", luau_path.clone());
+        // TODO: Audit that the environment access only happens in single-threaded code.
+        unsafe { env::set_var("LUAU_PATH", luau_path.clone()) };
         info!(r#"set LUAU_PATH to "{luau_path}""#);
     }
 
@@ -805,11 +806,11 @@ fn sequential_mode(
                 Ok(result) => Ok(result),
                 Err(e) => {
                     // Extract line number if available
-                    let error_msg = if let Some(line) = e.to_string().find("line") {
+                    let error_msg = match e.to_string().find("line") { Some(line) => {
                         format!("Error at {}: {}", &e.to_string()[line..], e)
-                    } else {
+                    } _ => {
                         e.to_string()
-                    };
+                    }};
                     Err(mlua::Error::RuntimeError(error_msg))
                 },
             }
@@ -1325,11 +1326,11 @@ fn map_computedvalue(
 ) -> Result<(), CliError> {
     match computed_value {
         Value::String(string) => {
-            if let Ok(utf8) = simdutf8::basic::from_utf8(&string.as_bytes()) {
+            match simdutf8::basic::from_utf8(&string.as_bytes()) { Ok(utf8) => {
                 record.push_field(utf8);
-            } else {
+            } _ => {
                 record.push_field(&string.to_string_lossy());
-            }
+            }}
         },
         Value::Number(number) => {
             record.push_field(ryu::Buffer::new().format_finite(*number));
@@ -1681,9 +1682,11 @@ fn setup_helpers(
         }
 
         if value.is_empty() {
-            std::env::remove_var(envvar);
+            // TODO: Audit that the environment access only happens in single-threaded code.
+            unsafe { std::env::remove_var(envvar) };
         } else {
-            std::env::set_var(envvar, value);
+            // TODO: Audit that the environment access only happens in single-threaded code.
+            unsafe { std::env::set_var(envvar, value) };
         }
 
         Ok(())
@@ -2556,25 +2559,25 @@ fn setup_helpers(
             let state_name = format!("_qsv_accumulate_{nm}", nm = name.unwrap_or_default());
 
             // Get existing accumulator value or use initial value
-            let prev_acc = if let Ok(prev) = luau.globals().raw_get::<f64>(&*state_name) {
+            let prev_acc = match luau.globals().raw_get::<f64>(&*state_name) { Ok(prev) => {
                 prev
-            } else {
+            } _ => {
                 // Get initial value from optional argument or default to the first column value
-                let init_value = if let Some(init) = init {
+                let init_value = match init { Some(init) => {
                     match init {
                         mlua::Value::Number(n) => n,
                         mlua::Value::Integer(i) => i as f64,
                         mlua::Value::String(s) => fast_float2::parse(s.as_bytes()).unwrap_or(0.0),
                         _ => 0.0,
                     }
-                } else {
+                } _ => {
                     // By default, the first column value is used as the initial value
                     // unless the optional initial value is provided.
                     curr_value
-                };
+                }};
                 luau.globals().raw_set(&*state_name, init_value)?;
                 init_value
-            };
+            }};
 
             // Call the accumulator function
             let result = match func.call::<mlua::Value>((prev_acc, curr_value)) {
