@@ -6,6 +6,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2025-03-09
+
+## What's Changed
+* build(deps): bump pyo3 from 0.23.4 to 0.23.5 by @dependabot in https://github.com/dathere/qsv/pull/2558
+* build(deps): bump governor from 0.8.0 to 0.8.1 by @dependabot in https://github.com/dathere/qsv/pull/2562
+* build(deps): bump uuid from 1.14.0 to 1.15.0 by @dependabot in https://github.com/dathere/qsv/pull/2563
+* build(deps): bump uuid from 1.15.0 to 1.15.1 by @dependabot in https://github.com/dathere/qsv/pull/2566
+* `luau`: bump 0.660 to 0.663 by @jqnatividad in https://github.com/dathere/qsv/pull/2567
+* build(deps): bump redis from 0.29.0 to 0.29.1 by @dependabot in https://github.com/dathere/qsv/pull/2568
+* build(deps): bump console from 0.15.10 to 0.15.11 by @dependabot in https://github.com/dathere/qsv/pull/2569
+* build(deps): bump bytemuck from 1.21.0 to 1.22.0 by @dependabot in https://github.com/dathere/qsv/pull/2570
+* build(deps): bump serde_json from 1.0.139 to 1.0.140 by @dependabot in https://github.com/dathere/qsv/pull/2572
+* build(deps): bump minijinja from 2.7.0 to 2.8.0 by @dependabot in https://github.com/dathere/qsv/pull/2573
+* build(deps): bump minijinja-contrib from 2.7.0 to 2.8.0 by @dependabot in https://github.com/dathere/qsv/pull/2571
+* Update benchmarks.sh by @ondohotola in https://github.com/dathere/qsv/pull/2575
+* fix: `describegpt` add error handling when LLM API response format is not in expected format by @jqnatividad in https://github.com/dathere/qsv/pull/2577
+* build(deps): bump robinraju/release-downloader from 1.11 to 1.12 by @dependabot in https://github.com/dathere/qsv/pull/2580
+* build(deps): bump tempfile from 3.17.1 to 3.18.0 by @dependabot in https://github.com/dathere/qsv/pull/2581
+* fix: `tojsonl` display floats as per the JSON spec by @jqnatividad in https://github.com/dathere/qsv/pull/2583
+* fix: `apply` `currencytonum` operation by adding parsing strictness control with  `--formatstr` option by @jqnatividad in https://github.com/dathere/qsv/pull/2586
+* feat: migrate to Rust 2024 edition by @jqnatividad in https://github.com/dathere/qsv/pull/2587
+* feat: `sample` when sampling a remote file with bernoulli sampling by @jqnatividad in https://github.com/dathere/qsv/pull/2588
+* build(deps): bump pyo3 from 0.23.5 to 0.24.0 by @dependabot in https://github.com/dathere/qsv/pull/2590
+
+## New Contributors
+* @ondohotola made their first contribution in https://github.com/dathere/qsv/pull/2575
+
+**Full Changelog**: https://github.com/dathere/qsv/compare/3.1.1...3.2.0
+
 ## [3.1.1] - 2025-02-24
 
 ## Highlights:
