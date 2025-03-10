@@ -278,7 +278,7 @@ parking_lot = "0.12"
 
 [dev-dependencies]
 actix-governor = "0.8"
-actix-web = { version = "4.9", default-features = false, features = [
+actix-web = { version = "4.10", default-features = false, features = [
     "compress-brotli",
     "compress-gzip",
 ] }
