@@ -8,27 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.2.0] - 2025-03-09
 
-## What's Changed
-* build(deps): bump pyo3 from 0.23.4 to 0.23.5 by @dependabot in https://github.com/dathere/qsv/pull/2558
-* build(deps): bump governor from 0.8.0 to 0.8.1 by @dependabot in https://github.com/dathere/qsv/pull/2562
-* build(deps): bump uuid from 1.14.0 to 1.15.0 by @dependabot in https://github.com/dathere/qsv/pull/2563
-* build(deps): bump uuid from 1.15.0 to 1.15.1 by @dependabot in https://github.com/dathere/qsv/pull/2566
-* `luau`: bump 0.660 to 0.663 by @jqnatividad in https://github.com/dathere/qsv/pull/2567
-* build(deps): bump redis from 0.29.0 to 0.29.1 by @dependabot in https://github.com/dathere/qsv/pull/2568
-* build(deps): bump console from 0.15.10 to 0.15.11 by @dependabot in https://github.com/dathere/qsv/pull/2569
+### Added
+* `sample`: "streaming" bernoulli sampling of remote files when hosted on servers with range requests support  https://github.com/dathere/qsv/pull/2588
+
+### Changed
+* Updated benchmarks.sh to add Homebrew installation prompt by @ondohotola in https://github.com/dathere/qsv/pull/2575
+* feat: migrate to Rust 2024 edition https://github.com/dathere/qsv/pull/2587
+* deps: bump `luau` from 0.660 to 0.663 https://github.com/dathere/qsv/pull/2567
+* deps: bump polars to 0.46.0 at py-1.24.0 tag https://github.com/dathere/qsv/commit/f70ce71ffa2d822aaa511e66bd11a2789786c82e
+* deps: replace deprecated `simple-home-dir` with `directories` crate https://github.com/dathere/qsv/commit/6768cd59baa20b23ac9152cc8a9ce176d9e2c362
+* deps: bump arrow from 54.2.0 to 54.2.1 https://github.com/dathere/qsv/commit/fc479b2b87843a370e072248e9b6331de690f0a2
 * build(deps): bump bytemuck from 1.21.0 to 1.22.0 by @dependabot in https://github.com/dathere/qsv/pull/2570
-* build(deps): bump serde_json from 1.0.139 to 1.0.140 by @dependabot in https://github.com/dathere/qsv/pull/2572
+* build(deps): bump console from 0.15.10 to 0.15.11 by @dependabot in https://github.com/dathere/qsv/pull/2569
+* build(deps): bump governor from 0.8.0 to 0.8.1 by @dependabot in https://github.com/dathere/qsv/pull/2562
 * build(deps): bump minijinja from 2.7.0 to 2.8.0 by @dependabot in https://github.com/dathere/qsv/pull/2573
 * build(deps): bump minijinja-contrib from 2.7.0 to 2.8.0 by @dependabot in https://github.com/dathere/qsv/pull/2571
-* Update benchmarks.sh by @ondohotola in https://github.com/dathere/qsv/pull/2575
-* fix: `describegpt` add error handling when LLM API response format is not in expected format by @jqnatividad in https://github.com/dathere/qsv/pull/2577
-* build(deps): bump robinraju/release-downloader from 1.11 to 1.12 by @dependabot in https://github.com/dathere/qsv/pull/2580
-* build(deps): bump tempfile from 3.17.1 to 3.18.0 by @dependabot in https://github.com/dathere/qsv/pull/2581
-* fix: `tojsonl` display floats as per the JSON spec by @jqnatividad in https://github.com/dathere/qsv/pull/2583
-* fix: `apply` `currencytonum` operation by adding parsing strictness control with  `--formatstr` option by @jqnatividad in https://github.com/dathere/qsv/pull/2586
-* feat: migrate to Rust 2024 edition by @jqnatividad in https://github.com/dathere/qsv/pull/2587
-* feat: `sample` when sampling a remote file with bernoulli sampling by @jqnatividad in https://github.com/dathere/qsv/pull/2588
+* build(deps): bump pyo3 from 0.23.4 to 0.23.5 by @dependabot in https://github.com/dathere/qsv/pull/2558
 * build(deps): bump pyo3 from 0.23.5 to 0.24.0 by @dependabot in https://github.com/dathere/qsv/pull/2590
+* build(deps): bump redis from 0.29.0 to 0.29.1 by @dependabot in https://github.com/dathere/qsv/pull/2568
+* build(deps): bump robinraju/release-downloader from 1.11 to 1.12 by @dependabot in https://github.com/dathere/qsv/pull/2580
+* build(deps): bump serde_json from 1.0.139 to 1.0.140 by @dependabot in https://github.com/dathere/qsv/pull/2572
+* build(deps): bump tempfile from 3.17.1 to 3.18.0 by @dependabot in https://github.com/dathere/qsv/pull/2581
+* build(deps): bump uuid from 1.14.0 to 1.15.0 by @dependabot in https://github.com/dathere/qsv/pull/2563
+* build(deps): bump uuid from 1.15.0 to 1.15.1 by @dependabot in https://github.com/dathere/qsv/pull/2566
+* applied select clippy lint suggestions
+* bumped indirect dependencies to latest versions
+
+### Fixed
+* `apply`: fix `currencytonum` handling of "0.00" value by adding parsing strictness control with  `--formatstr` option https://github.com/dathere/qsv/pull/2586
+* `describegpt`: fix panic by adding error handling when LLM API response format is not in expected format https://github.com/dathere/qsv/pull/2577
+* `tojsonl`: fix display of floats as per the JSON spec https://github.com/dathere/qsv/pull/2583
 
 ## New Contributors
 * @ondohotola made their first contribution in https://github.com/dathere/qsv/pull/2575
