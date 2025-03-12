@@ -1161,6 +1161,25 @@ fn stats_infer_boolean_true_false_error() {
 }
 
 #[test]
+fn stats_infer_boolean_true_false_error_pattern_mismatch() {
+    let wrk = Workdir::new("stats_infer_boolean_true_false_error_pattern_mismatch");
+    let test_file = wrk.load_test_file("boston311-10-boolean-tf.csv");
+
+    let mut cmd = wrk.command("stats");
+    cmd.arg("--infer-boolean")
+        .arg("--boolean-patterns")
+        .arg("true:no")
+        .arg(&"--dataset-stats")
+        .arg(test_file);
+
+    let got: String = wrk.stdout(&mut cmd);
+
+    let expected = wrk.load_test_resource("boston311-10-boolean-tf-stats.csv");
+
+    assert_ne!(dos2unix(&got), dos2unix(&expected).trim_end());
+}
+
+#[test]
 fn stats_typesonly_infer_boolean_t_f() {
     let wrk = Workdir::new("stats_typesonly_infer_boolean_t_f");
     let test_file = wrk.load_test_file("boston311-10-boolean-tf.csv");
