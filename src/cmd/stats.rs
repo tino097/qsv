@@ -1845,9 +1845,7 @@ impl Stats {
             if let Some(patterns) = patterns {
                 let mut is_boolean = false;
                 for pattern in patterns {
-                    if pattern.matches(&minval).is_some()
-                        && pattern.matches(&maxval).is_some()
-                    {
+                    if pattern.matches(&minval).is_some() && pattern.matches(&maxval).is_some() {
                         pieces.push("Boolean".to_string());
                         is_boolean = true;
                         break;
