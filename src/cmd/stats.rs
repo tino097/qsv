@@ -138,10 +138,20 @@ stats options:
     --typesonly               Infer data types only and do not compute statistics.
                               Note that if you want to infer dates and boolean types, you'll still
                               need to use the --infer-dates & --infer-boolean options.
+
     --infer-boolean           Infer boolean data type. This automatically enables
                               the --cardinality option. When a column's cardinality is 2,
-                              and the 2 values' first characters are 0/1, t/f & y/n
-                              case-insensitive, the data type is inferred as boolean.
+                              and the 2 values' are in the true/false patterns specified
+                              by --boolean-patterns, the data type is inferred as boolean.
+    --boolean-patterns <arg>  Comma-separated list of boolean pattern pairs in the format
+                              "true_pattern:false_pattern". Each pattern can be a string
+                              of any length. The patterns are case-insensitive. If a pattern
+                              ends with a "*", it is treated as a prefix. For example,
+                              "t*:f*,y*:n*" will match "true", "truthy", "Truth" as boolean true
+                              values so long as the corresponding false pattern (e.g. False, f, etc.)
+                              is also matched and cardinality is 2. Ignored if --infer-boolean is false.
+                              [default: 1:0,t*:f*,y*:n*]
+
     --mode                    Compute the mode/s & antimode/s. Multimodal-aware.
                               This requires loading CSV data in memory proportionate to the
                               cardinality of each column.
@@ -287,31 +297,32 @@ use crate::{
 #[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Clone, Deserialize)]
 pub struct Args {
-    pub arg_input:            Option<String>,
-    pub flag_select:          SelectColumns,
-    pub flag_everything:      bool,
-    pub flag_typesonly:       bool,
-    pub flag_infer_boolean:   bool,
-    pub flag_mode:            bool,
-    pub flag_cardinality:     bool,
-    pub flag_median:          bool,
-    pub flag_mad:             bool,
-    pub flag_quartiles:       bool,
-    pub flag_round:           u32,
-    pub flag_nulls:           bool,
-    pub flag_infer_dates:     bool,
-    pub flag_dates_whitelist: String,
-    pub flag_prefer_dmy:      bool,
-    pub flag_force:           bool,
-    pub flag_jobs:            Option<usize>,
-    pub flag_stats_jsonl:     bool,
-    pub flag_cache_threshold: isize,
-    pub flag_output:          Option<String>,
-    pub flag_no_headers:      bool,
-    pub flag_delimiter:       Option<Delimiter>,
-    pub flag_memcheck:        bool,
-    pub flag_vis_whitespace:  bool,
-    pub flag_dataset_stats:   bool,
+    pub arg_input:             Option<String>,
+    pub flag_select:           SelectColumns,
+    pub flag_everything:       bool,
+    pub flag_typesonly:        bool,
+    pub flag_infer_boolean:    bool,
+    pub flag_boolean_patterns: String,
+    pub flag_mode:             bool,
+    pub flag_cardinality:      bool,
+    pub flag_median:           bool,
+    pub flag_mad:              bool,
+    pub flag_quartiles:        bool,
+    pub flag_round:            u32,
+    pub flag_nulls:            bool,
+    pub flag_infer_dates:      bool,
+    pub flag_dates_whitelist:  String,
+    pub flag_prefer_dmy:       bool,
+    pub flag_force:            bool,
+    pub flag_jobs:             Option<usize>,
+    pub flag_stats_jsonl:      bool,
+    pub flag_cache_threshold:  isize,
+    pub flag_output:           Option<String>,
+    pub flag_no_headers:       bool,
+    pub flag_delimiter:        Option<Delimiter>,
+    pub flag_memcheck:         bool,
+    pub flag_vis_whitespace:   bool,
+    pub flag_dataset_stats:    bool,
 }
 
 // this struct is used to serialize/deserialize the stats to
@@ -534,6 +545,62 @@ const MAX_ANTIMODES: usize = 10;
 const DEFAULT_ANTIMODES_LEN: usize = 100;
 pub const DEFAULT_MODES_SEPARATOR: &str = "|";
 
+static BOOLEAN_PATTERNS: OnceLock<Vec<BooleanPattern>> = OnceLock::new();
+#[derive(Clone, Debug)]
+struct BooleanPattern {
+    true_pattern:  String,
+    false_pattern: String,
+}
+
+impl BooleanPattern {
+    fn matches(&self, value: &str) -> Option<bool> {
+        let value_lower = value.to_lowercase();
+
+        // Check for exact match first
+        if value_lower == self.true_pattern {
+            return Some(true);
+        } else if value_lower == self.false_pattern {
+            return Some(false);
+        }
+
+        // Check for prefix match if pattern ends with "*"
+        if self.true_pattern.ends_with('*') {
+            let prefix = &self.true_pattern[..self.true_pattern.len() - 1];
+            if value_lower.starts_with(prefix) {
+                return Some(true);
+            }
+        }
+
+        if self.false_pattern.ends_with('*') {
+            let prefix = &self.false_pattern[..self.false_pattern.len() - 1];
+            if value_lower.starts_with(prefix) {
+                return Some(false);
+            }
+        }
+
+        None
+    }
+}
+
+fn parse_boolean_patterns(boolean_patterns: &str) -> Vec<BooleanPattern> {
+    boolean_patterns
+        .split(',')
+        .filter_map(|pair| {
+            let mut parts = pair.split(':');
+            let true_pattern = parts.next()?.trim().to_lowercase();
+            let false_pattern = parts.next()?.trim().to_lowercase();
+            if true_pattern.is_empty() || false_pattern.is_empty() {
+                None
+            } else {
+                Some(BooleanPattern {
+                    true_pattern,
+                    false_pattern,
+                })
+            }
+        })
+        .collect()
+}
+
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let mut args: Args = util::get_args(USAGE, argv)?;
     if args.flag_typesonly {
@@ -546,8 +613,11 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     }
 
     // inferring boolean requires inferring cardinality
-    if args.flag_infer_boolean && !args.flag_cardinality {
-        args.flag_cardinality = true;
+    if args.flag_infer_boolean {
+        if !args.flag_cardinality {
+            args.flag_cardinality = true;
+        }
+        let _ = BOOLEAN_PATTERNS.set(parse_boolean_patterns(&args.flag_boolean_patterns));
     }
 
     // check prefer_dmy env var
@@ -1609,19 +1679,19 @@ impl Stats {
         // we do this first as we want to get the sort_order, so we can skip sorting if not
         // required. We also need to do this before --infer-boolean because we need to know
         // the min/max values to determine if the range is equal to the supported boolean
-        // ranges (0/1, f/t, n/y)
+        // ranges as specified by --boolean-patterns.
         let mut minmax_range_sortorder_pieces = Vec::with_capacity(5);
-        let mut minval_lower: char = '\0';
-        let mut maxval_lower: char = '\0';
+        let mut minval = String::new();
+        let mut maxval = String::new();
         let mut column_sorted = false;
         if let Some(mm) = self
             .minmax
             .as_ref()
             .and_then(|mm| mm.show(typ, round_places, visualize_ws))
         {
-            // get first character of min/max values
-            minval_lower = mm.0.chars().next().unwrap_or_default().to_ascii_lowercase();
-            maxval_lower = mm.1.chars().next().unwrap_or_default().to_ascii_lowercase();
+            // save min/max values for boolean inferencing
+            minval.clone_from(&mm.0);
+            maxval.clone_from(&mm.1);
             if mm.3.starts_with("Ascending") {
                 column_sorted = true;
             }
@@ -1770,12 +1840,20 @@ impl Stats {
 
         // type
         if cardinality == 2 && infer_boolean {
-            // if cardinality is 2, it's a boolean if its values' first character are 0/1, f/t, n/y
-            if (minval_lower == '0' && maxval_lower == '1')
-                || (minval_lower == 'f' && maxval_lower == 't')
-                || (minval_lower == 'n' && maxval_lower == 'y')
-            {
-                pieces.push("Boolean".to_string());
+            // if cardinality is 2, it's a boolean if its in the true/false patterns
+            let patterns = BOOLEAN_PATTERNS.get();
+            if let Some(patterns) = patterns {
+                let mut is_boolean = false;
+                for pattern in patterns {
+                    if pattern.matches(&minval).is_some() && pattern.matches(&maxval).is_some() {
+                        pieces.push("Boolean".to_string());
+                        is_boolean = true;
+                        break;
+                    }
+                }
+                if !is_boolean {
+                    pieces.push(typ.to_string());
+                }
             } else {
                 pieces.push(typ.to_string());
             }
