@@ -17,8 +17,8 @@ It supports seven sampling methods:
   specified by the <sample-size> argument. For example, if p=0.1, then each record
   has a 10% chance of being selected, regardless of the other records. The final
   sample size is random and follows a binomial distribution. Uses CONSTANT MEMORY - O(1).
-  When sampling from a remote URL that supports range requests, processes the file in
-  chunks without downloading it entirely, making it especially efficient for large remote files.
+  When sampling from a remote URL, processes the file in chunks without downloading it
+  entirely, making it especially efficient for large remote files.
   https://en.wikipedia.org/wiki/Bernoulli_sampling
 
 - SYSTEMATIC: the sampling method when the --systematic option is specified.
@@ -156,6 +156,7 @@ use std::{
     str::FromStr,
 };
 
+use futures_util::StreamExt;
 use rand::{
     Rng, SeedableRng,
     distr::{Bernoulli, Distribution},
@@ -420,39 +421,122 @@ fn check_stats_cache(
     }
 }
 
-/// Checks if a URL supports range requests and returns the content length if available
-async fn check_range_support(
-    url: &str,
+// "streaming" bernoulli sampling
+#[allow(clippy::future_not_send)]
+async fn stream_bernoulli_sampling(
+    uri: &str,
     client: &reqwest::Client,
-) -> CliResult<(bool, Option<u64>)> {
-    let res = client.head(url).send().await?;
+    args: &Args,
+    rng_kind: &RngKind,
+) -> CliResult<()> {
+    let default_delim = match std::env::var("QSV_DEFAULT_DELIMITER") {
+        Ok(delim) => Delimiter::decode_delimiter(&delim).unwrap().as_byte(),
+        _ => b',',
+    };
 
-    // Check if server supports range requests
-    let supports_range = res
-        .headers()
-        .get("Accept-Ranges")
-        .is_some_and(|v| v.as_bytes() == b"bytes");
+    // Create output writer
+    let mut wtr = Config::new(args.flag_output.as_ref())
+        .delimiter(args.flag_delimiter)
+        .writer()?;
 
-    let content_length = res.content_length();
+    // Get the response
+    let response = client.get(uri).send().await?;
+    let mut stream = response.bytes_stream();
 
-    Ok((supports_range, content_length))
-}
+    // Write headers if present
+    if !args.flag_no_headers {
+        let mut header_bytes = Vec::new();
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk?;
+            header_bytes.extend_from_slice(&chunk);
 
-/// Fetches a specific range of bytes from a URL
-async fn fetch_range(
-    url: &str,
-    client: &reqwest::Client,
-    start: u64,
-    end: u64,
-) -> CliResult<Vec<u8>> {
-    let range_header = format!("bytes={start}-{end}");
-    let res = client.get(url).header("Range", range_header).send().await?;
+            // Try to read headers from accumulated bytes
+            let mut rdr = csv::ReaderBuilder::new()
+                .has_headers(true)
+                .delimiter(default_delim)
+                .from_reader(&header_bytes[..]);
 
-    if !res.status().is_success() {
-        return fail_clierror!("Failed to fetch range: HTTP {}", res.status());
+            if let Ok(headers) = rdr.headers() {
+                wtr.write_record(headers)?;
+                break;
+            }
+        }
     }
 
-    Ok(res.bytes().await?.to_vec())
+    let mut std_rng = StandardRng::create(args.flag_seed);
+    let mut faster_rng = FasterRng::create(args.flag_seed);
+    let mut crypto_rng = CryptoRng::create(args.flag_seed);
+
+    // Process records using streaming
+    let mut record = csv::ByteRecord::new();
+    let mut buffer = Vec::new();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        buffer.extend_from_slice(&chunk);
+
+        // Find the last complete record by looking for the last newline
+        if let Some(pos) = buffer.iter().rposition(|&b| b == b'\n') {
+            // Process only up to the last complete record
+            let mut csv_reader = csv::ReaderBuilder::new()
+                .has_headers(args.flag_no_headers)
+                .delimiter(default_delim)
+                .from_reader(&buffer[..=pos]);
+
+            while matches!(csv_reader.read_byte_record(&mut record), Ok(true)) {
+                match rng_kind {
+                    RngKind::Standard => {
+                        if std_rng.random_bool(args.arg_sample_size) {
+                            wtr.write_byte_record(&record)?;
+                        }
+                    },
+                    RngKind::Faster => {
+                        if faster_rng.random_bool(args.arg_sample_size) {
+                            wtr.write_byte_record(&record)?;
+                        }
+                    },
+                    RngKind::Cryptosecure => {
+                        if crypto_rng.random_bool(args.arg_sample_size) {
+                            wtr.write_byte_record(&record)?;
+                        }
+                    },
+                }
+            }
+
+            // Keep the remaining bytes (after the last newline) in the buffer
+            buffer.drain(..=pos);
+        }
+    }
+
+    // Process any remaining records in the buffer
+    if !buffer.is_empty() {
+        let mut csv_reader = csv::ReaderBuilder::new()
+            .has_headers(args.flag_no_headers)
+            .delimiter(default_delim)
+            .from_reader(&buffer[..]);
+
+        while matches!(csv_reader.read_byte_record(&mut record), Ok(true)) {
+            match rng_kind {
+                RngKind::Standard => {
+                    if std_rng.random_bool(args.arg_sample_size) {
+                        wtr.write_byte_record(&record)?;
+                    }
+                },
+                RngKind::Faster => {
+                    if faster_rng.random_bool(args.arg_sample_size) {
+                        wtr.write_byte_record(&record)?;
+                    }
+                },
+                RngKind::Cryptosecure => {
+                    if crypto_rng.random_bool(args.arg_sample_size) {
+                        wtr.write_byte_record(&record)?;
+                    }
+                },
+            }
+        }
+    }
+
+    Ok(wtr.flush()?)
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -501,122 +585,35 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     // Clone the user_agent before using it
     let user_agent = args.flag_user_agent.clone();
     args.arg_input = match args.arg_input {
-        Some(uri) if Url::parse(&uri).is_ok() && uri.starts_with("http") => {
-            let max_size_bytes = args.flag_max_size.map(|mb| mb * 1024 * 1024);
-
-            // its a remote file, download it first
-            // Setup reqwest client
-            let client = reqwest::Client::builder()
-                .user_agent(util::set_user_agent(user_agent.clone())?)
-                .timeout(std::time::Duration::from_secs(
-                    util::timeout_secs(args.flag_timeout.unwrap_or(30)).unwrap_or(30),
-                ))
-                .build()?;
-
-            // Check if server supports range requests
-            let rt = tokio::runtime::Runtime::new()?;
-            let (supports_range, content_length) =
-                rt.block_on(check_range_support(&uri, &client))?;
-
-            // For bernoulli sampling with remote file with host that supports range requests
-            // handle specially
-            if supports_range
-                && content_length.is_some()
-                && sampling_method == SamplingMethod::Bernoulli
-            {
-                log::info!("Bernoulli sampling remote file with host that supports range requests");
-                let default_delim = match std::env::var("QSV_DEFAULT_DELIMITER") {
-                    Ok(delim) => Delimiter::decode_delimiter(&delim).unwrap().as_byte(),
-                    _ => b',',
-                };
-
-                // First download a small chunk to get headers and CSV structure
-                let initial_bytes = rt.block_on(fetch_range(&uri, &client, 0, 16384))?;
-                std::fs::write(&temp_download, &initial_bytes)?;
-
-                // Create temporary config to read headers
-                let temp_config =
-                    Config::new(Some(&temp_download.path().to_str().unwrap().to_string()))
-                        .delimiter(args.flag_delimiter)
-                        .no_headers(args.flag_no_headers)
-                        .flexible(true);
-
-                let mut temp_rdr = temp_config.reader()?;
-                let headers = if args.flag_no_headers {
-                    None
-                } else {
-                    Some((*temp_rdr.headers()?).clone())
-                };
-
-                // Create output writer
-                let mut wtr = Config::new(args.flag_output.as_ref())
-                    .delimiter(args.flag_delimiter)
-                    .writer()?;
-
-                // Write headers if present
-                if let Some(headers) = headers {
-                    wtr.write_record(&headers)?;
-                }
-
-                let total_size = content_length.unwrap();
-
-                let mut std_rng = StandardRng::create(args.flag_seed);
-                let mut faster_rng = FasterRng::create(args.flag_seed);
-                let mut crypto_rng = CryptoRng::create(args.flag_seed);
-
-                // Process in chunks
-                let chunk_size = 4 * 1024 * 1024; // 4MB chunks
-                let mut offset = if args.flag_no_headers {
-                    0
-                } else {
-                    initial_bytes.len() as u64
-                };
-
-                let mut record = csv::ByteRecord::new();
-
-                while offset < total_size {
-                    let end = std::cmp::min(offset + chunk_size, total_size);
-                    let chunk = rt.block_on(fetch_range(&uri, &client, offset, end))?;
-
-                    // Process chunk with bernoulli sampling
-                    let mut chunk_rdr = csv::ReaderBuilder::new()
-                        .has_headers(false)
-                        .delimiter(default_delim)
-                        .from_reader(chunk.as_slice());
-
-                    match rng_kind {
-                        RngKind::Standard => {
-                            while chunk_rdr.read_byte_record(&mut record)? {
-                                if std_rng.random_bool(args.arg_sample_size) {
-                                    wtr.write_byte_record(&record)?;
-                                }
-                            }
-                        },
-                        RngKind::Faster => {
-                            while chunk_rdr.read_byte_record(&mut record)? {
-                                if faster_rng.random_bool(args.arg_sample_size) {
-                                    wtr.write_byte_record(&record)?;
-                                }
-                            }
-                        },
-                        RngKind::Cryptosecure => {
-                            while chunk_rdr.read_byte_record(&mut record)? {
-                                if crypto_rng.random_bool(args.arg_sample_size) {
-                                    wtr.write_byte_record(&record)?;
-                                }
-                            }
-                        },
-                    }
-
-                    offset = end + 1;
-                }
-
-                return Ok(wtr.flush()?);
+        Some(ref uri) if Url::parse(uri).is_ok() && uri.starts_with("http") => {
+            // For bernoulli sampling with remote file, handle specially
+            if sampling_method == SamplingMethod::Bernoulli {
+                log::info!("Streaming Bernoulli sampling remote file");
+                let client = reqwest::Client::builder()
+                    .user_agent(util::set_user_agent(user_agent.clone())?)
+                    .brotli(true)
+                    .gzip(true)
+                    .deflate(true)
+                    .zstd(true)
+                    .use_rustls_tls()
+                    .http2_adaptive_window(true)
+                    .connection_verbose(
+                        log::log_enabled!(log::Level::Debug)
+                            || log::log_enabled!(log::Level::Trace),
+                    )
+                    .read_timeout(std::time::Duration::from_secs(
+                        util::timeout_secs(args.flag_timeout.unwrap_or(30)).unwrap_or(30),
+                    ))
+                    .build()?;
+                let rt = tokio::runtime::Runtime::new()?;
+                rt.block_on(stream_bernoulli_sampling(uri, &client, &args, &rng_kind))?;
+                return Ok(());
             }
 
-            // For other cases or when range requests not supported, download entire file
+            // For other cases, download entire file
+            let max_size_bytes = args.flag_max_size.map(|mb| mb * 1024 * 1024);
             let future = util::download_file(
-                &uri,
+                uri,
                 temp_download.path().to_path_buf(),
                 false,
                 Some(util::set_user_agent(user_agent)?),
