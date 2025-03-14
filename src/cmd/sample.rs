@@ -599,7 +599,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             if sampling_method == SamplingMethod::Bernoulli {
                 log::info!("Streaming Bernoulli sampling remote file");
                 let client = reqwest::Client::builder()
-                    .user_agent(util::set_user_agent(user_agent.clone())?)
+                    .user_agent(util::set_user_agent(user_agent)?)
                     .brotli(true)
                     .gzip(true)
                     .deflate(true)
