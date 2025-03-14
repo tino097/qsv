@@ -70,6 +70,9 @@ end of the file is reached.
 Sampling from stdin is also supported for all sampling methods, copying stdin to a in-memory
 buffer first before sampling begins.
 
+If a stats cache is available, it will be used to do extra checks on systematic,
+weighted and cluster sampling, and to speed up sampling in general.
+
 This command is intended to provide a means to sample from a CSV data set that
 is too big to fit into memory (for example, for use with commands like
 'qsv stats' with the '--everything' option). 
