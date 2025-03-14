@@ -2,13 +2,13 @@ static USAGE: &str = r#"
 Randomly samples CSV data.
 
 It supports seven sampling methods:
-- RESERVOIR: the default sampling method when NO INDEX is present.
-  Visits every CSV record exactly once, using MEMORY PROPORTIONAL to the
+- RESERVOIR: the default sampling method when NO INDEX is present and no sampling method
+  is specified. Visits every CSV record exactly once, using MEMORY PROPORTIONAL to the
   sample size (k) - O(k).
   https://en.wikipedia.org/wiki/Reservoir_sampling
 
-- INDEXED: the default sampling method when an INDEX is present.
-  Uses random I/O to sample efficiently, as it only visits records selected
+- INDEXED: the default sampling method when an INDEX is present and no sampling method
+  is specified. Uses random I/O to sample efficiently, as it only visits records selected
   by random indexing, using MEMORY PROPORTIONAL to the sample size (k) - O(k).
   https://en.wikipedia.org/wiki/Random_access
 
@@ -18,7 +18,7 @@ It supports seven sampling methods:
   has a 10% chance of being selected, regardless of the other records. The final
   sample size is random and follows a binomial distribution. Uses CONSTANT MEMORY - O(1).
   When sampling from a remote URL, processes the file in chunks without downloading it
-  entirely, making it especially efficient for large remote files.
+  entirely, making it especially efficient for sampling large remote files.
   https://en.wikipedia.org/wiki/Bernoulli_sampling
 
 - SYSTEMATIC: the sampling method when the --systematic option is specified.
@@ -62,7 +62,13 @@ It supports seven sampling methods:
   Uses MEMORY PROPORTIONAL to the number of clusters (c) - O(c).
   https://en.wikipedia.org/wiki/Cluster_sampling
 
-Supports sampling from CSVs on remote URLs.
+Supports sampling from CSVs on remote URLs. Note that the entire file is downloaded first
+to a temporary file before sampling begins for all sampling methods except Bernoulli, which
+streams the file as it samples it, stopping when the desired sample size is reached or the
+end of the file is reached.
+
+Sampling from stdin is also supported for all sampling methods, copying stdin to a in-memory
+buffer first before sampling begins.
 
 This command is intended to provide a means to sample from a CSV data set that
 is too big to fit into memory (for example, for use with commands like
