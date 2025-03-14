@@ -432,12 +432,7 @@ fn check_stats_cache(
 
 // "streaming" bernoulli sampling
 #[allow(clippy::future_not_send)]
-async fn stream_bernoulli_sampling(
-    uri: &str,
-    client: &reqwest::Client,
-    args: &Args,
-    rng_kind: &RngKind,
-) -> CliResult<()> {
+async fn stream_bernoulli_sampling(uri: &str, args: &Args, rng_kind: &RngKind) -> CliResult<()> {
     let default_delim = match std::env::var("QSV_DEFAULT_DELIMITER") {
         Ok(delim) => Delimiter::decode_delimiter(&delim).unwrap().as_byte(),
         _ => b',',
@@ -447,6 +442,22 @@ async fn stream_bernoulli_sampling(
     let mut wtr = Config::new(args.flag_output.as_ref())
         .delimiter(args.flag_delimiter)
         .writer()?;
+
+    let client = reqwest::Client::builder()
+        .user_agent(util::set_user_agent(args.flag_user_agent.clone())?)
+        .brotli(true)
+        .gzip(true)
+        .deflate(true)
+        .zstd(true)
+        .use_rustls_tls()
+        .http2_adaptive_window(true)
+        .connection_verbose(
+            log::log_enabled!(log::Level::Debug) || log::log_enabled!(log::Level::Trace),
+        )
+        .read_timeout(std::time::Duration::from_secs(
+            util::timeout_secs(args.flag_timeout.unwrap_or(30)).unwrap_or(30),
+        ))
+        .build()?;
 
     // Get the response
     let response = client.get(uri).send().await?;
@@ -591,31 +602,14 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     let temp_download = NamedTempFile::new()?;
 
-    // Clone the user_agent before using it
-    let user_agent = args.flag_user_agent.clone();
     args.arg_input = match args.arg_input {
         Some(ref uri) if Url::parse(uri).is_ok() && uri.starts_with("http") => {
             // For bernoulli sampling with remote file, handle specially
             if sampling_method == SamplingMethod::Bernoulli {
                 log::info!("Streaming Bernoulli sampling remote file");
-                let client = reqwest::Client::builder()
-                    .user_agent(util::set_user_agent(user_agent)?)
-                    .brotli(true)
-                    .gzip(true)
-                    .deflate(true)
-                    .zstd(true)
-                    .use_rustls_tls()
-                    .http2_adaptive_window(true)
-                    .connection_verbose(
-                        log::log_enabled!(log::Level::Debug)
-                            || log::log_enabled!(log::Level::Trace),
-                    )
-                    .read_timeout(std::time::Duration::from_secs(
-                        util::timeout_secs(args.flag_timeout.unwrap_or(30)).unwrap_or(30),
-                    ))
-                    .build()?;
+
                 let rt = tokio::runtime::Runtime::new()?;
-                rt.block_on(stream_bernoulli_sampling(uri, &client, &args, &rng_kind))?;
+                rt.block_on(stream_bernoulli_sampling(uri, &args, &rng_kind))?;
                 return Ok(());
             }
 
@@ -625,7 +619,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 uri,
                 temp_download.path().to_path_buf(),
                 false,
-                Some(util::set_user_agent(user_agent)?),
+                Some(util::set_user_agent(args.flag_user_agent.clone())?),
                 args.flag_timeout,
                 max_size_bytes,
             );
