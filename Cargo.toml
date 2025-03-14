@@ -259,7 +259,7 @@ strum = { version = "0.27", features = ["phf"] }
 strum_macros = "0.27"
 sysinfo = "0.33"
 tabwriter = "1.4"
-tempfile = "3.18"
+tempfile = "3.19"
 thousands = { version = "0.2", optional = true }
 threadpool = "1.8"
 titlecase = { version = "3", optional = true }
