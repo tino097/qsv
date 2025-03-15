@@ -367,7 +367,7 @@ fn check_stats_cache(
             match method {
                 SamplingMethod::Weighted => {
                     // For weighted sampling, get max weight
-                    max_weight = if let Some(weight_col) = &args.flag_weighted {
+                    if let Some(weight_col) = &args.flag_weighted {
                         let idx = if weight_col.chars().all(char::is_numeric) {
                             weight_col.parse::<usize>().ok()
                         } else {
@@ -390,20 +390,14 @@ fn check_stats_cache(
                                     );
                                 }
 
-                                col_stats.max.clone().unwrap().parse::<f64>().ok()
-                            } else {
-                                None
+                                max_weight = col_stats.max.clone().unwrap().parse::<f64>().ok();
                             }
-                        } else {
-                            None
                         }
-                    } else {
-                        None
-                    };
+                    }
                 },
                 SamplingMethod::Cluster => {
                     // For cluster sampling, get cardinality
-                    cardinality = if let Some(cluster_col) = &args.flag_cluster {
+                    if let Some(cluster_col) = &args.flag_cluster {
                         let idx = if cluster_col.chars().all(char::is_numeric) {
                             cluster_col.parse::<usize>().ok()
                         } else {
@@ -413,13 +407,9 @@ fn check_stats_cache(
                         };
 
                         if let Some(idx) = idx {
-                            stats.get(idx).map(|col_stats| col_stats.cardinality)
-                        } else {
-                            None
+                            cardinality = stats.get(idx).map(|col_stats| col_stats.cardinality);
                         }
-                    } else {
-                        None
-                    };
+                    }
                 },
                 _ => {},
             }
