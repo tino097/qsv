@@ -66,7 +66,7 @@ sqlp_test!(
                 svec!["Buffalo", "NY", "Buffalo", "Ralph Wilson Stadium"],
             ],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -84,7 +84,7 @@ sqlp_test!(
                 svec!["", "", "Orlando", "Disney World"],
             ],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -103,7 +103,7 @@ sqlp_test!(
                 svec!["Buffalo", "NY", "Buffalo", "Ralph Wilson Stadium"],
             ],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -158,7 +158,7 @@ fn sqlp_join_cross() {
         svec!["c", "d", "1", "2"],
         svec!["c", "d", "3", "4"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -173,7 +173,7 @@ fn sqlp_join_same_colname_1820() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![svec!["id", "data"], svec!["1", "closed"]];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -234,7 +234,7 @@ fn sqlp_boston311_groupby_orderby() {
         svec!["Ward 22", "1"],
         svec!["Ward 9", "1"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -293,7 +293,7 @@ fn sqlp_boston311_groupby_orderby_all() {
         svec!["Ward 8", "3"],
         svec!["Ward 9", "1"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -355,7 +355,7 @@ fn sqlp_boston311_groupby_orderby_with_table_alias() {
         svec!["Ward 22", "1"],
         svec!["Ward 9", "1"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -387,7 +387,7 @@ fn sqlp_boston311_wnull_value() {
             "Not Specified"
         ],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -416,7 +416,7 @@ fn sqlp_decimal_comma_issue_1050() {
         svec!["1ANPALINP-CLP-00004;67500000.0"],
         svec!["1ANPALVAO1C001;6416.62"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -462,7 +462,7 @@ fn sqlp_null_aware_equality_checks() {
         svec!["false", "true", "false", "false", "true"],
         svec!["NULL", "NULL", "false", "false", "true"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -500,7 +500,7 @@ fn sqlp_rnull_values_wnull_value() {
         svec!["6", "6"],
         svec!["7", "DUNNO"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -530,7 +530,7 @@ fn sqlp_regex_operators() {
         svec!["4", "A0C"],
         svec!["5", "a0c"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // ~* operator - contains pattern (case-insensitive)
     let mut cmd = wrk.command("sqlp");
@@ -539,7 +539,7 @@ fn sqlp_regex_operators() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![svec!["n", "sval"], svec!["4", "A0C"], svec!["5", "a0c"]];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // !~ operator - does not contain pattern (case-sensitive)
     let mut cmd = wrk.command("sqlp");
@@ -554,7 +554,7 @@ fn sqlp_regex_operators() {
         svec!["3", "000"],
         svec!["4", "A0C"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // !~* operator - does not contain pattern (case-insensitive)
     let mut cmd = wrk.command("sqlp");
@@ -568,7 +568,7 @@ fn sqlp_regex_operators() {
         svec!["2", "abc"],
         svec!["3", "000"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -591,7 +591,7 @@ fn sqlp_regexp_like() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![svec!["scol"], svec!["abcde"], svec!["abc"]];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -623,7 +623,7 @@ fn sqlp_string_functions() {
         svec!["true"],
         svec!["false"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // ends_with
     let mut cmd = wrk.command("sqlp");
@@ -639,7 +639,7 @@ fn sqlp_string_functions() {
         svec!["false"],
         svec!["false"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // left
     let mut cmd = wrk.command("sqlp");
@@ -655,7 +655,7 @@ fn sqlp_string_functions() {
         svec!["a"],
         svec!["b"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // substr
     let mut cmd = wrk.command("sqlp");
@@ -671,7 +671,7 @@ fn sqlp_string_functions() {
         svec![""],
         svec![""],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // upper
     let mut cmd = wrk.command("sqlp");
@@ -687,7 +687,7 @@ fn sqlp_string_functions() {
         svec!["A"],
         svec!["B"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // lower
     let mut cmd = wrk.command("sqlp");
@@ -703,7 +703,7 @@ fn sqlp_string_functions() {
         svec!["a"],
         svec!["b"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // length
     let mut cmd = wrk.command("sqlp");
@@ -719,7 +719,7 @@ fn sqlp_string_functions() {
         svec!["1"],
         svec!["1"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // octet_length
     let mut cmd = wrk.command("sqlp");
@@ -735,7 +735,7 @@ fn sqlp_string_functions() {
         svec!["1"],
         svec!["1"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -794,7 +794,7 @@ fn sqlp_boston311_try_parsedates() {
         svec!["02", "1650000000.0"],
         svec!["18", "507000000.0"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -821,7 +821,7 @@ fn sqlp_boston311_try_parsedates_precision() {
         svec!["Ward 15", "1278926000000.000"],
         svec!["Ward 21", "878446000000.000"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -845,7 +845,7 @@ fn sqlp_boston311_try_parsedates_format() {
         svec!["Thu 2022-01-20 08:45:03", "Thu 2022-01-20 08:07:49"],
         svec!["Thu 2022-01-20 08:45:12", "Thu 2022-01-20 08:15:45"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -880,7 +880,7 @@ fn sqlp_comments() {
         svec!["c", "3"],
         svec!["a", "1"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -916,7 +916,7 @@ fn sqlp_compress() {
         svec!["a", "1"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 // disable this test on windows as it fails as the expected output is different
@@ -982,7 +982,7 @@ select ward,count(*) as cnt from temp_table2 group by ward order by cnt desc, wa
         svec!["Ward 6", "1"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1006,7 +1006,7 @@ select ward,count(*) as cnt from temp_table2 group by ward order by cnt desc, wa
     let got: String = wrk.stdout(&mut cmd);
     let expected = r#"[{"ward":"Ward 3","cnt":2},{"ward":" ","cnt":1},{"ward":"04","cnt":1},{"ward":"3","cnt":1},{"ward":"Ward 13","cnt":1},{"ward":"Ward 17","cnt":1},{"ward":"Ward 19","cnt":1},{"ward":"Ward 21","cnt":1},{"ward":"Ward 6","cnt":1}]"#;
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1038,7 +1038,7 @@ select ward,count(*) as cnt from temp_table2 group by ward order by cnt desc, wa
 {"ward":"Ward 21","cnt":1}
 {"ward":"Ward 6","cnt":1}"#;
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1069,10 +1069,10 @@ select ward,count(*) as cnt from temp_table2 group by ward order by cnt desc, wa
 {"ward":"Ward 21","cnt":1}
 {"ward":"Ward 6","cnt":1}"#;
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
     assert!(wrk.path("boston311-100.pschema.json").exists());
     let boston311_schema = std::fs::read_to_string(wrk.path("boston311-100.pschema.json")).unwrap();
-    assert_eq!(
+    similar_asserts::assert_eq!(
         boston311_schema,
         r#"{
   "fields": {
@@ -1135,7 +1135,7 @@ select ward,count(*) as cnt from boston311_roxbury group by ward order by cnt de
         svec!["Ward 12", "1"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1160,7 +1160,7 @@ fn sqlp_boston311_cte() {
         svec!["Ward 12", "1"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1186,7 +1186,7 @@ fn sqlp_boston311_cte_gz() {
         svec!["Ward 12", "1"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1226,7 +1226,7 @@ fn sqlp_boston311_case_expression() {
         svec!["101004115066", "No"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1266,7 +1266,7 @@ fn sqlp_boston311_case_expression_zlib() {
         svec!["101004115066", "No"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1308,7 +1308,7 @@ fn sqlp_boston311_case_expression_streaming() {
         svec!["101004115066", "No"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1349,7 +1349,7 @@ fn sqlp_boston311_case() {
         svec!["101004115066", "Sidewalk"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1390,7 +1390,7 @@ fn sqlp_boston311_case_zstd() {
         svec!["101004115066", "Sidewalk"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1419,7 +1419,7 @@ fn sqlp_literal_pattern_match() {
         svec!["2", "000"],
         svec!["3", "A0C"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1443,7 +1443,7 @@ fn sqlp_expression_pattern_match() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![svec!["idx", "val"], svec!["0", "ABC"], svec!["3", "A0C"]];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1486,7 +1486,7 @@ fn sqlp_sql_join_on_subquery() {
         svec!["4", "a0c", "4", "a0c"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1529,7 +1529,7 @@ fn sqlp_sql_from_subquery() {
         svec!["4", "a0c", "4", "a0c"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1560,7 +1560,7 @@ fn sqlp_sql_tsv() {
 
     let expected = "idx\tval\n0\tABC\n1\tabc\n2\t000\n3\tA0C\n4\ta0c\n";
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1591,7 +1591,7 @@ fn sqlp_sql_ssv() {
 
     let expected = "idx;val\n0;ABC\n1;abc\n2;000\n3;A0C\n4;a0c\n";
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1623,7 +1623,7 @@ fn sqlp_sql_ssv_output() {
 
     let expected = "idx;val\n0;ABC\n1;abc\n2;000\n3;A0C\n4;a0c\n";
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1658,7 +1658,7 @@ fn sqlp_issue2014() {
         ["1;comb;1.39"],
         ["2;pencil;0.49"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let mut cmd = wrk.command("slice");
     cmd.arg(output_file.clone());
@@ -1671,7 +1671,7 @@ fn sqlp_issue2014() {
         svec!["2", "pencil", "0.49"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let mut cmd = wrk.command("headers");
     cmd.arg(output_file);
@@ -1679,7 +1679,7 @@ fn sqlp_issue2014() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![["1   id"], ["2   item"], ["3   price"]];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1744,7 +1744,7 @@ fn sqlp_length_fns() {
         svec!["東京", "2", "2", "2", "6", "48"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1799,7 +1799,7 @@ fn sqlp_control_flow() {
         svec!["4", "4", "2", "4", "2", "4", "ne"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1840,7 +1840,7 @@ fn sqlp_div_sign() {
         svec!["-15.92356687898089", "-16", "-1.0"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1877,7 +1877,7 @@ fn sqlp_string_replace() {
         svec![""],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1926,7 +1926,7 @@ fn sqlp_compound_join_basic() {
         svec!["3", "4", "3", "4"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1975,7 +1975,7 @@ fn sqlp_compound_join_diff_colnames() {
         svec!["3", "3", "3", "3", "9"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2039,7 +2039,7 @@ fn sqlp_compound_join_three_tables() {
         svec!["3", "4", "3", "4", "3", "4", "4"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2080,7 +2080,7 @@ fn sqlp_string_concat() {
         svec!["ccf", "cf3", "ccf", "ccf", "cf6", "c:f:3", "c!f!3"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 // #[test]
@@ -2143,7 +2143,7 @@ fn sqlp_string_right_reverse() {
         svec!["", "", ""],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2185,7 +2185,7 @@ fn sqlp_modulo() {
         svec!["1.0", "1.0", "3.0", "3.5"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2221,7 +2221,7 @@ fn sqlp_try_cast() {
         svec!["", "2024-01-01"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2272,7 +2272,7 @@ fn sqlp_stddev_variance() {
         ],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2316,7 +2316,7 @@ fn sqlp_string_position() {
         svec!["2", "5", "2", "5"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2383,7 +2383,7 @@ fn sqlp_date_part() {
         ],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2523,7 +2523,7 @@ fn sqlp_date_part_tz() {
         ],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2549,7 +2549,7 @@ fn sqlp_date() {
         svec!["2021-03-15", "2021-03-15", "2021-03-15"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2586,7 +2586,7 @@ fn sqlp_date_strftime() {
         svec!["09.30.1980/01:25:50", "December 31, 1969", "55.33.22"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2734,7 +2734,7 @@ fn sqlp_read_jsonl() {
         ],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2779,7 +2779,7 @@ fn sqlp_string_like_ops() {
         svec!["a", "true", "false", "false", "true"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2841,7 +2841,7 @@ fn sqlp_natural_join() {
         svec!["3", "Byr", "Genar-Hofoen", "Excession", "Grey Area"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2876,7 +2876,7 @@ fn sqlp_star_ilike() {
         svec!["Diana", "Prince", "Paradise Island"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let mut cmd = wrk.command("sqlp");
     cmd.arg("starlikedata.csv").arg(
@@ -2896,7 +2896,7 @@ fn sqlp_star_ilike() {
         svec!["333", "Bruce", "Gotham"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let mut cmd = wrk.command("sqlp");
     cmd.arg("starlikedata.csv").arg(
@@ -2916,7 +2916,7 @@ fn sqlp_star_ilike() {
         svec!["Diana", "Paradise Island"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2932,7 +2932,7 @@ fn sqlp_skip_input() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![svec!["one", "two", "three"], svec!["1", "2", "3.0"]];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2981,7 +2981,7 @@ NL	Amsterdam
 IT	Rome,Milan,Turin,Naples,Venice
 "#;
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -3025,7 +3025,7 @@ NL	"This is a literal $,%,',"""
 IT	"This is a literal $,%,',"""
 "#;
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -3077,7 +3077,7 @@ fn sqlp_string_function_joins() {
         svec!["dog", "hotdog"],
         svec!["fish", "starfish"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Test STARTS_WITH
     let mut cmd = wrk.command("sqlp");
@@ -3095,7 +3095,7 @@ fn sqlp_string_function_joins() {
         svec!["cat", "category"],
         svec!["dog", "doghouse"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Test ENDS_WITH
     let mut cmd = wrk.command("sqlp");
@@ -3113,7 +3113,7 @@ fn sqlp_string_function_joins() {
         svec!["dog", "hotdog"],
         svec!["fish", "starfish"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Test reverse STRPOS (left contains right)
     let mut cmd = wrk.command("sqlp");
@@ -3126,7 +3126,7 @@ fn sqlp_string_function_joins() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![svec!["left_val", "right_val"]]; // Empty because no left values contain right values in our test data
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 // #[test]
@@ -3169,7 +3169,7 @@ fn sqlp_string_function_joins() {
 //         svec!["4", "5", "6"],
 //     ];
 
-//     assert_eq!(got, expected);
+//     similar_asserts::assert_eq!(got, expected);
 
 //     let got_dot = wrk.read_to_string(&output_dotfile).unwrap();
 //     let expected_dot = r#"digraph {
@@ -3177,5 +3177,5 @@ fn sqlp_string_function_joins() {
 //     "Filter" -> "CsvScan";
 // }"#;
 
-//     assert_eq!(got_dot, expected_dot);
+//     similar_asserts::assert_eq!(got_dot, expected_dot);
 // }

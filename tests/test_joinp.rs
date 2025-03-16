@@ -189,7 +189,7 @@ joinp_test!(joinp_inner, |wrk: Workdir, mut cmd: process::Command| {
             svec!["Buffalo", "NY", "Ralph Wilson Stadium"],
         ],
     );
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 });
 
 joinp_test_cache_schema!(
@@ -206,10 +206,10 @@ joinp_test_cache_schema!(
                 svec!["Buffalo", "NY", "Ralph Wilson Stadium"],
             ],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
         assert!(wrk.path("cities.pschema.json").exists());
         let cities_schema = std::fs::read_to_string(wrk.path("cities.pschema.json")).unwrap();
-        assert_eq!(
+        similar_asserts::assert_eq!(
             cities_schema,
             r#"{
   "fields": {
@@ -220,7 +220,7 @@ joinp_test_cache_schema!(
         );
         assert!(wrk.path("places.pschema.json").exists());
         let places_schema = std::fs::read_to_string(wrk.path("places.pschema.json")).unwrap();
-        assert_eq!(
+        similar_asserts::assert_eq!(
             places_schema,
             r#"{
   "fields": {
@@ -244,7 +244,7 @@ joinp_test_tab!(
                 svec!["Buffalo", "NY", "Ralph Wilson Stadium"],
             ],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -260,7 +260,7 @@ joinp_test_comments!(
                 svec!["Buffalo", "NY", "Ralph Wilson Stadium"],
             ],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -276,7 +276,7 @@ joinp_test_compressed!(
                 svec!["Buffalo", "NY", "Ralph Wilson Stadium"],
             ],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -295,7 +295,7 @@ joinp_test!(
                 svec!["Buffalo", "NY", "Ralph Wilson Stadium"],
             ],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -314,7 +314,7 @@ joinp_test_tab!(
                 svec!["Buffalo", "NY", "Ralph Wilson Stadium"],
             ],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -333,7 +333,7 @@ joinp_test_comments!(
                 svec!["Buffalo", "NY", "Ralph Wilson Stadium"],
             ],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -349,7 +349,7 @@ joinp_test!(
                 svec!["Boston", "MA", "Boston Garden"],
             ],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -365,7 +365,7 @@ joinp_test_tab!(
                 svec!["Boston", "MA", "Boston Garden"],
             ],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -381,7 +381,7 @@ joinp_test_comments!(
                 svec!["Boston", "MA", "Boston Garden"],
             ],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -391,7 +391,7 @@ joinp_test!(
         cmd.args(["--filter-right", "place ~* 'w'"]);
         let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
         let expected = make_rows(false, vec![svec!["Buffalo", "NY", "Ralph Wilson Stadium"]]);
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -401,7 +401,7 @@ joinp_test_comments!(
         cmd.args(["--filter-right", "place ~* 'w'"]);
         let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
         let expected = make_rows(false, vec![svec!["Buffalo", "NY", "Ralph Wilson Stadium"]]);
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -420,7 +420,7 @@ joinp_test!(
                 svec!["Buffalo", "NY", "Ralph Wilson Stadium"],
             ],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -441,7 +441,7 @@ joinp_test!(
                 svec!["Buffalo", "NY", "Ralph Wilson Stadium"],
             ],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -459,7 +459,7 @@ joinp_test!(
             svec!["NY", "Buffalo", "Ralph Wilson Stadium"],
             svec!["", "Orlando", "Disney World"],
         ];
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -478,7 +478,7 @@ joinp_test_comments!(
                 svec!["Buffalo", "NY", "Ralph Wilson Stadium"],
             ],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -487,7 +487,7 @@ joinp_test!(
     |wrk: Workdir, mut cmd: process::Command| {
         cmd.arg("--left").args(["--validate", "manytoone"]);
         let got: String = wrk.output_stderr(&mut cmd);
-        assert_eq!(
+        similar_asserts::assert_eq!(
             got,
             "Polars error: ComputeError(ErrString(\"join keys did not fulfill m:1 validation\"))\n"
         );
@@ -500,7 +500,7 @@ joinp_test!(
     |wrk: Workdir, mut cmd: process::Command| {
         cmd.arg("--left").args(["--validate", "manytoeveryone"]);
         let got: String = wrk.output_stderr(&mut cmd);
-        assert_eq!(
+        similar_asserts::assert_eq!(
             got,
             "usage error: Invalid join validation: manytoeveryone\n"
         );
@@ -513,7 +513,7 @@ joinp_test!(
     |wrk: Workdir, mut cmd: process::Command| {
         cmd.arg("--left").args(["--validate", "OneToMany"]);
         let got: String = wrk.output_stderr(&mut cmd);
-        assert_eq!(got, "(5, 3)\n");
+        similar_asserts::assert_eq!(got, "(5, 3)\n");
         wrk.assert_success(&mut cmd);
     }
 );
@@ -523,7 +523,7 @@ joinp_test!(
     |wrk: Workdir, mut cmd: process::Command| {
         cmd.arg("--left").args(["--validate", "OneToone"]);
         let got: String = wrk.output_stderr(&mut cmd);
-        assert_eq!(
+        similar_asserts::assert_eq!(
             got,
             "Polars error: ComputeError(ErrString(\"join keys did not fulfill 1:1 validation\"))\n"
         );
@@ -665,7 +665,7 @@ joinp_test!(
         cmd.arg("--left-semi");
         let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
         let expected = make_rows(true, vec![svec!["Boston", "MA"], svec!["Buffalo", "NY"]]);
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -675,7 +675,7 @@ joinp_test_tab!(
         cmd.arg("--left-semi");
         let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
         let expected = make_rows(true, vec![svec!["Boston", "MA"], svec!["Buffalo", "NY"]]);
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -685,7 +685,7 @@ joinp_test_comments!(
         cmd.arg("--left-semi");
         let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
         let expected = make_rows(true, vec![svec!["Boston", "MA"], svec!["Buffalo", "NY"]]);
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -698,7 +698,7 @@ joinp_test!(
             true,
             vec![svec!["New York", "NY"], svec!["San Francisco", "CA"]],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -711,7 +711,7 @@ joinp_test_comments!(
             true,
             vec![svec!["New York", "NY"], svec!["San Francisco", "CA"]],
         );
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -738,7 +738,7 @@ fn joinp_cross() {
         svec!["c", "d", "1", "2"],
         svec!["c", "d", "3", "4"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -773,7 +773,7 @@ fn joinp_cross_compress() {
         svec!["c", "d", "1", "2"],
         svec!["c", "d", "3", "4"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -812,7 +812,7 @@ fn joinp_asof_date() {
         svec!["2018-05-12", "83.12", "4566"],
         svec!["2019-05-12", "83.52", "4696"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -859,7 +859,7 @@ fn joinp_asof_date_compress() {
         svec!["2018-05-12", "83.12", "4566"],
         svec!["2019-05-12", "83.52", "4696"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -901,7 +901,7 @@ fn joinp_asof_date_comments() {
         svec!["2018-05-12", "83.12", "4566"],
         svec!["2019-05-12", "83.52", "4696"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -989,7 +989,7 @@ fn joinp_asofby_1() {
             "51.99"
         ],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1031,7 +1031,7 @@ fn joinp_asofby_left_place_date() {
         svec!["2018-05-12", "84.12", "Asia", "4566", "Asia"],
         svec!["2019-05-12", "83.52", "EU", "4696", "EU"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1073,7 +1073,7 @@ fn joinp_asofby_right_place_date() {
         svec!["2018-05-12", "84.12", "Asia", "4566", "Asia"],
         svec!["2019-05-12", "83.52", "EU", "4696", "EU"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1116,7 +1116,7 @@ fn joinp_asofby_leftright_place_date() {
         svec!["2018-05-12", "84.12", "Asia", "4566", "Asia"],
         svec!["2019-05-12", "83.52", "EU", "4696", "EU"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1162,7 +1162,7 @@ fn joinp_asof_nearest_date() {
         svec!["2018-05-12", "83.12", "4514"],
         svec!["2019-05-12", "83.52", "4696"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1201,7 +1201,7 @@ fn joinp_asof_date_diffcolnames() {
         svec!["2018-05-12", "83.12", "2018-01-01", "4566"],
         svec!["2019-05-12", "83.52", "2019-01-01", "4696"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1242,7 +1242,7 @@ fn joinp_asof_date_diffcolnames_sqlfilter() {
         svec!["2018-05-12", "4566"],
         svec!["2019-05-12", "4696"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1283,7 +1283,7 @@ fn joinp_ignore_case() {
         svec!["BOSTON", "MA", "boston", "Boston Garden"],
         svec!["BUFFALO", "NY", "BUFFALO", "Ralph Wilson Stadium"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1329,7 +1329,7 @@ fn joinp_ignore_case_maintain_order_right() {
         svec!["new york", "NY", "new York", "Madison Square Garden"],
         svec!["San Francisco", "CA", "san francisco", "Fisherman's Wharf"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1375,7 +1375,7 @@ fn joinp_ignore_case_maintain_order_left() {
         svec!["San Francisco", "CA", "san francisco", "Fisherman's Wharf"],
         svec!["BUFFALO", "NY", "BUFFALO", "Ralph Wilson Stadium"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1421,7 +1421,7 @@ fn joinp_ignore_case_maintain_order_left_right() {
         svec!["San Francisco", "CA", "san francisco", "Fisherman's Wharf"],
         svec!["BUFFALO", "NY", "BUFFALO", "Ralph Wilson Stadium"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1467,7 +1467,7 @@ fn joinp_ignore_case_maintain_order_right_left() {
         svec!["new york", "NY", "new York", "Madison Square Garden"],
         svec!["San Francisco", "CA", "san francisco", "Fisherman's Wharf"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1517,7 +1517,7 @@ fn joinp_filter_pattern_matching() {
         svec!["XYZ", "X-ray Yankee Zulu", "XYZ789", "Third"],
         svec!["123", "One Two Three", "123456", "Fourth"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Test 2: Right contains left
     let mut cmd = wrk.command("joinp");
@@ -1541,7 +1541,7 @@ fn joinp_filter_pattern_matching() {
         svec!["123", "One Two Three", "TEST123", "Fifth"],
         svec!["123", "One Two Three", "DEF123", "Sixth"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Test 3: Right ends-with left
     let mut cmd = wrk.command("joinp");
@@ -1561,7 +1561,7 @@ fn joinp_filter_pattern_matching() {
         svec!["123", "One Two Three", "TEST123", "Fifth"],
         svec!["123", "One Two Three", "DEF123", "Sixth"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Create reversed test data for left-side pattern matching
     wrk.create(
@@ -1602,7 +1602,7 @@ fn joinp_filter_pattern_matching() {
         svec!["ABCDEF", "Full Code 2", "ABC", "Alpha Beta Charlie"],
         svec!["XYZ789", "Full Code 3", "XYZ", "X-ray Yankee Zulu"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Test 5: Left contains right
     let mut cmd = wrk.command("joinp");
@@ -1623,7 +1623,7 @@ fn joinp_filter_pattern_matching() {
         svec!["ABCDEF", "Full Code 2", "ABC", "Alpha Beta Charlie"],
         svec!["XYZ789", "Full Code 3", "XYZ", "X-ray Yankee Zulu"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Test 6: Left ends-with right
     let mut cmd = wrk.command("joinp");
@@ -1641,7 +1641,7 @@ fn joinp_filter_pattern_matching() {
         svec!["code", "description", "pattern", "meaning"],
         svec!["ABC123", "Full Code 1", "123", "One Two Three"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1687,7 +1687,7 @@ fn test_joinp_cache_schema() {
         svec!["4", "0", "j", "k", "l", "4"],
         svec!["5", "1", "m", "n", "o", "1"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Test 2: Cache inferred schema
     let mut cmd = wrk.command("joinp");
@@ -1711,7 +1711,7 @@ fn test_joinp_cache_schema() {
     wrk.assert_success(&mut cmd);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Test 4: Use and cache string schema
     let mut cmd = wrk.command("joinp");
@@ -1721,7 +1721,7 @@ fn test_joinp_cache_schema() {
     wrk.assert_success(&mut cmd);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Test 5: Invalid cache-schema value
     let mut cmd = wrk.command("joinp");
@@ -1742,7 +1742,7 @@ joinp_test!(
             svec!["Boston", "Boston Garden"],
             svec!["Buffalo", "Ralph Wilson Stadium"],
         ];
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -1757,7 +1757,7 @@ joinp_test_tab!(
             svec!["Boston", "Boston Garden"],
             svec!["Buffalo", "Ralph Wilson Stadium"],
         ];
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -1772,7 +1772,7 @@ joinp_test_comments!(
             svec!["Boston", "Boston Garden"],
             svec!["Buffalo", "Ralph Wilson Stadium"],
         ];
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -1782,7 +1782,7 @@ joinp_test!(
         cmd.arg("--right-anti");
         let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
         let expected = vec![svec!["city", "place"], svec!["Orlando", "Disney World"]];
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -1792,7 +1792,7 @@ joinp_test_tab!(
         cmd.arg("--right-anti");
         let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
         let expected = vec![svec!["city", "place"], svec!["Orlando", "Disney World"]];
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -1802,7 +1802,7 @@ joinp_test_comments!(
         cmd.arg("--right-anti");
         let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
         let expected = vec![svec!["city", "place"], svec!["Orlando", "Disney World"]];
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 );
 
@@ -1845,7 +1845,7 @@ fn joinp_ignore_leading_zero() {
         svec!["2", "b", "2", "two"],
         svec!["3", "c", "3", "three"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1889,7 +1889,7 @@ fn joinp_ignore_leading_zero_string_schema() {
         svec!["02", "b", "02", "two"],
         svec!["3", "c", "003", "three"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1929,7 +1929,7 @@ fn joinp_ignore_leading_zero_with_non_numeric() {
         svec!["02B", "b", "0002B", "two"],
         svec!["ABC", "c", "ABC", "three"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1970,7 +1970,7 @@ fn joinp_ignore_leading_zero_multiple_columns() {
         svec!["02", "02B", "b", "002", "0002B", "two"],
         svec!["3", "ABC", "c", "03", "ABC", "three"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2012,7 +2012,7 @@ fn joinp_ignore_case_and_leading_zeros() {
         svec!["02", "02DEF", "b", "002", "0002def", "two"],
         svec!["3", "XYZ", "c", "03", "xyz", "three"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 #[test]
 fn joinp_ignore_case_and_leading_zeros_coalesce() {
@@ -2054,7 +2054,7 @@ fn joinp_ignore_case_and_leading_zeros_coalesce() {
         svec!["02", "02DEF", "b", "two"],
         svec!["3", "XYZ", "c", "three"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2096,7 +2096,7 @@ fn joinp_non_equi_greater_than() {
         svec!["banana", "2.00", "Carol", "3.50"],
         svec!["orange", "3.00", "Carol", "3.50"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2135,7 +2135,7 @@ fn joinp_non_equi_less_than() {
         svec!["party", "2024-06-15", "presentation", "2024-07-01"],
         svec!["party", "2024-06-15", "review", "2024-12-15"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2175,7 +2175,7 @@ fn joinp_non_equi_less_than_date_arithmetic() {
         // svec!["party", "2024-06-15", "presentation", "2024-07-01"], this is less than 4 months
         svec!["party", "2024-06-15", "review", "2024-12-15"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2215,7 +2215,7 @@ fn joinp_non_equi_not_equal() {
         svec!["Carol", "Red", "David", "Green"],
         svec!["Carol", "Red", "Eve", "Blue"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2295,7 +2295,7 @@ fn joinp_non_equi_compound() {
         svec!["Carol", "95000", "8", "Tech Lead", "90000", "7", "120000"],
         svec!["David", "65000", "2", "Junior Dev", "60000", "2", "80000"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2353,7 +2353,7 @@ fn joinp_ignore_leading_zeros_issue_2424() {
         svec!["5", "Cp5", "1"],
         svec!["6", "CPA", "000"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2393,7 +2393,7 @@ fn joinp_unicode_normalization() {
         svec!["cafe\u{301}", "a", "cafe\u{301}", "two"],
         svec!["café", "b", "cafe\u{301}", "two"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2433,7 +2433,7 @@ fn joinp_unicode_normalization_with_other_options() {
         svec!["001", "CAFÉ", "a", "1", "café", "one"],
         svec!["02", "cafe\u{0301}", "b", "002", "CAFE\u{0301}", "two"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2480,7 +2480,7 @@ fn joinp_unicode_normalization_ligatures() {
         svec!["oﬃce", "e", "office", "plain"],
         svec!["office", "f", "office", "plain"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Test NFKD normalization (should also decompose ligatures)
     let mut cmd = wrk.command("joinp");
@@ -2490,7 +2490,7 @@ fn joinp_unicode_normalization_ligatures() {
     wrk.assert_success(&mut cmd);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Test NFC normalization (should NOT decompose ligatures)
     let mut cmd = wrk.command("joinp");
@@ -2506,7 +2506,7 @@ fn joinp_unicode_normalization_ligatures() {
         svec!["file", "c", "file", "plain"],
         svec!["office", "f", "office", "plain"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2558,7 +2558,7 @@ fn joinp_asof_allow_exact_matches() {
     ];
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Test without --allow-exact-matches
     let mut cmd = wrk.command("joinp");
@@ -2582,7 +2582,7 @@ fn joinp_asof_allow_exact_matches() {
     ];
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2636,7 +2636,7 @@ fn joinp_asof_sortkey_options() {
     ];
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Test without --allow-exact-matches
     let mut cmd = wrk.command("joinp");
@@ -2657,7 +2657,7 @@ fn joinp_asof_sortkey_options() {
     ];
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Test with --no-sort
     let mut cmd = wrk.command("joinp");
@@ -2680,5 +2680,5 @@ fn joinp_asof_sortkey_options() {
     ];
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }

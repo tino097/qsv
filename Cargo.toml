@@ -284,6 +284,7 @@ actix-web = { version = "4.10", default-features = false, features = [
 ] }
 assert-json-diff = "2.0"
 newline-converter = "0.3"
+similar-asserts = "1.7"
 
 # disable these dev dependencies for testing the `to` command
 # as they are expensive and slow down the build/CI tests

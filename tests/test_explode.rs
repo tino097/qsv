@@ -23,7 +23,7 @@ fn explode() {
         svec!["John", "orange"],
         svec!["Jack", ""],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -52,7 +52,7 @@ fn explode_rename() {
         svec!["John", "orange"],
         svec!["Jack", ""],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -76,5 +76,5 @@ fn explode_no_headers() {
         svec!["John", "orange"],
         svec!["Jack", ""],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }

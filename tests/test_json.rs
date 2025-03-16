@@ -24,7 +24,7 @@ fn json_array_simple() {
         svec!["2", "John", "Ann", "Jessika", "false"],
         svec!["3", "Bob", "Monika", "Jerry", "true"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -40,7 +40,7 @@ fn json_array_empty() {
     let got = wrk.output_stderr(&mut cmd);
     let expected = "Expected an array of objects in JSON\n".to_string();
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -56,7 +56,7 @@ fn json_array_first_object_empty() {
     let got = wrk.output_stderr(&mut cmd);
     let expected = "Expected a non-empty JSON object\n".to_string();
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -73,7 +73,7 @@ fn json_random() {
     let expected =
         "Failed to parse JSON from file: expected value at line 1 column 1\n".to_string();
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -94,7 +94,7 @@ fn json_object_simple() {
         svec!["id", "father", "mother", "oldest_child", "boy"],
         svec!["1", "Mark", "Charlotte", "Tom", "true"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -116,7 +116,7 @@ fn json_object_select_column_output() {
         svec!["id", "mother", "oldest_child", "father"],
         svec!["1", "Charlotte", "Tom", "Mark"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -143,7 +143,7 @@ fn json_object_select_column_output_reverse() {
         svec!["boy", "oldest_child", "mother", "father", "id"],
         svec!["true", "Tom", "Charlotte", "Mark", "1"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -159,7 +159,7 @@ fn json_object_empty() {
     let got = wrk.output_stderr(&mut cmd);
     let expected = "Expected a non-empty JSON object\n".to_string();
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -179,7 +179,7 @@ fn json_fruits_stats() {
     let expected = r#"field,type,is_ascii,sum,min,max,range,min_length,max_length,mean,stddev,variance,nullcount,max_precision,sparsity
 fruit,String,true,,apple,strawberry,,5,10,,,,0,,0
 price,Float,,7,1.5,3.0,1.5,4,4,2.3333,0.6236,0.3889,0,1,0"#.to_string();
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -217,7 +217,7 @@ fn json_fruits_stats_slice_json() {
 
     let json_output: String = wrk.stdout(&mut json_cmd);
 
-    assert_eq!(stats_output, json_output);
+    similar_asserts::assert_eq!(stats_output, json_output);
 }
 
 #[test]
@@ -248,7 +248,7 @@ fn json_house_stats_slice_json() {
 
     wrk.assert_success(&mut json_cmd);
 
-    assert_eq!(stats_output, json_output);
+    similar_asserts::assert_eq!(stats_output, json_output);
 }
 
 #[test]
@@ -326,7 +326,7 @@ fn json_nested() {
         svec!["banana", "1.0"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]

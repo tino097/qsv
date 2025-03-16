@@ -751,8 +751,8 @@ mod tests {
     fn test_csv_extension() {
         let path = PathBuf::from("test.csv");
         let (ext, delim, snappy) = get_delim_by_extension(&path, b',');
-        assert_eq!(ext, "csv");
-        assert_eq!(delim, b',');
+        similar_asserts::assert_eq!(ext, "csv");
+        similar_asserts::assert_eq!(delim, b',');
         assert!(!snappy);
     }
 
@@ -760,8 +760,8 @@ mod tests {
     fn test_tsv_extension() {
         let path = PathBuf::from("test.tsv");
         let (ext, delim, snappy) = get_delim_by_extension(&path, b',');
-        assert_eq!(ext, "tsv");
-        assert_eq!(delim, b'\t');
+        similar_asserts::assert_eq!(ext, "tsv");
+        similar_asserts::assert_eq!(delim, b'\t');
         assert!(!snappy);
     }
 
@@ -769,8 +769,8 @@ mod tests {
     fn test_ssv_extension() {
         let path = PathBuf::from("test.ssv");
         let (ext, delim, snappy) = get_delim_by_extension(&path, b',');
-        assert_eq!(ext, "ssv");
-        assert_eq!(delim, b';');
+        similar_asserts::assert_eq!(ext, "ssv");
+        similar_asserts::assert_eq!(delim, b';');
         assert!(!snappy);
     }
 
@@ -778,8 +778,8 @@ mod tests {
     fn test_snappy_csv_extension() {
         let path = PathBuf::from("test.csv.sz");
         let (ext, delim, snappy) = get_delim_by_extension(&path, b',');
-        assert_eq!(ext, "csv");
-        assert_eq!(delim, b',');
+        similar_asserts::assert_eq!(ext, "csv");
+        similar_asserts::assert_eq!(delim, b',');
         assert!(snappy);
     }
 
@@ -787,8 +787,8 @@ mod tests {
     fn test_snappy_tsv_extension() {
         let path = PathBuf::from("test.tsv.sz");
         let (ext, delim, snappy) = get_delim_by_extension(&path, b',');
-        assert_eq!(ext, "tsv");
-        assert_eq!(delim, b'\t');
+        similar_asserts::assert_eq!(ext, "tsv");
+        similar_asserts::assert_eq!(delim, b'\t');
         assert!(snappy);
     }
 
@@ -797,8 +797,8 @@ mod tests {
         let path = PathBuf::from("test.unknown");
         let default_delim = b'|';
         let (ext, delim, snappy) = get_delim_by_extension(&path, default_delim);
-        assert_eq!(ext, "unknown");
-        assert_eq!(delim, default_delim);
+        similar_asserts::assert_eq!(ext, "unknown");
+        similar_asserts::assert_eq!(delim, default_delim);
         assert!(!snappy);
     }
 
@@ -807,8 +807,8 @@ mod tests {
         let path = PathBuf::from("test");
         let default_delim = b',';
         let (ext, delim, snappy) = get_delim_by_extension(&path, default_delim);
-        assert_eq!(ext, "");
-        assert_eq!(delim, default_delim);
+        similar_asserts::assert_eq!(ext, "");
+        similar_asserts::assert_eq!(delim, default_delim);
         assert!(!snappy);
     }
 }

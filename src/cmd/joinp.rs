@@ -1215,23 +1215,23 @@ pub fn tsvssv_delim<P: AsRef<Path>>(file: P, orig_delim: u8) -> u8 {
 
 #[test]
 fn test_tsvssv_delim() {
-    assert_eq!(tsvssv_delim("test.tsv", b','), b'\t');
-    assert_eq!(tsvssv_delim("test.tab", b','), b'\t');
-    assert_eq!(tsvssv_delim("test.ssv", b','), b';');
-    assert_eq!(tsvssv_delim("test.sz", b','), b',');
-    assert_eq!(tsvssv_delim("test.csv", b','), b',');
-    assert_eq!(tsvssv_delim("test.TSV", b','), b'\t');
-    assert_eq!(tsvssv_delim("test.Tab", b','), b'\t');
-    assert_eq!(tsvssv_delim("test.SSV", b','), b';');
-    assert_eq!(tsvssv_delim("test.sZ", b','), b',');
-    assert_eq!(tsvssv_delim("test.CsV", b','), b',');
-    assert_eq!(tsvssv_delim("test", b','), b',');
-    assert_eq!(tsvssv_delim("test.csv.sz", b','), b',');
-    assert_eq!(tsvssv_delim("test.tsv.sz", b','), b'\t');
-    assert_eq!(tsvssv_delim("test.tab.sz", b','), b'\t');
-    assert_eq!(tsvssv_delim("test.ssv.sz", b','), b';');
-    assert_eq!(tsvssv_delim("test.csV.Sz", b','), b',');
-    assert_eq!(tsvssv_delim("test.TSV.SZ", b','), b'\t');
-    assert_eq!(tsvssv_delim("test.Tab.sZ", b','), b'\t');
-    assert_eq!(tsvssv_delim("test.SSV.sz", b','), b';');
+    similar_asserts::assert_eq!(tsvssv_delim("test.tsv", b','), b'\t');
+    similar_asserts::assert_eq!(tsvssv_delim("test.tab", b','), b'\t');
+    similar_asserts::assert_eq!(tsvssv_delim("test.ssv", b','), b';');
+    similar_asserts::assert_eq!(tsvssv_delim("test.sz", b','), b',');
+    similar_asserts::assert_eq!(tsvssv_delim("test.csv", b','), b',');
+    similar_asserts::assert_eq!(tsvssv_delim("test.TSV", b','), b'\t');
+    similar_asserts::assert_eq!(tsvssv_delim("test.Tab", b','), b'\t');
+    similar_asserts::assert_eq!(tsvssv_delim("test.SSV", b','), b';');
+    similar_asserts::assert_eq!(tsvssv_delim("test.sZ", b','), b',');
+    similar_asserts::assert_eq!(tsvssv_delim("test.CsV", b','), b',');
+    similar_asserts::assert_eq!(tsvssv_delim("test", b','), b',');
+    similar_asserts::assert_eq!(tsvssv_delim("test.csv.sz", b','), b',');
+    similar_asserts::assert_eq!(tsvssv_delim("test.tsv.sz", b','), b'\t');
+    similar_asserts::assert_eq!(tsvssv_delim("test.tab.sz", b','), b'\t');
+    similar_asserts::assert_eq!(tsvssv_delim("test.ssv.sz", b','), b';');
+    similar_asserts::assert_eq!(tsvssv_delim("test.csV.Sz", b','), b',');
+    similar_asserts::assert_eq!(tsvssv_delim("test.TSV.SZ", b','), b'\t');
+    similar_asserts::assert_eq!(tsvssv_delim("test.Tab.sZ", b','), b'\t');
+    similar_asserts::assert_eq!(tsvssv_delim("test.SSV.sz", b','), b';');
 }

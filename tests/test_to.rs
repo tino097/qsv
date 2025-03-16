@@ -41,7 +41,7 @@ fn to_xlsx_roundtrip() {
     cmd.arg(xlsx_file);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-    assert_eq!(got, thedata);
+    similar_asserts::assert_eq!(got, thedata);
 
     wrk.assert_success(&mut cmd);
 }
@@ -86,7 +86,7 @@ fn to_xlsx_dir() {
     cmd.arg(xlsx_file.clone()).args(&["--sheet", "cities"]);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-    assert_eq!(got, cities);
+    similar_asserts::assert_eq!(got, cities);
 
     wrk.assert_success(&mut cmd);
 
@@ -94,7 +94,7 @@ fn to_xlsx_dir() {
     cmd.arg(xlsx_file).args(&["--sheet", "places"]);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-    assert_eq!(got, places);
+    similar_asserts::assert_eq!(got, places);
 
     wrk.assert_success(&mut cmd);
 }
@@ -139,7 +139,7 @@ Field Name   Field Type  Field Format
 Col1         integer     integer
 Description  string      string"#
         .to_string();
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let generated_json_file = File::open(generateddp_json_path).unwrap();
     let generated_json: serde_json::Value = serde_json::from_reader(generated_json_file).unwrap();
@@ -289,7 +289,7 @@ place       string      string"#
 //         .query_map([], |row| Ok((row.get(0).unwrap(), row.get(1).unwrap())))
 //         .unwrap();
 //     let cities: Vec<(String, String)> = cities_iter.map(|r| r.unwrap()).collect();
-//     assert_eq!(
+//     similar_asserts::assert_eq!(
 //         cities,
 //         vec![
 //             (String::from("Boston"), String::from("MA")),
@@ -306,7 +306,7 @@ place       string      string"#
 //         .query_map([], |row| Ok((row.get(0).unwrap(), row.get(1).unwrap())))
 //         .unwrap();
 //     let places: Vec<(String, String)> = places_iter.map(|r| r.unwrap()).collect();
-//     assert_eq!(
+//     similar_asserts::assert_eq!(
 //         places,
 //         vec![
 //             (String::from("Boston"), String::from("Boston Garden")),
@@ -364,7 +364,7 @@ place       string      string"#
 // city        string      string
 // state       string      string"#
 //         .to_string();
-//     assert_eq!(got, expected);
+//     similar_asserts::assert_eq!(got, expected);
 
 //     let db = Connection::open(sqlite_file_filename).unwrap();
 //     let mut stmt = db.prepare("SELECT * FROM cities ORDER BY city").unwrap();
@@ -372,7 +372,7 @@ place       string      string"#
 //         .query_map([], |row| Ok((row.get(0).unwrap(), row.get(1).unwrap())))
 //         .unwrap();
 //     let cities: Vec<(String, String)> = cities_iter.map(|r| r.unwrap()).collect();
-//     assert_eq!(
+//     similar_asserts::assert_eq!(
 //         cities,
 //         vec![
 //             (String::from("Boston"), String::from("MA")),
@@ -389,7 +389,7 @@ place       string      string"#
 //         .query_map([], |row| Ok((row.get(0).unwrap(), row.get(1).unwrap())))
 //         .unwrap();
 //     let places: Vec<(String, String)> = places_iter.map(|r| r.unwrap()).collect();
-//     assert_eq!(
+//     similar_asserts::assert_eq!(
 //         places,
 //         vec![
 //             (String::from("Boston"), String::from("Boston Garden")),
@@ -448,7 +448,7 @@ place       string      string"#
 // city        string      string
 // state       string      string"#
 //         .to_string();
-//     assert_eq!(got, expected);
+//     similar_asserts::assert_eq!(got, expected);
 
 //     // check that the parquet files were created
 //     let files = std::fs::read_dir(parquet_dir).unwrap();
@@ -456,7 +456,7 @@ place       string      string"#
 //         .map(|f| f.unwrap().file_name().into_string().unwrap())
 //         .collect::<Vec<_>>();
 //     file_names.sort();
-//     assert_eq!(file_names, vec!["cities.parquet", "places.parquet"]);
+//     similar_asserts::assert_eq!(file_names, vec!["cities.parquet", "places.parquet"]);
 
 //     // TODO: check that the parquet files are valid and contain the correct data
 // }
@@ -505,7 +505,7 @@ place       string      string"#
 // city        string      string
 // state       string      string"#
 //         .to_string();
-//     assert_eq!(got, expected);
+//     similar_asserts::assert_eq!(got, expected);
 
 //     let mut client =
 //         Client::connect("postgres://testuser:test123@localhost/testdb", NoTls).unwrap();
@@ -518,7 +518,7 @@ place       string      string"#
 //         let state: String = row.get(1);
 //         cities_result.push((city, state));
 //     }
-//     assert_eq!(
+//     similar_asserts::assert_eq!(
 //         cities_result,
 //         vec![
 //             (String::from("Boston"), String::from("MA")),
@@ -537,7 +537,7 @@ place       string      string"#
 //         let place: String = row.get(1);
 //         places_result.push((city, place));
 //     }
-//     assert_eq!(
+//     similar_asserts::assert_eq!(
 //         places_result,
 //         vec![
 //             (String::from("Boston"), String::from("Boston Garden")),
