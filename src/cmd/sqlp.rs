@@ -626,7 +626,6 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             | OptFlags::CLUSTER_WITH_COLUMNS
             | OptFlags::TYPE_COERCION
             | OptFlags::SIMPLIFY_EXPR
-            | OptFlags::FILE_CACHING
             | OptFlags::SLICE_PUSHDOWN
             | OptFlags::COMM_SUBPLAN_ELIM
             | OptFlags::COMM_SUBEXPR_ELIM
