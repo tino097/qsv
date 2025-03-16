@@ -1013,20 +1013,22 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             };
             let mut float_val;
             let mut work_date;
-            let mut format_buffer = String::new();
+            let mut error_buffer = String::new();
             let mut formatted_date = String::new();
 
             let mut processed_chunk: Vec<csv::StringRecord> = Vec::with_capacity(chunk_size);
             let mut col_idx = 0_u32;
 
             let mut cell_formula;
+            let mut itoa_buf = itoa::Buffer::new();
+            let mut ryu_buf = ryu::Buffer::new();
 
             for (row_idx, row) in chunk {
                 for cell in *row {
                     match *cell {
                         Data::Empty => record.push_field(""),
                         Data::String(ref s) => record.push_field(s),
-                        Data::Int(ref i) => record.push_field(itoa::Buffer::new().format(*i)),
+                        Data::Int(ref i) => record.push_field(itoa_buf.format(*i)),
                         Data::Float(ref f) => {
                             float_val = *f;
                             // push the ryu-formatted float value if its
@@ -1037,12 +1039,11 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                                 || float_val > i64::MAX as f64
                                 || float_val < i64::MIN as f64
                             {
-                                record.push_field(ryu::Buffer::new().format_finite(float_val));
+                                record.push_field(ryu_buf.format_finite(float_val));
                             } else {
                                 // its an i64 integer. We can't use ryu to format it, because it
-                                // will be formatted as a
-                                // float (have a ".0"). So we use itoa.
-                                record.push_field(itoa::Buffer::new().format(float_val as i64));
+                                // will be formatted as a float (have a ".0"). So we use itoa.
+                                record.push_field(itoa_buf.format(float_val as i64));
                             }
                         },
                         Data::DateTime(ref edt) => {
@@ -1096,21 +1097,21 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         Data::Error(ref e) => {
                             // safety: the unwraps in this block are safe because the format strings
                             // are hardcoded and are guaranteed to be correct
-                            format_buffer.clear();
+                            error_buffer.clear();
                             if error_format == ErrorFormat::Code {
-                                write!(format_buffer, "{e}").unwrap();
+                                write!(error_buffer, "{e}").unwrap();
                             } else {
                                 cell_formula = sheet_formulas
                                     .get_value((*row_idx, col_idx))
                                     .unwrap_or(&formula_get_value_error);
                                 if error_format == ErrorFormat::Formula {
-                                    write!(format_buffer, "#={cell_formula}").unwrap();
+                                    write!(error_buffer, "#={cell_formula}").unwrap();
                                 } else {
                                     // ErrorFormat::Both
-                                    write!(format_buffer, "{e}: ={cell_formula}").unwrap();
+                                    write!(error_buffer, "{e}: ={cell_formula}").unwrap();
                                 }
                             }
-                            record.push_field(format_buffer.as_str());
+                            record.push_field(error_buffer.as_str());
                         },
                     }
                     col_idx += 1;
