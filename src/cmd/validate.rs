@@ -487,121 +487,121 @@ fn parse_dynenum_uri(uri: &str) -> (String, String, i64, Option<String>) {
 fn test_parse_dynenum_uri() {
     // Test simple URL with no pipe separators
     let (cache_name, uri, cache_age, column) = parse_dynenum_uri("https://example.com/data.csv");
-    assert_eq!(cache_name, "data");
-    assert_eq!(uri, "https://example.com/data.csv");
-    assert_eq!(cache_age, 3600);
-    assert_eq!(column, None);
+    similar_asserts::assert_eq!(cache_name, "data");
+    similar_asserts::assert_eq!(uri, "https://example.com/data.csv");
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, None);
 
     // Test with custom cache name and age
     let (cache_name, uri, cache_age, column) =
         parse_dynenum_uri("custom_name;600|https://example.com/data.csv");
-    assert_eq!(cache_name, "custom_name");
-    assert_eq!(uri, "https://example.com/data.csv");
-    assert_eq!(cache_age, 600);
-    assert_eq!(column, None);
+    similar_asserts::assert_eq!(cache_name, "custom_name");
+    similar_asserts::assert_eq!(uri, "https://example.com/data.csv");
+    similar_asserts::assert_eq!(cache_age, 600);
+    similar_asserts::assert_eq!(column, None);
 
     // Test with column name
     let (cache_name, uri, cache_age, column) = parse_dynenum_uri("lookup.csv|name");
-    assert_eq!(cache_name, "lookup");
-    assert_eq!(uri, "lookup.csv");
-    assert_eq!(cache_age, 3600);
-    assert_eq!(column, Some("name".to_string()));
+    similar_asserts::assert_eq!(cache_name, "lookup");
+    similar_asserts::assert_eq!(uri, "lookup.csv");
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, Some("name".to_string()));
 
     // Test with cache config and column
     let (cache_name, uri, cache_age, column) = parse_dynenum_uri("MyCache;1800|lookup.csv|code");
-    assert_eq!(cache_name, "MyCache");
-    assert_eq!(uri, "lookup.csv");
-    assert_eq!(cache_age, 1800);
-    assert_eq!(column, Some("code".to_string()));
+    similar_asserts::assert_eq!(cache_name, "MyCache");
+    similar_asserts::assert_eq!(uri, "lookup.csv");
+    similar_asserts::assert_eq!(cache_age, 1800);
+    similar_asserts::assert_eq!(column, Some("code".to_string()));
 
     // Test empty cache name with age and column
     let (cache_name, uri, cache_age, column) = parse_dynenum_uri(";1800|lookup.csv|code");
-    assert_eq!(cache_name, "lookup");
-    assert_eq!(uri, "lookup.csv");
-    assert_eq!(cache_age, 1800);
-    assert_eq!(column, Some("code".to_string()));
+    similar_asserts::assert_eq!(cache_name, "lookup");
+    similar_asserts::assert_eq!(uri, "lookup.csv");
+    similar_asserts::assert_eq!(cache_age, 1800);
+    similar_asserts::assert_eq!(column, Some("code".to_string()));
 
     // Test empty cache name with age but no column
     let (cache_name, uri, cache_age, column) = parse_dynenum_uri(";1800|lookup.csv");
-    assert_eq!(cache_name, "lookup");
-    assert_eq!(uri, "lookup.csv");
-    assert_eq!(cache_age, 1800);
-    assert_eq!(column, None);
+    similar_asserts::assert_eq!(cache_name, "lookup");
+    similar_asserts::assert_eq!(uri, "lookup.csv");
+    similar_asserts::assert_eq!(cache_age, 1800);
+    similar_asserts::assert_eq!(column, None);
 
     // Test simple local file path
     let (cache_name, uri, cache_age, column) = parse_dynenum_uri("lookup.csv");
-    assert_eq!(cache_name, "lookup");
-    assert_eq!(uri, "lookup.csv");
-    assert_eq!(cache_age, 3600);
-    assert_eq!(column, None);
+    similar_asserts::assert_eq!(cache_name, "lookup");
+    similar_asserts::assert_eq!(uri, "lookup.csv");
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, None);
 
     // Test simple fully qualified local file path in Windows
     let (cache_name, uri, cache_age, column) = parse_dynenum_uri(r#"c:\Users\jdoe\lookup.csv"#);
-    assert_eq!(cache_name, "lookup");
-    assert_eq!(uri, r#"c:\Users\jdoe\lookup.csv"#);
-    assert_eq!(cache_age, 3600);
-    assert_eq!(column, None);
+    similar_asserts::assert_eq!(cache_name, "lookup");
+    similar_asserts::assert_eq!(uri, r#"c:\Users\jdoe\lookup.csv"#);
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, None);
 
     // Test simple local file path on *nix filesystem, with column
     let (cache_name, uri, cache_age, column) = parse_dynenum_uri("/tmp/lookup.csv|first_col");
-    assert_eq!(cache_name, "lookup");
-    assert_eq!(uri, "/tmp/lookup.csv");
-    assert_eq!(cache_age, 3600);
-    assert_eq!(column, Some("first_col".to_string()));
+    similar_asserts::assert_eq!(cache_name, "lookup");
+    similar_asserts::assert_eq!(uri, "/tmp/lookup.csv");
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, Some("first_col".to_string()));
 
     // Test case-insensitive cache name generation
     let (cache_name, uri, cache_age, column) = parse_dynenum_uri("LookUp.csv");
-    assert_eq!(cache_name, "LookUp");
-    assert_eq!(uri, "LookUp.csv");
-    assert_eq!(cache_age, 3600);
-    assert_eq!(column, None);
+    similar_asserts::assert_eq!(cache_name, "LookUp");
+    similar_asserts::assert_eq!(uri, "LookUp.csv");
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, None);
 
     // Test CKAN URL with custom cache name
     let (cache_name, uri, cache_age, column) =
         parse_dynenum_uri("NYC_neighborhood_data|ckan://nyc_neighborhoods?");
-    assert_eq!(cache_name, "NYC_neighborhood_data");
-    assert_eq!(uri, "ckan://nyc_neighborhoods?");
-    assert_eq!(cache_age, 3600);
-    assert_eq!(column, None);
+    similar_asserts::assert_eq!(cache_name, "NYC_neighborhood_data");
+    similar_asserts::assert_eq!(uri, "ckan://nyc_neighborhoods?");
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, None);
 
     // Test CKAN URL with custom cache name and age
     let (cache_name, uri, cache_age, column) =
         parse_dynenum_uri("NYC_neighborhood_data;5000|ckan://nyc_neighborhoods?");
-    assert_eq!(cache_name, "NYC_neighborhood_data");
-    assert_eq!(uri, "ckan://nyc_neighborhoods?");
-    assert_eq!(cache_age, 5000);
-    assert_eq!(column, None);
+    similar_asserts::assert_eq!(cache_name, "NYC_neighborhood_data");
+    similar_asserts::assert_eq!(uri, "ckan://nyc_neighborhoods?");
+    similar_asserts::assert_eq!(cache_age, 5000);
+    similar_asserts::assert_eq!(column, None);
 
     // Test CKAN URL with custom cache name, age and column
     let (cache_name, uri, cache_age, column) =
         parse_dynenum_uri("NYC_neighborhood_data;5000|ckan://nyc_neighborhoods?|Neighborhood_Col");
-    assert_eq!(cache_name, "NYC_neighborhood_data");
-    assert_eq!(uri, "ckan://nyc_neighborhoods?");
-    assert_eq!(cache_age, 5000);
-    assert_eq!(column, Some("Neighborhood_Col".to_string()));
+    similar_asserts::assert_eq!(cache_name, "NYC_neighborhood_data");
+    similar_asserts::assert_eq!(uri, "ckan://nyc_neighborhoods?");
+    similar_asserts::assert_eq!(cache_age, 5000);
+    similar_asserts::assert_eq!(column, Some("Neighborhood_Col".to_string()));
 
     // Test dathere URL with no options
     let (cache_name, uri, cache_age, column) = parse_dynenum_uri("dathere://us_states.csv");
-    assert_eq!(cache_name, "us_states");
-    assert_eq!(uri, "dathere://us_states.csv");
-    assert_eq!(cache_age, 3600);
-    assert_eq!(column, None);
+    similar_asserts::assert_eq!(cache_name, "us_states");
+    similar_asserts::assert_eq!(uri, "dathere://us_states.csv");
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, None);
 
     // Test dathere URL with column
     let (cache_name, uri, cache_age, column) =
         parse_dynenum_uri("dathere://us_states.csv|state_col");
-    assert_eq!(cache_name, "us_states");
-    assert_eq!(uri, "dathere://us_states.csv");
-    assert_eq!(cache_age, 3600);
-    assert_eq!(column, Some("state_col".to_string()));
+    similar_asserts::assert_eq!(cache_name, "us_states");
+    similar_asserts::assert_eq!(uri, "dathere://us_states.csv");
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, Some("state_col".to_string()));
 
     // Test dathere URL with custom cache name, age and column
     let (cache_name, uri, cache_age, column) =
         parse_dynenum_uri("usl_lookup;6000|dathere://us_states.csv|state_col");
-    assert_eq!(cache_name, "usl_lookup");
-    assert_eq!(uri, "dathere://us_states.csv");
-    assert_eq!(cache_age, 6000);
-    assert_eq!(column, Some("state_col".to_string()));
+    similar_asserts::assert_eq!(cache_name, "usl_lookup");
+    similar_asserts::assert_eq!(uri, "dathere://us_states.csv");
+    similar_asserts::assert_eq!(cache_age, 6000);
+    similar_asserts::assert_eq!(column, Some("state_col".to_string()));
 }
 
 /// Factory function that creates a DynEnumValidator for validating against dynamic enums loaded
@@ -1633,7 +1633,7 @@ mod tests_for_csv_to_json_conversion {
         let mut record = rdr.byte_records().next().unwrap().unwrap();
         record.trim();
 
-        assert_eq!(
+        similar_asserts::assert_eq!(
             to_json_instance(&header_types, headers.len(), &record)
                 .expect("can't convert csv to json instance"),
             json!({
@@ -1670,7 +1670,7 @@ mod tests_for_csv_to_json_conversion {
         );
         assert!(&result.is_err());
         let error = result.err().unwrap().to_string();
-        assert_eq!("Can't cast into Integer. key: C, value: 3.0e8", error);
+        similar_asserts::assert_eq!("Can't cast into Integer. key: C, value: 3.0e8", error);
     }
 }
 
@@ -1822,7 +1822,7 @@ mod tests_for_schema_validation {
 
         assert!(result.is_some());
 
-        assert_eq!(
+        similar_asserts::assert_eq!(
             vec![(
                 "/name".to_string(),
                 "\"X\" is shorter than 2 characters".to_string()
@@ -1897,7 +1897,7 @@ fn test_validate_currency_email_dynamicenum_validator() {
     let result = validate_json_instance(&instance, &compiled_schema);
 
     // Dogecoin is not an ISO currency
-    assert_eq!(
+    similar_asserts::assert_eq!(
         result,
         Some(vec![(
             "/fee".to_owned(),
@@ -1925,7 +1925,7 @@ fn test_validate_currency_email_dynamicenum_validator() {
 
     let result = validate_json_instance(&instance, &compiled_schema);
 
-    assert_eq!(
+    similar_asserts::assert_eq!(
         result,
         Some(vec![
             (
@@ -1968,10 +1968,10 @@ fn test_validate_currency_email_dynamicenum_validator() {
         let result = validate_json_instance(&instance, &compiled_schema);
 
         match i {
-            0 => assert_eq!(result, None),
-            1 => assert_eq!(result, None),
-            2 => assert_eq!(result, None),
-            3 => assert_eq!(
+            0 => similar_asserts::assert_eq!(result, None),
+            1 => similar_asserts::assert_eq!(result, None),
+            2 => similar_asserts::assert_eq!(result, None),
+            3 => similar_asserts::assert_eq!(
                 result,
                 Some(vec![
                     (
@@ -1984,29 +1984,29 @@ fn test_validate_currency_email_dynamicenum_validator() {
                     )
                 ])
             ),
-            4 => assert_eq!(
+            4 => similar_asserts::assert_eq!(
                 result,
                 Some(vec![(
                     "/name".to_owned(),
                     "\"X\" is shorter than 2 characters".to_owned()
                 )])
             ),
-            5 => assert_eq!(result, None),
-            6 => assert_eq!(
+            5 => similar_asserts::assert_eq!(result, None),
+            6 => similar_asserts::assert_eq!(
                 result,
                 Some(vec![(
                     "/agency".to_owned(),
                     "\"NYFD\" is not a valid dynamicEnum value".to_owned()
                 )])
             ),
-            7 => assert_eq!(
+            7 => similar_asserts::assert_eq!(
                 result,
                 Some(vec![(
                     "/fee".to_owned(),
                     "\"WAX 100.000,00\" is not a \"currency\"".to_owned()
                 )])
             ),
-            8 => assert_eq!(
+            8 => similar_asserts::assert_eq!(
                 result,
                 Some(vec![
                     (
@@ -2066,7 +2066,7 @@ fn test_dyn_enum_validator() {
     assert!(!validator.is_valid(&json!(5)));
     match validator.validate(&json!("lanzones")) {
         Err(e) => {
-            assert_eq!(
+            similar_asserts::assert_eq!(
                 format!("{e:?}"),
                 r#"ValidationError { instance: String("lanzones"), kind: Custom { message: "\"lanzones\" is not a valid dynamicEnum value" }, instance_path: Location(""), schema_path: Location("") }"#
             );

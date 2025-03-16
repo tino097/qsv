@@ -62,7 +62,7 @@ fn cat_rows_space() {
         (rows1.to_vec(), rows2.to_vec())
     };
     let got: Vec<Vec<String>> = run_cat("cat_rows_space", "rows", rows1, rows2, no_headers);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -74,7 +74,7 @@ fn cat_rows_headers() {
     expected.extend(rows2.clone().into_iter().skip(1));
 
     let got: Vec<Vec<String>> = run_cat("cat_rows_headers", "rows", rows1, rows2, |_| ());
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -125,7 +125,7 @@ fn cat_rowskey() {
         svec!["2", "3", "4", "5"],
         svec!["z", "y", "x", "w"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -178,7 +178,7 @@ fn cat_rowskey_ssv_tsv() {
         svec!["2", "3", "4", "5"],
         svec!["z", "y", "x", "w"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -230,7 +230,7 @@ fn cat_rows_flexible() {
         svec!["2", "3", "5", "4"],
         svec!["z", "y", "w", "x"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -282,7 +282,7 @@ fn cat_rows_flexible_infile() {
         svec!["2", "3", "5", "4"],
         svec!["z", "y", "w", "x"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -334,7 +334,7 @@ fn cat_rowskey_grouping() {
         svec!["in3", "2", "3", "4", "5"],
         svec!["in3", "z", "y", "x", "w"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -389,7 +389,7 @@ fn cat_rowskey_grouping_noheader() {
         svec!["in3", "2", "3", "5", "4"],
         svec!["in3", "z", "y", "w", "x"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -459,7 +459,7 @@ fn cat_rowskey_grouping_parentdirfname() {
         svec!["testdir/in3.csv", "2", "3", "4", "5"],
         svec!["testdir/in3.csv", "z", "y", "x", "w"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -528,7 +528,7 @@ fn cat_rowskey_grouping_parentdirfstem() {
         svec!["testdir/in3", "2", "3", "4", "5"],
         svec!["testdir/in3", "z", "y", "x", "w"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -580,7 +580,7 @@ fn cat_rowskey_grouping_infile() {
         svec!["in3", "2", "3", "4", "5"],
         svec!["in3", "z", "y", "x", "w"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -633,7 +633,7 @@ fn cat_rowskey_grouping_customname() {
         svec!["in3", "2", "3", "4", "5"],
         svec!["in3", "z", "y", "x", "w"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -684,7 +684,7 @@ fn cat_rowskey_insertion_order() {
         svec!["2", "3", "4", "5"],
         svec!["z", "y", "x", "w"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -738,7 +738,7 @@ fn cat_rowskey_insertion_order_noheader() {
         svec!["2", "3", "5", "4"],
         svec!["z", "y", "w", "x"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -759,7 +759,7 @@ fn prop_cat_cols() {
             r1.extend(r2.into_iter());
             expected.push(r1);
         }
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
         TestResult::passed()
     }
     qcheck(p as fn(CsvData, CsvData) -> TestResult);
@@ -772,7 +772,7 @@ fn cat_cols_headers() {
 
     let expected = vec![svec!["h1", "h2", "h3", "h4"], svec!["a", "b", "y", "z"]];
     let got: Vec<Vec<String>> = run_cat("cat_cols_headers", "columns", rows1, rows2, |_| ());
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -782,7 +782,7 @@ fn cat_cols_no_pad() {
 
     let expected = vec![svec!["a", "b", "y", "z"]];
     let got: Vec<Vec<String>> = run_cat("cat_cols_headers", "columns", rows1, rows2, no_headers);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -792,5 +792,5 @@ fn cat_cols_pad() {
 
     let expected = vec![svec!["a", "b", "y", "z"], svec!["", "", "y", "z"]];
     let got: Vec<Vec<String>> = run_cat("cat_cols_headers", "columns", rows1, rows2, pad);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }

@@ -171,7 +171,7 @@ fn test_slice(
             .collect::<Vec<String>>();
         let expected = format!("[{}]", expected_vec.join(","));
 
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     } else {
         let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
         let mut expected = expected
@@ -181,7 +181,7 @@ fn test_slice(
         if headers {
             expected.insert(0, svec!["header"]);
         }
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 }
 
@@ -197,7 +197,7 @@ fn test_index(name: &str, idx: isize, expected: &str, headers: bool, use_index: 
     if headers {
         expected.insert(0, svec!["header"]);
     }
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 slice_tests!(slice_simple, Some(0), Some(1), &["a"]);
@@ -364,7 +364,7 @@ fn test_slice_invert(
             .collect::<Vec<String>>();
         let expected = format!("[{}]", expected_vec.join(","));
 
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     } else {
         let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
         let mut expected = expected
@@ -374,7 +374,7 @@ fn test_slice_invert(
         if headers {
             expected.insert(0, svec!["header"]);
         }
-        assert_eq!(got, expected);
+        similar_asserts::assert_eq!(got, expected);
     }
 }
 

@@ -1575,7 +1575,7 @@ fn test_apply_jaq_invalid_json() {
 
     let value = process_jaq(json, selectors).unwrap_err().to_string();
 
-    assert_eq!(
+    similar_asserts::assert_eq!(
         "JSON error: Error(\"expected value\", line: 1, column: 1)",
         value
     );

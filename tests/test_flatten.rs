@@ -28,7 +28,7 @@ h2  ghijkl
 #
 h1  mnopqr
 h2  stuvwx";
-    assert_eq!(got, expected.to_string());
+    similar_asserts::assert_eq!(got, expected.to_string());
 }
 
 #[test]
@@ -46,7 +46,7 @@ fn flatten_no_headers() {
 #
 0   mnopqr
 1   stuvwx";
-    assert_eq!(got, expected.to_string());
+    similar_asserts::assert_eq!(got, expected.to_string());
 }
 
 #[test]
@@ -61,7 +61,7 @@ h2  ghijkl
 !mysep!
 h1  mnopqr
 h2  stuvwx";
-    assert_eq!(got, expected.to_string());
+    similar_asserts::assert_eq!(got, expected.to_string());
 }
 
 #[test]
@@ -76,7 +76,7 @@ h2  !:!ghijkl
 #
 h1  !:!mnopqr
 h2  !:!stuvwx";
-    assert_eq!(got, expected.to_string());
+    similar_asserts::assert_eq!(got, expected.to_string());
 }
 
 #[test]
@@ -91,5 +91,5 @@ h2  gh...
 #
 h1  mn...
 h2  st...";
-    assert_eq!(got, expected.to_string());
+    similar_asserts::assert_eq!(got, expected.to_string());
 }

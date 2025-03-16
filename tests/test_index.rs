@@ -269,7 +269,7 @@ fn index_outdated_stats() {
         ],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]

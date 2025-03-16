@@ -74,7 +74,7 @@ fn sort_select() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![svec!["2", "a"], svec!["1", "b"]];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -103,7 +103,7 @@ fn sort_numeric() {
         svec!["2", "c"],
         svec!["10", "a"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -132,7 +132,7 @@ fn sort_numeric_faster() {
         svec!["2", "c"],
         svec!["10", "a"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -163,7 +163,7 @@ fn sort_numeric_non_natural() {
         svec!["7.4", "d"],
         svec!["8.33", "a"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -194,7 +194,7 @@ fn sort_numeric_non_natural_faster() {
         svec!["7.4", "d"],
         svec!["8.33", "a"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -224,7 +224,7 @@ fn sort_case_insensitive() {
         svec!["N", "S"],
         svec!["n", "S"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -254,7 +254,7 @@ fn sort_case_insensitive_faster() {
         svec!["N", "S"],
         svec!["n", "S"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -284,7 +284,7 @@ fn sort_case_sensitive() {
         svec!["n", "S"],
         svec!["n", "s"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -314,7 +314,7 @@ fn sort_case_sensitive_faster() {
         svec!["n", "S"],
         svec!["n", "s"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -330,7 +330,7 @@ fn sort_reverse() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![svec!["R", "S"], svec!["2", "a"], svec!["1", "b"]];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -349,7 +349,7 @@ fn sort_reverse_faster() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![svec!["R", "S"], svec!["2", "a"], svec!["1", "b"]];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -378,7 +378,7 @@ fn sort_uniq() {
         svec!["2", "c"],
         svec!["3", "f"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -411,7 +411,7 @@ fn sort_uniq_faster() {
         svec!["2", "c"],
         svec!["3", "f"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -443,7 +443,7 @@ fn sort_random() {
         svec!["2", "a"],
         svec!["6", "e"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -478,7 +478,7 @@ fn sort_random_faster() {
         svec!["5", "f"],
         svec!["3", "d"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -513,7 +513,7 @@ fn sort_random_secure() {
         svec!["4", "c"],
         svec!["5", "f"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 /// Order `a` and `b` lexicographically using `Ord`

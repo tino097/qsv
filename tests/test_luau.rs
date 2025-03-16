@@ -27,7 +27,7 @@ fn luau_map() {
         svec!["c", "72", "73"],
         svec!["d", "7", "8"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -57,7 +57,7 @@ fn luau_map_multiple_columns() {
         svec!["c", "72", "73", "74", "75"],
         svec!["d", "7", "8", "9", "10"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -87,7 +87,7 @@ fn luau_map_idx() {
         svec!["c", "72", "216"],
         svec!["d", "7", "28"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -117,7 +117,7 @@ fn luau_aggregation() {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -149,7 +149,7 @@ fn luau_aggregation_with_begin() {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -183,11 +183,11 @@ fn luau_aggregation_with_begin_end() {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7/72 Grand total of 4 rows: 275\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -224,11 +224,11 @@ fn luau_aggregation_with_embedded_begin_end() {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7/72 Grand total of 4 rows: 275\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -312,11 +312,11 @@ END {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7/72 Grand total of 4 rows: 116 adjusted: 145\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -429,7 +429,7 @@ END {
         svec!["b", "24", "107.12"],
         svec!["a", "13", "120.64"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7.28/74.88 Grand total of 4 rows: 120.64\n";
@@ -525,7 +525,7 @@ END {
         svec!["b", "24", "107.12"],
         svec!["a", "13", "120.64"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7.28/74.88 Grand total of 4 rows: 120.64\n";
@@ -621,7 +621,7 @@ END {
         svec!["b", "24", "107.12"],
         svec!["a", "13", "120.64"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7.28/74.88 Grand total of 4 rows: 120.64\n";
@@ -804,12 +804,12 @@ END {
         svec!["a", "13", "13"],
         svec!["b", "24", "37"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end =
         "This is the break msg.\nMin/Max: 13/24 Grand total of 2 rows: 50\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -875,11 +875,11 @@ END {
         svec!["b", "24", "37"],
         svec!["d", "7", "44"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 0/24 Grand total of 3 rows: 94\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -942,11 +942,11 @@ END {
         svec!["c", "72", "charlie"],
         svec!["d", "7", "delta"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "4 rows\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1013,15 +1013,15 @@ END {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7/72 Grand total of 3 rows: 275\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     let table_txt = wrk.read_to_string("count.txt").unwrap();
     let expected_table_txt = "4\n";
-    assert_eq!(table_txt, expected_table_txt);
+    similar_asserts::assert_eq!(table_txt, expected_table_txt);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1151,11 +1151,11 @@ END {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let echo_text = wrk.read_to_string("echo.txt").unwrap();
     let expected_echo_text = "the quick brown fox jumped over the lazy dog";
-    assert_eq!(
+    similar_asserts::assert_eq!(
         dos2unix(&echo_text).trim_end(),
         dos2unix(expected_echo_text).trim_end()
     );
@@ -1232,11 +1232,11 @@ END {
         svec!["d4", "74", "275"],
         svec!["Grand Total", "", "275"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7/72 Grand total of 4 rows: 275\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1320,11 +1320,11 @@ END {
         svec!["a0", "130", "305"],
         svec!["Grand Total", "", "305"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7/72 Grand total of 4 rows: 305\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1382,11 +1382,11 @@ END {
         svec!["c", "1", "10"],
         svec!["d", "5", "15"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "The lock combination is 2715. Again, 2, 7, 1, 5.\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1433,11 +1433,11 @@ fn luau_aggregation_with_embedded_begin_end_and_beginend_options() {
         svec!["c", "72", "110"],
         svec!["d", "7", "117"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Minimum/Maximum: 7/72 Grand total of 4 rows: 279\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1518,11 +1518,11 @@ END {
         svec!["b", "24", "103"],
         svec!["a", "13", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7/72 Grand total of 4 rows: 305\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1612,11 +1612,11 @@ END {
         svec!["b", "24", "103"],
         svec!["a", "13", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max/Range: 7/72/65 Grand total of 4 rows: 305\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1702,11 +1702,11 @@ END {
         svec!["b", "24", "103", "113.3"],
         svec!["a", "13", "116", "127.6"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7/72 Grand total of 4 rows: 305\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1742,11 +1742,11 @@ fn luau_aggregation_with_begin_end_and_luau_syntax() {
         svec!["c", "-72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: -72/13 Grand total of 4 rows: 275\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1779,7 +1779,7 @@ fn luau_map_remap_with_qsv_coalesce() {
         svec!["3", "Aramais E. Aghabekyan"],
         svec!["4", "Eleonora V. Avanesyan"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1811,7 +1811,7 @@ fn luau_map_math() {
         svec!["c", "72", "36"],
         svec!["d", "7", "3"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1841,7 +1841,7 @@ fn luau_map_require_luadate() {
         svec!["c", "72", "2008-11-04", "2009-01-15T00:00:00"],
         svec!["d", "7", "2020-03-11", "2020-03-18T00:00:00"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1887,7 +1887,7 @@ return mintest"#;
         svec!["c", "72", "42", "42"],
         svec!["d", "7", "6.5", "6.5"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1941,7 +1941,7 @@ fn luau_map_header_with_nonalphanumeric_chars() {
         svec!["c", "72", "c36"],
         svec!["d", "7", "d3"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1969,7 +1969,7 @@ fn luau_map_no_headers() {
         svec!["c", "72", "73"],
         svec!["d", "7", "8"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1997,7 +1997,7 @@ fn luau_map_no_headers_multiple_new_columns() {
         svec!["c", "72", "73", "74", "75"],
         svec!["d", "7", "8", "9", "10"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2027,7 +2027,7 @@ fn luau_map_exec() {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2057,7 +2057,7 @@ fn luau_map_exec_long_column_names() {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2089,7 +2089,7 @@ fn luau_map_no_globals() {
         svec!["3", "72", "4"],
         svec!["4", "7", "5"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2119,7 +2119,7 @@ fn luau_map_boolean() {
         svec!["c", "72", "true"],
         svec!["d", "7", "false"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2146,7 +2146,7 @@ fn luau_filter() {
         svec!["b", "24"],
         svec!["c", "72"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2175,7 +2175,7 @@ fn luau_filter_error() {
         svec!["c", "72"],
         svec!["d", "7"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2213,7 +2213,7 @@ fn luau_filter_num() {
         svec!["i", "0.000123"],
         svec!["j", "-7.01"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2255,7 +2255,7 @@ return tonumber(number) > tonumber(limit)
         .arg("data.csv");
 
     let testenvvar = std::env::var("TESTENVVAR").unwrap_or_else(|_| "NOT SET".to_string());
-    assert_eq!(testenvvar, "NOT SET");
+    similar_asserts::assert_eq!(testenvvar, "NOT SET");
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
@@ -2265,7 +2265,7 @@ return tonumber(number) > tonumber(limit)
         svec!["c", "72"],
         svec!["f", "42"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2311,7 +2311,7 @@ return tonumber(number) > tonumber(limit)
         svec!["c", "72"],
         svec!["f", "42"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2360,7 +2360,7 @@ return config_tbl["string"] .. " " .. config_tbl["object"]["nested"] .. " " .. t
         svec!["b", "hello value 42"],
         svec!["c", "hello value 42"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2405,7 +2405,7 @@ return users[idx]["name"]
         svec!["2", "Bob"],
         svec!["3", "Charlie"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2496,7 +2496,7 @@ fn luau_cumsum_single() {
         svec!["40", "100"],
         svec!["50", "150"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2539,7 +2539,7 @@ fn luau_cumsum_multiple() {
         svec!["150", "80", "450", "205", "245"],
         svec!["300", "100", "750", "305", "445"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2572,7 +2572,7 @@ fn luau_cumsum_invalid_input() {
         svec!["bad", "30"], // Invalid input treated as 0
         svec!["30", "60"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2603,7 +2603,7 @@ fn luau_cumprod() {
         svec!["4", "24"],
         svec!["5", "120"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2636,7 +2636,7 @@ fn luau_cummax_cummin() {
         svec!["3", "15", "3"],
         svec!["12", "15", "3"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2674,7 +2674,7 @@ fn luau_lag() {
         svec!["40", "30", "20"],
         svec!["50", "40", "30"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2712,7 +2712,7 @@ fn luau_cumany_cumall() {
         svec!["0", "true", "false"],
         svec!["20", "true", "false"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2750,7 +2750,7 @@ fn luau_diff() {
         svec!["20", "7", "5"],
         svec!["18", "-2", "5"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2786,7 +2786,7 @@ fn luau_cumany_cumall_with_strings() {
         svec!["world", "true", "false"],
         svec!["", "true", "false"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2817,7 +2817,7 @@ fn luau_cumall_with_numbers() {
         svec!["20", "false"],
         svec!["30", "false"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2853,7 +2853,7 @@ fn luau_lag_with_default() {
         svec!["30", "20", "10"],
         svec!["40", "30", "20"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2890,7 +2890,7 @@ fn luau_diff_with_lag() {
         svec!["115", "-5", "15", "-4.2%"],
         svec!["140", "25", "20", "21.7%"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2929,7 +2929,7 @@ fn luau_cumulative_stats() {
         svec!["5", "25", "5", "55"],
         svec!["20", "25", "5", "75"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2976,7 +2976,7 @@ return "ok"
 
     // Verify the compact JSON output
     let json_content = std::fs::read_to_string(wrk.path("output.json")).unwrap();
-    assert_eq!(
+    similar_asserts::assert_eq!(
         json_content,
         r#"{"numbers":[13,24,72,7],"nested":{"key":"value","array":[1,2,3]},"letters":["a","b","c","d"]}"#
     );
@@ -3006,7 +3006,7 @@ return "ok"
   ]
 }"#;
 
-    assert_eq!(pretty_content, expected);
+    similar_asserts::assert_eq!(pretty_content, expected);
 }
 
 #[test]
@@ -3049,13 +3049,13 @@ return "ok"
     let json: serde_json::Value = serde_json::from_str(&json_content).unwrap();
 
     assert!(json["null_value"].is_null());
-    assert_eq!(json["boolean_true"], json!(true));
-    assert_eq!(json["boolean_false"], json!(false));
-    assert_eq!(json["number_integer"], json!(42));
-    assert_eq!(json["number_float"], json!(3.14));
-    assert_eq!(json["empty_string"], json!(""));
-    assert_eq!(json["empty_table"], json!({}));
-    assert_eq!(json["nested_empty"]["empty"], json!({}));
+    similar_asserts::assert_eq!(json["boolean_true"], json!(true));
+    similar_asserts::assert_eq!(json["boolean_false"], json!(false));
+    similar_asserts::assert_eq!(json["number_integer"], json!(42));
+    similar_asserts::assert_eq!(json["number_float"], json!(3.14));
+    similar_asserts::assert_eq!(json["empty_string"], json!(""));
+    similar_asserts::assert_eq!(json["empty_table"], json!({}));
+    similar_asserts::assert_eq!(json["nested_empty"]["empty"], json!({}));
 }
 
 #[test]
@@ -3100,7 +3100,7 @@ return qsv_accumulate(value, weighted_sum, 0)
         svec!["40", "300"], // 140 + 40 * 4
         svec!["50", "550"], // 300 + 50 * 5
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -3145,7 +3145,7 @@ return qsv_accumulate(value, weighted_sum)
         svec!["40", "310"], // 150 + 40 * 4
         svec!["50", "560"], // 310 + 50 * 5
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -3194,7 +3194,7 @@ return accumulated
         svec!["40", "200"], // 160 + 40
         svec!["50", "250"], // 200 + 50
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -3244,7 +3244,7 @@ return qsv_accumulate(value, func_with_reset, 0)
         svec!["4", "4"], // reset since 8 > 7
         svec!["1", "5"], // 4 + 1
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -3268,7 +3268,7 @@ fn luau_cumsum_overflow() {
     wrk.assert_err(&mut cmd);
     let stderr = wrk.output_stderr(&mut cmd);
     let expected = "Luau errors encountered: 1\n";
-    assert_eq!(stderr, expected);
+    similar_asserts::assert_eq!(stderr, expected);
 }
 
 #[test]

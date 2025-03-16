@@ -164,11 +164,11 @@ const WHITESPACE_MARKERS: &[(char, &str)] = &[
 /// ```
 /// let s = "hello\tworld\n";
 /// let vis = visualize_whitespace(s);
-/// assert_eq!(vis, "hello《→》world《¶》");
+/// similar_asserts::assert_eq!(vis, "hello《→》world《¶》");
 ///
 /// let spaces = "   ";
 /// let vis = visualize_whitespace(spaces);
-/// assert_eq!(vis, "《_》《_》《_》");
+/// similar_asserts::assert_eq!(vis, "《_》《_》《_》");
 /// ```
 pub fn visualize_whitespace(s: &str) -> String {
     // Check if string is all spaces

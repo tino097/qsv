@@ -25,7 +25,7 @@ macro_rules! select_test {
                         .map(|s| s.to_string())
                         .collect::<Vec<String>>(),
                 ];
-                assert_eq!(got, expected);
+                similar_asserts::assert_eq!(got, expected);
             }
 
             #[test]
@@ -45,7 +45,7 @@ macro_rules! select_test {
                         .map(|s| s.to_string())
                         .collect::<Vec<String>>(),
                 ];
-                assert_eq!(got, expected);
+                similar_asserts::assert_eq!(got, expected);
             }
         }
     };
@@ -251,7 +251,7 @@ fn test_select_sort() {
             "value7", "value4"
         ],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -268,7 +268,7 @@ fn test_select_sort_subset() {
         svec!["8", "9", "4", "7"],
         svec!["value3", "value2", "value7", "value4"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -297,7 +297,7 @@ fn test_select_random_seeded() {
             "value6", "value10"
         ],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -317,5 +317,5 @@ fn test_select_random_seeded_subset() {
         svec!["7", "4", "9", "8"],
         svec!["value4", "value7", "value2", "value3"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }

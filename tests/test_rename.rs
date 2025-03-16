@@ -23,7 +23,7 @@ fn rename() {
         svec!["2", "a"],
         svec!["3", "d"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -49,7 +49,7 @@ fn rename_generic() {
         svec!["2", "a"],
         svec!["3", "d"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -70,7 +70,7 @@ fn rename_noheaders() {
         svec!["2", "a"],
         svec!["3", "d"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -91,5 +91,5 @@ fn rename_noheaders_generic() {
         svec!["2", "a"],
         svec!["3", "d"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }

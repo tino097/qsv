@@ -11,6 +11,7 @@ use std::{env, fmt, mem::transmute, ops};
 
 use quickcheck::{Arbitrary, Gen, QuickCheck, Testable};
 use rand::Rng;
+// use similar_asserts::assert_eq;
 
 macro_rules! svec[
     ($($x:expr_2021),*) => (
@@ -23,7 +24,7 @@ macro_rules! svec[
 
 macro_rules! rassert_eq {
     ($given:expr_2021, $expected:expr_2021) => {{
-        assert_eq!($given, $expected);
+        similar_asserts::assert_eq!($given, $expected);
         true
     }};
 }

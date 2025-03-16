@@ -137,7 +137,7 @@ fn generate_schema_with_optional_flags_notrim_and_validate_with_errors() {
 
     assert!(!validation_error_output.is_empty());
 
-    assert_eq!(
+    similar_asserts::assert_eq!(
         validation_errors_expected.to_string(),
         validation_error_output
     );
@@ -222,7 +222,7 @@ fn generate_schema_with_optional_flags_trim_and_validate_with_errors() {
 
     assert!(!validation_error_output.is_empty());
 
-    assert_eq!(
+    similar_asserts::assert_eq!(
         validation_errors_expected.to_string(),
         validation_error_output
     );
@@ -378,5 +378,5 @@ fn generate_schema_with_const_and_enum_constraints() {
   ]
 }"#;
 
-    assert_eq!(output_schema_string, expected_schema);
+    similar_asserts::assert_eq!(output_schema_string, expected_schema);
 }
