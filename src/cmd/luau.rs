@@ -1545,6 +1545,7 @@ fn setup_helpers(
                 log::info!("unknown log level: {log_level} msg: {log_msg}");
             },
         }
+        log::logger().flush();
         Ok(())
     })?;
     luau.globals().set("qsv_log", qsv_log)?;
