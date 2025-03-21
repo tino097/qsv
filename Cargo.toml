@@ -239,7 +239,7 @@ rust_decimal = { version = "1.36", default-features = false }
 ryu = "1"
 sanitize-filename = { version = "0.6", optional = true }
 sha256 = "1.5"
-simd-json = "0.14"
+simd-json = "0.15"
 self_update = { version = "0.42", features = [
     "archive-zip",
     "compression-zip-deflate",
