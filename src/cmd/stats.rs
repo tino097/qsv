@@ -1454,22 +1454,19 @@ impl Commute for WhichStats {
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 struct Stats {
     // optimal memory layout for this central struct
-    // this ordering consumes 720 bytes
-    // which is 16 bytes less than previous memory layout
-    typ:           FieldType,                 // 1 byte
-    is_ascii:      bool,                      // 1 byte
-    max_precision: u16,                       // 2 bytes
-    which:         WhichStats,                // 10 bytes
-    nullcount:     u64,                       // 8 bytes
-    sum_stotlen:   u64,                       // 8 bytes
-    sum:           Option<TypedSum>,          // 32 bytes
-    modes:         Option<Unsorted<Vec<u8>>>, // 32 bytes
-    median:        Option<Unsorted<f64>>,     // 32 bytes
-    mad:           Option<Unsorted<f64>>,     // 32 bytes
-    quartiles:     Option<Unsorted<f64>>,     // 32 bytes
-    online:        Option<OnlineStats>,       // 48 bytes
-    online_len:    Option<OnlineStats>,       // 48 bytes
-    minmax:        Option<TypedMinMax>,       // 432 bytes
+    // this ordering consumes 656 bytes
+    typ:               FieldType,                 // 1 byte
+    is_ascii:          bool,                      // 1 byte
+    max_precision:     u16,                       // 2 bytes
+    which:             WhichStats,                // 10 bytes
+    nullcount:         u64,                       // 8 bytes
+    sum_stotlen:       u64,                       // 8 bytes
+    sum:               Option<TypedSum>,          // 32 bytes
+    modes:             Option<Unsorted<Vec<u8>>>, // 32 bytes
+    med_mad_quartiles: Option<Unsorted<f64>>,     // 32 bytes
+    online:            Option<OnlineStats>,       // 48 bytes
+    online_len:        Option<OnlineStats>,       // 48 bytes
+    minmax:            Option<TypedMinMax>,       // 432 bytes
 }
 
 #[inline]
@@ -1488,16 +1485,8 @@ fn timestamp_ms_to_rfc3339(timestamp: i64, typ: FieldType) -> String {
 
 impl Stats {
     fn new(which: WhichStats) -> Stats {
-        let (
-            mut sum,
-            mut minmax,
-            mut online,
-            mut online_len,
-            mut modes,
-            mut median,
-            mut mad,
-            mut quartiles,
-        ) = (None, None, None, None, None, None, None, None);
+        let (mut sum, mut minmax, mut online, mut online_len, mut modes, mut med_mad_quartiles) =
+            (None, None, None, None, None, None);
         if which.sum {
             sum = Some(TypedSum::default());
         }
@@ -1511,13 +1500,8 @@ impl Stats {
         if which.mode || which.cardinality {
             modes = Some(stats::Unsorted::default());
         }
-        if which.quartiles {
-            quartiles = Some(stats::Unsorted::default());
-        } else if which.median {
-            median = Some(stats::Unsorted::default());
-        }
-        if which.mad {
-            mad = Some(stats::Unsorted::default());
+        if which.quartiles || which.median || which.mad {
+            med_mad_quartiles = Some(stats::Unsorted::default());
         }
         Stats {
             typ: FieldType::default(),
@@ -1528,9 +1512,7 @@ impl Stats {
             sum_stotlen: 0,
             sum,
             modes,
-            median,
-            mad,
-            quartiles,
+            med_mad_quartiles,
             online,
             online_len,
             minmax,
@@ -1584,12 +1566,7 @@ impl Stats {
                 } else {
                     // safety: we know the sample is a valid f64, so we can use unwrap
                     let n = unsafe { fast_float2::parse(sample).unwrap_unchecked() };
-                    if let Some(v) = self.mad.as_mut() {
-                        v.add(n);
-                    }
-                    if let Some(v) = self.quartiles.as_mut() {
-                        v.add(n);
-                    } else if let Some(v) = self.median.as_mut() {
+                    if let Some(v) = self.med_mad_quartiles.as_mut() {
                         v.add(n);
                     }
                     if let Some(v) = self.online.as_mut() {
@@ -1637,13 +1614,7 @@ impl Stats {
                     // millisecond precision.
                     #[allow(clippy::cast_precision_loss)]
                     let n = timestamp_val as f64;
-                    if let Some(v) = self.median.as_mut() {
-                        v.add(n);
-                    }
-                    if let Some(v) = self.mad.as_mut() {
-                        v.add(n);
-                    }
-                    if let Some(v) = self.quartiles.as_mut() {
+                    if let Some(v) = self.med_mad_quartiles.as_mut() {
                         v.add(n);
                     }
                     if let Some(v) = self.online.as_mut() {
@@ -2037,8 +2008,14 @@ impl Stats {
         // as q2==median, cache and reuse it if the --median or --mad flags are set
         let mut existing_median = None;
         let mut quartile_pieces = Vec::with_capacity(9);
-        match self.quartiles.as_mut().and_then(|v| match typ {
-            TInteger | TFloat | TDate | TDateTime => v.quartiles(),
+        match self.med_mad_quartiles.as_mut().and_then(|v| match typ {
+            TInteger | TFloat | TDate | TDateTime => {
+                if self.which.quartiles {
+                    v.quartiles()
+                } else {
+                    None
+                }
+            },
             _ => None,
         }) {
             None => {
@@ -2119,15 +2096,21 @@ impl Stats {
         }
 
         // median
-        if let Some(v) = self.median.as_mut().and_then(|v| {
+        if let Some(v) = self.med_mad_quartiles.as_mut().and_then(|v| {
             if let TNull | TString = typ {
                 None
             } else if let Some(existing_median) = existing_median {
                 // if we already calculated the q2 (median) in the quartiles, return it
-                Some(existing_median)
-            } else {
+                if self.which.median {
+                    Some(existing_median)
+                } else {
+                    None
+                }
+            } else if self.which.median {
                 // otherwise, calculate the median
                 v.median()
+            } else {
+                None
             }
         }) {
             if typ == TDateTime || typ == TDate {
@@ -2140,11 +2123,13 @@ impl Stats {
         }
 
         // median absolute deviation (MAD)
-        if let Some(v) = self.mad.as_mut().and_then(|v| {
+        if let Some(v) = self.med_mad_quartiles.as_mut().and_then(|v| {
             if let TNull | TString = typ {
                 None
-            } else {
+            } else if self.which.mad {
                 v.mad(existing_median)
+            } else {
+                None
             }
         }) {
             if typ == TDateTime || typ == TDate {
@@ -2188,9 +2173,7 @@ impl Commute for Stats {
         self.sum_stotlen = self.sum_stotlen.saturating_add(other.sum_stotlen);
         self.sum.merge(other.sum);
         self.modes.merge(other.modes);
-        self.median.merge(other.median);
-        self.mad.merge(other.mad);
-        self.quartiles.merge(other.quartiles);
+        self.med_mad_quartiles.merge(other.med_mad_quartiles);
         self.online.merge(other.online);
         self.online_len.merge(other.online_len);
         self.minmax.merge(other.minmax);
