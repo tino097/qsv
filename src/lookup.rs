@@ -197,6 +197,8 @@ pub fn load_lookup_table(
         rowcount,
     };
 
+    drop(rdr);
+
     Ok(lur)
 }
 
