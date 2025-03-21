@@ -1584,13 +1584,12 @@ impl Stats {
                 } else {
                     // safety: we know the sample is a valid f64, so we can use unwrap
                     let n = unsafe { fast_float2::parse(sample).unwrap_unchecked() };
-                    if let Some(v) = self.median.as_mut() {
-                        v.add(n);
-                    }
                     if let Some(v) = self.mad.as_mut() {
                         v.add(n);
                     }
                     if let Some(v) = self.quartiles.as_mut() {
+                        v.add(n);
+                    } else if let Some(v) = self.median.as_mut() {
                         v.add(n);
                     }
                     if let Some(v) = self.online.as_mut() {
