@@ -517,6 +517,9 @@ END {
 
     wrk.assert_success(&mut cmd);
 
+    // Add a delay or ensure the file is closed properly
+    std::thread::sleep(std::time::Duration::from_millis(500));
+
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["letter", "Amount", "Running Total"],
