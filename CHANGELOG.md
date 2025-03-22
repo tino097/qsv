@@ -8,26 +8,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.3.0] - 2025-03-22
 
-## What's Changed
+### Added
+* `stats`: add configurable boolean inferencing https://github.com/dathere/qsv/pull/2595
+* `stats`: add `--percentiles` option https://github.com/dathere/qsv/pull/2617
+
+### Changed
+* replace std `assert_eq!` macro with `similar_asserts::assert_eq!` macro for easier debugging https://github.com/dathere/qsv/pull/2605
+* deps: bump polars to 0.46.0 at py-1.25.2 tag https://github.com/dathere/qsv/pull/2604
 * build(deps): bump actix-web from 4.9.0 to 4.10.2 by @dependabot in https://github.com/dathere/qsv/pull/2591
 * build(deps): bump indexmap from 2.7.1 to 2.8.0 by @dependabot in https://github.com/dathere/qsv/pull/2592
-* build(deps): bump reqwest from 0.12.12 to 0.12.13 by @dependabot in https://github.com/dathere/qsv/pull/2593
-* feat: `stats` add configurable boolean inferencing by @jqnatividad in https://github.com/dathere/qsv/pull/2595
-* build(deps): bump rfd from 0.15.2 to 0.15.3 by @dependabot in https://github.com/dathere/qsv/pull/2597
-* build(deps): bump reqwest from 0.12.13 to 0.12.14 by @dependabot in https://github.com/dathere/qsv/pull/2596
-* refactor: `sample` "streaming" Bernoulli sampling by @jqnatividad in https://github.com/dathere/qsv/pull/2600
-* build(deps): bump uuid from 1.15.1 to 1.16.0 by @dependabot in https://github.com/dathere/qsv/pull/2601
-* build(deps): bump tempfile from 3.18.0 to 3.19.0 by @dependabot in https://github.com/dathere/qsv/pull/2602
-* build(deps): bump qsv-stats from 0.30.0 to 0.31.0 by @dependabot in https://github.com/dathere/qsv/pull/2603
-* dips: bump polars to 0.46.0 at py-1.25.2 tag by @jqnatividad in https://github.com/dathere/qsv/pull/2604
-* replace std `assert_eq!` macro with `similar_asserts::assert_eq!` macro for easier debugging by @jqnatividad in https://github.com/dathere/qsv/pull/2605
-* build(deps): bump zip from 2.2.3 to 2.4.1 by @dependabot in https://github.com/dathere/qsv/pull/2607
-* build(deps): bump reqwest from 0.12.14 to 0.12.15 by @dependabot in https://github.com/dathere/qsv/pull/2609
 * build(deps): bump mimalloc from 0.1.43 to 0.1.44 by @dependabot in https://github.com/dathere/qsv/pull/2608
-* build(deps): bump tempfile from 3.19.0 to 3.19.1 by @dependabot in https://github.com/dathere/qsv/pull/2612
-* build(deps): bump simd-json from 0.14.3 to 0.15.0 by @dependabot in https://github.com/dathere/qsv/pull/2615
+* build(deps): bump qsv-stats from 0.30.0 to 0.31.0 by @dependabot in https://github.com/dathere/qsv/pull/2603
+* build(deps): bump reqwest from 0.12.12 to 0.12.13 by @dependabot in https://github.com/dathere/qsv/pull/2593
+* build(deps): bump reqwest from 0.12.13 to 0.12.14 by @dependabot in https://github.com/dathere/qsv/pull/2596
+* build(deps): bump reqwest from 0.12.14 to 0.12.15 by @dependabot in https://github.com/dathere/qsv/pull/2609
+* build(deps): bump rfd from 0.15.2 to 0.15.3 by @dependabot in https://github.com/dathere/qsv/pull/2597
 * build(deps): bump rust_decimal from 1.37.0 to 1.37.1 by @dependabot in https://github.com/dathere/qsv/pull/2616
-* feat: `stats` add `--percentiles` option by @jqnatividad in https://github.com/dathere/qsv/pull/2617
+* build(deps): bump simd-json from 0.14.3 to 0.15.0 by @dependabot in https://github.com/dathere/qsv/pull/2615
+* build(deps): bump tempfile from 3.18.0 to 3.19.0 by @dependabot in https://github.com/dathere/qsv/pull/2602
+* build(deps): bump tempfile from 3.19.0 to 3.19.1 by @dependabot in https://github.com/dathere/qsv/pull/2612
+* build(deps): bump uuid from 1.15.1 to 1.16.0 by @dependabot in https://github.com/dathere/qsv/pull/2601
+* build(deps): bump zip from 2.2.3 to 2.4.1 by @dependabot in https://github.com/dathere/qsv/pull/2607
+* apply select clippy lint suggestions
+* bumped indirect dependencies to latest version
+* set Rust nightly to 2025-03-07, the same version Polars uses https://github.com/dathere/qsv/commit/17f6bdb3f80c5798d154a133428f0ca6ff59fc79
+
+### Fixed
+* updated lock file, primarily to fix [CVE-2025-29787](https://github.com/advisories/GHSA-94vh-gphv-8pm8) https://github.com/dathere/qsv/commit/e44e5df3fd296fcf85293d46a7afe08f40b86693
+* `luau`: fix flaky register_lookup_table CI test that only intermittently fails in Windows by using buffered writer in lookup `write_cache_file` helper https://github.com/dathere/qsv/commit/f494b46d334259d370c92cd8cc6b211bc81c244a
+* `sample`: refactor "streaming" Bernoulli sampling, so it actually works without requiring range requests support https://github.com/dathere/qsv/pull/2600
 
 **Full Changelog**: https://github.com/dathere/qsv/compare/3.2.0...3.3.0
 
