@@ -2192,6 +2192,8 @@ pub fn get_stats_records(
             flag_median:           false,
             flag_quartiles:        false,
             flag_mad:              false,
+            flag_percentiles:      false,
+            flag_percentile_list:  "5,10,40,60,90,95".to_string(),
             flag_nulls:            false,
             flag_round:            4,
             flag_infer_dates:      true,
