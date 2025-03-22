@@ -1730,6 +1730,7 @@ fn stats_vis_whitespace() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
 
     // Create expected output with visualized whitespace using the exact markers
+    #[rustfmt::skip]
     let expected = vec![
         svec![
             "field",
@@ -1776,119 +1777,517 @@ fn stats_vis_whitespace() {
             "antimode",
             "antimode_count",
             "antimode_occurrences",
+            "percentiles",
             "qsv__value"
         ],
+        svec!["col1", "String", "false", "", "no_whitespace", "z obscure whitespace 《⋮》 《␌》 《→》 《␤》 《␎》 《␏》 《␊》 《␍》 are also visible", "", "Unsorted", "0.3333", "6", "62", "152", "21.7143", "22.883", "523.6327", "1.0538", "", "", "", "", "", "", "", "0", "", "0", "", "", "", "", "", "", "", "", "", "", "6", "0.8571", "value《¶》", "1", "2", "no_whitespace|the spaces in this field are visible as normal spaces|value《→》|value《⏎》|z obscure whitespa...", "5", "1", "", ""],
+        svec!["col2", "String", "true", "", "《→》value", "also_none", "", "Unsorted", "0.2", "0", "9", "37", "5.2857", "2.5475", "6.4898", "0.482", "", "", "", "", "", "", "", "1", "", "0.1429", "", "", "", "", "", "", "", "", "", "", "6", "0.8571", "《¶》value", "1", "2", "NULL|《→》value|《⏎》value|    |also_none", "5", "1", "", ""], 
+        svec!["col3", "String", "true", "", "《→》value《→》", "the trailing spaces are left alone   ", "", "Unsorted", "0.3333", "5", "37", "80", "11.4286", "10.5269", "110.8163", "0.9211", "", "", "", "", "", "", "", "0", "", "0", "", "", "", "", "", "", "", "", "", "", "6", "0.8571", "《¶》value《¶》", "1", "2", "《→》value《→》|《⏎》value《⏎》|          |clean|the trailing spaces are left alone   ", "5", "1", "", ""], 
+        svec!["qsv__rowcount", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "7"], 
+        svec!["qsv__columncount", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "3"], 
+        svec!["qsv__filesize_bytes", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "323"], 
+        svec!["qsv__fingerprint_hash", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "39f84fb60ced1488a91fc3a7a6e22692dafb414e0d43f09ab768c5f9981db630"]
+    ];
+    // similar_asserts::
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn stats_percentiles() {
+    let wrk = Workdir::new("stats_percentiles");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["n"],
+            svec!["1"],
+            svec!["2"],
+            svec!["3"],
+            svec!["4"],
+            svec!["5"],
+            svec!["6"],
+            svec!["7"],
+            svec!["8"],
+            svec!["9"],
+            svec!["10"],
+        ],
+    );
+
+    let mut cmd = wrk.command("stats");
+    cmd.arg("data.csv")
+        .arg("--percentiles")
+        .arg("--percentile-list")
+        .arg("10,25,50,75,90");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert!(got.len() > 0);
+
+    let expected = vec![
         svec![
-            "col1",
-            "String",
-            "false",
-            "",
-            "no_whitespace",
-            r#"z obscure whitespace 《⋮》 《␌》 《→》 《␤》 《␎》 《␏》 《␊》 《␍》 are also visible"#,
-            "",
-            "Unsorted",
-            "0.3333",
-            "6",
-            "62",
-            "152",
-            "21.7143",
-            "22.883",
-            "523.6327",
-            "1.0538",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "0",
-            "",
-            "0",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "6",
-            "0.8571",
-            "value《¶》",
-            "1",
-            "2",
-            r#"no_whitespace|the spaces in this field are visible as normal spaces|value《→》|value《⏎》|z obscure whitespa..."#,
-            "5",
-            "1",
-            ""
+            "field",
+            "type",
+            "is_ascii",
+            "sum",
+            "min",
+            "max",
+            "range",
+            "sort_order",
+            "sortiness",
+            "min_length",
+            "max_length",
+            "sum_length",
+            "avg_length",
+            "stddev_length",
+            "variance_length",
+            "cv_length",
+            "mean",
+            "sem",
+            "geometric_mean",
+            "harmonic_mean",
+            "stddev",
+            "variance",
+            "cv",
+            "nullcount",
+            "max_precision",
+            "sparsity",
+            "percentiles",
         ],
         svec![
-            "col2",
-            "String",
-            "true",
+            "n",
+            "Integer",
             "",
-            "《→》value",
-            "also_none",
-            "",
-            "Unsorted",
-            "0.2",
-            "0",
+            "55",
+            "1",
+            "10",
             "9",
-            "37",
-            "5.2857",
-            "2.5475",
-            "6.4898",
-            "0.482",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
+            "Ascending",
             "1",
             "",
-            "0.1429",
             "",
             "",
             "",
             "",
             "",
             "",
+            "5.5",
+            "0.9083",
+            "4.5287",
+            "3.4142",
+            "2.8723",
+            "8.25",
+            "52.2233",
+            "0",
             "",
-            "",
-            "",
-            "",
-            "6",
-            "0.8571",
-            "《¶》value",
-            "1",
-            "2",
-            r#"NULL|《→》value|《⏎》value|    |also_none"#,
-            "5",
-            "1",
-            ""
+            "0",
+            "1|3|5|8|9",
+        ],
+    ];
+
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn stats_percentiles_floats() {
+    let wrk = Workdir::new("stats_percentiles");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["n"],
+            svec!["1"],
+            svec!["2"],
+            svec!["3"],
+            svec!["4"],
+            svec!["5"],
+            svec!["6"],
+            svec!["7"],
+            svec!["8"],
+            svec!["9"],
+            svec!["10"],
+            svec!["11"],
+            svec!["12"],
+            svec!["13"],
+            svec!["14"],
+            svec!["15"],
+        ],
+    );
+
+    let mut cmd = wrk.command("stats");
+    cmd.arg("data.csv")
+        .arg("--percentiles")
+        .arg("--percentile-list")
+        .arg("10.5,25.25,50.75,75.6,90.1");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert!(got.len() > 0);
+
+    let expected = vec![
+        svec![
+            "field",
+            "type",
+            "is_ascii",
+            "sum",
+            "min",
+            "max",
+            "range",
+            "sort_order",
+            "sortiness",
+            "min_length",
+            "max_length",
+            "sum_length",
+            "avg_length",
+            "stddev_length",
+            "variance_length",
+            "cv_length",
+            "mean",
+            "sem",
+            "geometric_mean",
+            "harmonic_mean",
+            "stddev",
+            "variance",
+            "cv",
+            "nullcount",
+            "max_precision",
+            "sparsity",
+            "percentiles",
         ],
         svec![
-            "col3",
-            "String",
-            "true",
+            "n",
+            "Integer",
             "",
-            "《→》value《→》",
-            "the trailing spaces are left alone   ",
+            "120",
+            "1",
+            "15",
+            "14",
+            "Ascending",
+            "1",
             "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "8",
+            "1.1155",
+            "6.4234",
+            "4.5205",
+            "4.3205",
+            "18.6667",
+            "54.0062",
+            "0",
+            "",
+            "0",
+            "2|4|8|12|14"
+        ],
+    ];
+
+    //similar_asserts::
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn stats_percentiles_with_dates() {
+    let wrk = Workdir::new("stats_percentiles_dates");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["date"],
+            svec!["2020-01-01"],
+            svec!["2020-02-01"],
+            svec!["2020-03-01"],
+            svec!["2020-04-01"],
+            svec!["2020-05-01"],
+        ],
+    );
+
+    let mut cmd = wrk.command("stats");
+    cmd.arg("data.csv")
+        .arg("--percentiles")
+        .arg("--percentile-list")
+        .arg("25,50,75")
+        .arg("--infer-dates");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert!(got.len() > 0);
+
+    let expected = vec![
+        svec![
+            "field",
+            "type",
+            "is_ascii",
+            "sum",
+            "min",
+            "max",
+            "range",
+            "sort_order",
+            "sortiness",
+            "min_length",
+            "max_length",
+            "sum_length",
+            "avg_length",
+            "stddev_length",
+            "variance_length",
+            "cv_length",
+            "mean",
+            "sem",
+            "geometric_mean",
+            "harmonic_mean",
+            "stddev",
+            "variance",
+            "cv",
+            "nullcount",
+            "max_precision",
+            "sparsity",
+            "percentiles",
+        ],
+        svec![
+            "date",
+            "Date",
+            "",
+            "",
+            "2020-01-01",
+            "2020-05-01",
+            "121",
+            "Ascending",
+            "1",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "2020-03-01",
+            "19.10099",
+            "18322.55022",
+            "18322.50044",
+            "42.71112",
+            "1824.24",
+            "0.2331",
+            "0",
+            "",
+            "0",
+            "2020-02-01|2020-03-01|2020-04-01",
+        ],
+    ];
+
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn stats_percentiles_with_nulls() {
+    let wrk = Workdir::new("stats_percentiles_nulls");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["n"],
+            svec!["1"],
+            svec![""],
+            svec!["3"],
+            svec![""],
+            svec!["5"],
+        ],
+    );
+
+    let mut cmd = wrk.command("stats");
+    cmd.arg("data.csv")
+        .arg("--percentiles")
+        .arg("--percentile-list")
+        .arg("25,50,75");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert!(got.len() > 0);
+
+    let expected = vec![
+        svec![
+            "field",
+            "type",
+            "is_ascii",
+            "sum",
+            "min",
+            "max",
+            "range",
+            "sort_order",
+            "sortiness",
+            "min_length",
+            "max_length",
+            "sum_length",
+            "avg_length",
+            "stddev_length",
+            "variance_length",
+            "cv_length",
+            "mean",
+            "sem",
+            "geometric_mean",
+            "harmonic_mean",
+            "stddev",
+            "variance",
+            "cv",
+            "nullcount",
+            "max_precision",
+            "sparsity",
+            "percentiles",
+        ],
+        svec![
+            "n",
+            "Integer",
+            "",
+            "9",
+            "1",
+            "5",
+            "4",
+            "Ascending",
+            "1",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "3",
+            "0.9428",
+            "2.4662",
+            "1.9565",
+            "1.633",
+            "2.6667",
+            "54.4331",
+            "2",
+            "",
+            "0.4",
+            "1|3|5",
+        ],
+    ];
+
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn stats_percentiles_mixed_types() {
+    let wrk = Workdir::new("stats_percentiles_mixed");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["mixed"],
+            svec!["1"],
+            svec!["2.5"],
+            svec!["abc"],
+            svec!["3"],
+            svec!["4.7"],
+        ],
+    );
+
+    let mut cmd = wrk.command("stats");
+    cmd.arg("data.csv")
+        .arg("--percentiles")
+        .arg("--percentile-list")
+        .arg("25,50,75");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert!(got.len() > 0);
+
+    let expected = vec![
+        svec![
+            "field",
+            "type",
+            "is_ascii",
+            "sum",
+            "min",
+            "max",
+            "range",
+            "sort_order",
+            "sortiness",
+            "min_length",
+            "max_length",
+            "sum_length",
+            "avg_length",
+            "stddev_length",
+            "variance_length",
+            "cv_length",
+            "mean",
+            "sem",
+            "geometric_mean",
+            "harmonic_mean",
+            "stddev",
+            "variance",
+            "cv",
+            "nullcount",
+            "max_precision",
+            "sparsity",
+            "percentiles",
+        ],
+        svec![
+            "mixed", "String", "true", "", "3", "abc", "", "Unsorted", "0", "1", "3", "7", "1.4",
+            "0.9428", "0.8889", "0.6734", "", "", "", "", "", "", "", "0", "", "0", "",
+        ],
+    ];
+
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn stats_percentiles_edge_cases() {
+    let wrk = Workdir::new("stats_percentiles_edge");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["n"],
+            svec!["0.0000001"],
+            svec!["1000000"],
+            svec!["-999999"],
+            svec!["0.0000099"],
+            svec!["999999"],
+        ],
+    );
+
+    let mut cmd = wrk.command("stats");
+    cmd.arg("data.csv")
+        .arg("--percentiles")
+        .arg("--percentile-list")
+        .arg("10,25,50,75,90");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert!(got.len() > 0);
+
+    let expected = vec![
+        svec![
+            "field",
+            "type",
+            "is_ascii",
+            "sum",
+            "min",
+            "max",
+            "range",
+            "sort_order",
+            "sortiness",
+            "min_length",
+            "max_length",
+            "sum_length",
+            "avg_length",
+            "stddev_length",
+            "variance_length",
+            "cv_length",
+            "mean",
+            "sem",
+            "geometric_mean",
+            "harmonic_mean",
+            "stddev",
+            "variance",
+            "cv",
+            "nullcount",
+            "max_precision",
+            "sparsity",
+            "percentiles",
+        ],
+        svec![
+            "n",
+            "Float",
+            "",
+            "1000000",
+            "-999999.0",
+            "1000000.0",
+            "1999999",
             "Unsorted",
-            "0.3333",
-            "5",
-            "37",
-            "80",
-            "11.4286",
-            "10.5269",
-            "110.8163",
-            "0.9211",
+            "0.5",
             "",
             "",
             "",
@@ -1896,216 +2295,163 @@ fn stats_vis_whitespace() {
             "",
             "",
             "",
+            "200000",
+            "334663.7716",
+            "",
+            "",
+            "748330.9428",
+            "559999199999.6",
+            "374.1655",
+            "0",
+            "4",
+            "0",
+            "-999999|0|0|999999|1000000"
+        ],
+    ];
+
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn stats_percentiles_custom_list() {
+    let wrk = Workdir::new("stats_percentiles_custom");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["n"],
+            svec!["1"],
+            svec!["2"],
+            svec!["3"],
+            svec!["4"],
+            svec!["5"],
+            svec!["6"],
+            svec!["7"],
+            svec!["8"],
+            svec!["9"],
+            svec!["10"],
+        ],
+    );
+
+    let mut cmd = wrk.command("stats");
+    cmd.arg("data.csv")
+        .arg("--percentiles")
+        .arg("--percentile-list")
+        .arg("1,5,33.3,66.6,95,99");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert!(got.len() > 0);
+
+    let expected = vec![
+        svec![
+            "field",
+            "type",
+            "is_ascii",
+            "sum",
+            "min",
+            "max",
+            "range",
+            "sort_order",
+            "sortiness",
+            "min_length",
+            "max_length",
+            "sum_length",
+            "avg_length",
+            "stddev_length",
+            "variance_length",
+            "cv_length",
+            "mean",
+            "sem",
+            "geometric_mean",
+            "harmonic_mean",
+            "stddev",
+            "variance",
+            "cv",
+            "nullcount",
+            "max_precision",
+            "sparsity",
+            "percentiles",
+        ],
+        svec![
+            "n",
+            "Integer",
+            "",
+            "55",
+            "1",
+            "10",
+            "9",
+            "Ascending",
+            "1",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "5.5",
+            "0.9083",
+            "4.5287",
+            "3.4142",
+            "2.8723",
+            "8.25",
+            "52.2233",
             "0",
             "",
             "0",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "6",
-            "0.8571",
-            "《¶》value《¶》",
-            "1",
-            "2",
-            r#"《→》value《→》|《⏎》value《⏎》|          |clean|the trailing spaces are left alone   "#,
-            "5",
-            "1",
-            ""
+            "1|1|4|7|10|10",
+        ],
+    ];
+
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn stats_percentiles_single_value() {
+    let wrk = Workdir::new("stats_percentiles_single");
+    wrk.create("data.csv", vec![svec!["n"], svec!["42"]]);
+
+    let mut cmd = wrk.command("stats");
+    cmd.arg("data.csv")
+        .arg("--percentiles")
+        .arg("--percentile-list")
+        .arg("25,50,75");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    assert!(got.len() > 0);
+
+    let expected = vec![
+        svec![
+            "field",
+            "type",
+            "is_ascii",
+            "sum",
+            "min",
+            "max",
+            "range",
+            "sort_order",
+            "sortiness",
+            "min_length",
+            "max_length",
+            "sum_length",
+            "avg_length",
+            "stddev_length",
+            "variance_length",
+            "cv_length",
+            "mean",
+            "sem",
+            "geometric_mean",
+            "harmonic_mean",
+            "stddev",
+            "variance",
+            "cv",
+            "nullcount",
+            "max_precision",
+            "sparsity",
+            "percentiles",
         ],
         svec![
-            "qsv__rowcount",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "7"
-        ],
-        svec![
-            "qsv__columncount",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "3"
-        ],
-        svec![
-            "qsv__filesize_bytes",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "323"
-        ],
-        svec![
-            "qsv__fingerprint_hash",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "39f84fb60ced1488a91fc3a7a6e22692dafb414e0d43f09ab768c5f9981db630"
+            "n", "Integer", "", "42", "42", "42", "0", "Unsorted", "0", "", "", "", "", "", "", "",
+            "42", "0", "42", "42", "0", "0", "0", "0", "", "0", "42|42|42",
         ],
     ];
 
