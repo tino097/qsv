@@ -9,7 +9,7 @@ Summary stats include sum, min/max/range, sort order/sortiness, min/max/sum/avg/
 mean, standard error of the mean (SEM), geometric mean, harmonic mean, stddev, variance, coefficient of
 variation (CV), nullcount, max_precision, sparsity, Median Absolute Deviation (MAD), quartiles,
 interquartile range (IQR), lower/upper fences, skewness, median, cardinality/uniqueness ratio,
-mode/s & "antimode/s".
+mode/s & "antimode/s" & percentiles.
 
 Note that some stats require loading the entire file into memory, so they must be enabled explicitly. 
 
@@ -22,7 +22,7 @@ The default set of statistics corresponds to ones that can be computed efficient
 
 The following additional "non-streaming" statistics require loading the entire file into memory:
 cardinality/uniqueness ratio, modes/antimodes, median, MAD, quartiles and its related measures
-(q1, q2, q3, IQR, lower/upper fences & skewness).
+(q1, q2, q3, IQR, lower/upper fences & skewness) and percentiles.
 
 When computing "non-streaming" statistics, an Out-Of-Memory (OOM) heuristic check is done.
 If the file is larger than the available memory minus a headroom buffer of 20% (which can be
@@ -134,11 +134,12 @@ stats options:
                               See 'qsv select --help' for the format details.
                               This is provided here because piping 'qsv select'
                               into 'qsv stats' will prevent the use of indexing.
-    -E, --everything          Compute all statistics available.
+    -E, --everything          Compute all statistics available EXCEPT --dataset-stats.
     --typesonly               Infer data types only and do not compute statistics.
-                              Note that if you want to infer dates and boolean types, you'll still
-                              need to use the --infer-dates & --infer-boolean options.
+                              Note that if you want to infer dates and boolean types, you'll
+                              still need to use the --infer-dates & --infer-boolean options.
 
+                              BOOLEAN INFERENCING:
     --infer-boolean           Infer boolean data type. This automatically enables
                               the --cardinality option. When a column's cardinality is 2,
                               and the 2 values' are in the true/false patterns specified
@@ -149,22 +150,42 @@ stats options:
                               ends with a "*", it is treated as a prefix. For example,
                               "t*:f*,y*:n*" will match "true", "truthy", "Truth" as boolean true
                               values so long as the corresponding false pattern (e.g. False, f, etc.)
-                              is also matched and cardinality is 2. Ignored if --infer-boolean is false.
+                              is also matched & cardinality is 2. Ignored if --infer-boolean is false.
                               [default: 1:0,t*:f*,y*:n*]
 
     --mode                    Compute the mode/s & antimode/s. Multimodal-aware.
-                              This requires loading CSV data in memory proportionate to the
-                              cardinality of each column.
+                              If there are multiple modes/antimodes, they are separated by the
+                              QSV_STATS_SEPARATOR environment variable. If not set, the default
+                              separator is "|".
+                              Uses memory proportional to the cardinality of each column.
     --cardinality             Compute the cardinality and the uniqueness ratio.
-                              This requires loading CSV data in memory proportionate to the
-                              number of unique values in each column.
+                              This is automatically enabled if --infer-boolean is enabled.
+                              https://en.wikipedia.org/wiki/Cardinality_(SQL_statements)
+                              Uses memory proportional to the number of unique values in each column.
+
+                              NUMERIC & DATE/DATETIME STATS THAT REQUIRE IN-MEMORY SORTING:
+                              The following statistics are only computed for numeric & date/datetime
+                              columns & require loading & sorting ALL the selected columns' data
+                              in memory FIRST before computing the statistics.
+
     --median                  Compute the median.
-                              This requires loading all CSV data in memory.
+                              Loads & sorts all the selected columns' data in memory.
+                              https://en.wikipedia.org/wiki/Median
     --mad                     Compute the median absolute deviation (MAD).
-                              This requires loading all CSV data in memory.
-    --quartiles               Compute the quartiles, the IQR, the lower/upper inner/outer
-                              fences and skewness.
-                              This requires loading all CSV data in memory.
+                              https://en.wikipedia.org/wiki/Median_absolute_deviation
+    --quartiles               Compute the quartiles (using method 3), the IQR, the lower/upper,
+                              inner/outer fences and skewness.
+                              https://en.wikipedia.org/wiki/Quartile#Method_3
+    --percentiles             Compute custom percentiles using the nearest rank method.
+                              https://en.wikipedia.org/wiki/Percentile#The_nearest-rank_method
+    --percentile-list <arg>   Comma-separated list of percentiles to compute.
+                              For example, "5,10,40,60,90,95" will compute percentiles
+                              5th, 10th, 40th, 60th, 90th, and 95th.
+                              Multiple percentiles are separated by the QSV_STATS_SEPARATOR
+                              environment variable. If not set, the default separator is "|".
+                              It is ignored if --percentiles is not set.
+                              [default: 5,10,40,60,90,95]
+
     --round <decimal_places>  Round statistics to <decimal_places>. Rounding is done following
                               Midpoint Nearest Even (aka "Bankers Rounding") rule.
                               https://docs.rs/rust_decimal/latest/rust_decimal/enum.RoundingStrategy.html
@@ -175,6 +196,7 @@ stats options:
     --nulls                   Include NULLs in the population size for computing
                               mean and standard deviation.
 
+                              DATE INFERENCING:
     --infer-dates             Infer date/datetime data types. This is an expensive
                               option and should only be used when you know there
                               are date/datetime fields.
@@ -231,6 +253,7 @@ stats options:
     --dataset-stats           Compute dataset statistics (e.g. row count, column count, file size and
                               fingerprint hash) and add them as additional rows to the output, with
                               the qsv__ prefix and an additional qsv__value column.
+                              The --everything option DOES NOT enable this option.
 
 Common options:
     -h, --help             Display this message
@@ -262,7 +285,7 @@ https://github.com/dathere/qsv/blob/master/docs/PERFORMANCE.md#stats-cache)
 to make them work smarter & faster.
 
 To safeguard against undefined behavior, `stats` is the most extensively tested command,
-with ~500 tests.
+with ~520 tests.
 */
 
 use std::{
@@ -308,6 +331,8 @@ pub struct Args {
     pub flag_median:           bool,
     pub flag_mad:              bool,
     pub flag_quartiles:        bool,
+    pub flag_percentiles:      bool,
+    pub flag_percentile_list:  String,
     pub flag_round:            u32,
     pub flag_nulls:            bool,
     pub flag_infer_dates:      bool,
@@ -340,6 +365,8 @@ struct StatsArgs {
     flag_median:          bool,
     flag_mad:             bool,
     flag_quartiles:       bool,
+    flag_percentiles:     bool,
+    flag_percentile_list: String,
     flag_round:           u32,
     flag_nulls:           bool,
     flag_infer_dates:     bool,
@@ -373,6 +400,11 @@ impl StatsArgs {
             flag_median:          value["flag_median"].as_bool().unwrap_or_default(),
             flag_mad:             value["flag_mad"].as_bool().unwrap_or_default(),
             flag_quartiles:       value["flag_quartiles"].as_bool().unwrap_or_default(),
+            flag_percentiles:     value["flag_percentiles"].as_bool().unwrap_or_default(),
+            flag_percentile_list: value["flag_percentile_list"]
+                .as_str()
+                .unwrap_or("5,10,40,60,90,95")
+                .to_string(),
             flag_round:           value["flag_round"].as_u64().unwrap_or_default() as u32,
             flag_nulls:           value["flag_nulls"].as_bool().unwrap_or_default(),
             flag_infer_dates:     value["flag_infer_dates"].as_bool().unwrap_or_default(),
@@ -519,7 +551,6 @@ pub static STATSDATA_TYPES_MAP: phf::Map<&'static str, JsonTypes> = phf_map! {
 static INFER_DATE_FLAGS: OnceLock<SmallVec<[bool; 50]>> = OnceLock::new();
 static RECORD_COUNT: OnceLock<u64> = OnceLock::new();
 static ANTIMODES_LEN: OnceLock<usize> = OnceLock::new();
-static ANTIMODES_SEPARATOR: OnceLock<String> = OnceLock::new();
 
 // standard overflow and underflow strings
 // for sum, sum_length and avg_length
@@ -543,7 +574,10 @@ const FINGERPRINT_HASH_COLUMNS: usize = 26;
 const MAX_ANTIMODES: usize = 10;
 // default length of antimode string before truncating and appending "..."
 const DEFAULT_ANTIMODES_LEN: usize = 100;
-pub const DEFAULT_MODES_SEPARATOR: &str = "|";
+
+// the default separator we use for stats that have multiple values
+// in one column, i.e. antimodes/modes & percentiles
+pub const DEFAULT_STATS_SEPARATOR: &str = "|";
 
 static BOOLEAN_PATTERNS: OnceLock<Vec<BooleanPattern>> = OnceLock::new();
 #[derive(Clone, Debug)]
@@ -639,6 +673,8 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         flag_median:          args.flag_median,
         flag_mad:             args.flag_mad,
         flag_quartiles:       args.flag_quartiles,
+        flag_percentiles:     args.flag_percentiles,
+        flag_percentile_list: args.flag_percentile_list.clone(),
         flag_round:           args.flag_round,
         flag_nulls:           args.flag_nulls,
         flag_infer_dates:     args.flag_infer_dates,
@@ -864,7 +900,8 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 autoindex_set = true;
             }
 
-            // we need to count the number of records in the file to calculate sparsity
+            // we need to count the number of records in the file to calculate sparsity and
+            // cardinality
             let record_count: u64;
 
             let (headers, stats) = match rconfig.indexed()? {
@@ -1268,16 +1305,18 @@ impl Args {
         let mut stats: Vec<Stats> = Vec::with_capacity(record_len);
         stats.extend(repeat_n(
             Stats::new(WhichStats {
-                include_nulls: self.flag_nulls,
-                sum:           !self.flag_typesonly,
-                range:         !self.flag_typesonly || self.flag_infer_boolean,
-                dist:          !self.flag_typesonly,
-                cardinality:   self.flag_everything || self.flag_cardinality,
-                median:        !self.flag_everything && self.flag_median && !self.flag_quartiles,
-                mad:           self.flag_everything || self.flag_mad,
-                quartiles:     self.flag_everything || self.flag_quartiles,
-                mode:          self.flag_everything || self.flag_mode,
-                typesonly:     self.flag_typesonly,
+                include_nulls:   self.flag_nulls,
+                sum:             !self.flag_typesonly,
+                range:           !self.flag_typesonly || self.flag_infer_boolean,
+                dist:            !self.flag_typesonly,
+                cardinality:     self.flag_everything || self.flag_cardinality,
+                median:          !self.flag_everything && self.flag_median && !self.flag_quartiles,
+                mad:             self.flag_everything || self.flag_mad,
+                quartiles:       self.flag_everything || self.flag_quartiles,
+                mode:            self.flag_everything || self.flag_mode,
+                typesonly:       self.flag_typesonly,
+                percentiles:     self.flag_everything || self.flag_percentiles,
+                percentile_list: self.flag_percentile_list.clone(),
             }),
             record_len,
         ));
@@ -1358,7 +1397,9 @@ impl Args {
                 "antimode_occurrences",
             ]);
         }
-
+        if self.flag_percentiles || everything {
+            fields.push("percentiles");
+        }
         if self.flag_dataset_stats {
             // we add the qsv__value field at the end for dataset-level stats
             fields.push("qsv__value");
@@ -1430,16 +1471,18 @@ fn init_date_inference(
 
 #[derive(Clone, Debug, Eq, PartialEq, Default, Serialize, Deserialize)]
 struct WhichStats {
-    include_nulls: bool,
-    sum:           bool,
-    range:         bool,
-    dist:          bool,
-    cardinality:   bool,
-    median:        bool,
-    mad:           bool,
-    quartiles:     bool,
-    mode:          bool,
-    typesonly:     bool,
+    include_nulls:   bool,
+    sum:             bool,
+    range:           bool,
+    dist:            bool,
+    cardinality:     bool,
+    median:          bool,
+    mad:             bool,
+    quartiles:       bool,
+    mode:            bool,
+    typesonly:       bool,
+    percentiles:     bool,
+    percentile_list: String,
 }
 
 impl Commute for WhichStats {
@@ -1454,19 +1497,20 @@ impl Commute for WhichStats {
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 struct Stats {
     // optimal memory layout for this central struct
-    // this ordering consumes 656 bytes
-    typ:               FieldType,                 // 1 byte
-    is_ascii:          bool,                      // 1 byte
-    max_precision:     u16,                       // 2 bytes
-    which:             WhichStats,                // 10 bytes
-    nullcount:         u64,                       // 8 bytes
-    sum_stotlen:       u64,                       // 8 bytes
-    sum:               Option<TypedSum>,          // 32 bytes
-    modes:             Option<Unsorted<Vec<u8>>>, // 32 bytes
-    med_mad_quartiles: Option<Unsorted<f64>>,     // 32 bytes
-    online:            Option<OnlineStats>,       // 48 bytes
-    online_len:        Option<OnlineStats>,       // 48 bytes
-    minmax:            Option<TypedMinMax>,       // 432 bytes
+    // this ordering consumes 688 bytes
+    typ:            FieldType,                 // 1 byte
+    is_ascii:       bool,                      // 1 byte
+    max_precision:  u16,                       // 2 bytes
+    which:          WhichStats,                // 10 bytes
+    nullcount:      u64,                       // 8 bytes
+    sum_stotlen:    u64,                       // 8 bytes
+    sum:            Option<TypedSum>,          // 32 bytes
+    modes:          Option<Unsorted<Vec<u8>>>, // 32 bytes
+    // we use the same Unsorted struct for median, mad, quartiles & percentiles
+    unsorted_stats: Option<Unsorted<f64>>, // 32 bytes
+    online:         Option<OnlineStats>,   // 48 bytes
+    online_len:     Option<OnlineStats>,   // 48 bytes
+    minmax:         Option<TypedMinMax>,   // 432 bytes
 }
 
 #[inline]
@@ -1485,7 +1529,7 @@ fn timestamp_ms_to_rfc3339(timestamp: i64, typ: FieldType) -> String {
 
 impl Stats {
     fn new(which: WhichStats) -> Stats {
-        let (mut sum, mut minmax, mut online, mut online_len, mut modes, mut med_mad_quartiles) =
+        let (mut sum, mut minmax, mut online, mut online_len, mut modes, mut unsorted_stats) =
             (None, None, None, None, None, None);
         if which.sum {
             sum = Some(TypedSum::default());
@@ -1500,8 +1544,9 @@ impl Stats {
         if which.mode || which.cardinality {
             modes = Some(stats::Unsorted::default());
         }
-        if which.quartiles || which.median || which.mad {
-            med_mad_quartiles = Some(stats::Unsorted::default());
+        // we use the same Unsorted struct for median, mad, quartiles & percentiles
+        if which.quartiles || which.median || which.mad || which.percentiles {
+            unsorted_stats = Some(stats::Unsorted::default());
         }
         Stats {
             typ: FieldType::default(),
@@ -1512,7 +1557,7 @@ impl Stats {
             sum_stotlen: 0,
             sum,
             modes,
-            med_mad_quartiles,
+            unsorted_stats,
             online,
             online_len,
             minmax,
@@ -1566,7 +1611,7 @@ impl Stats {
                 } else {
                     // safety: we know the sample is a valid f64, so we can use unwrap
                     let n = unsafe { fast_float2::parse(sample).unwrap_unchecked() };
-                    if let Some(v) = self.med_mad_quartiles.as_mut() {
+                    if let Some(v) = self.unsorted_stats.as_mut() {
                         v.add(n);
                     }
                     if let Some(v) = self.online.as_mut() {
@@ -1614,7 +1659,7 @@ impl Stats {
                     // millisecond precision.
                     #[allow(clippy::cast_precision_loss)]
                     let n = timestamp_val as f64;
-                    if let Some(v) = self.med_mad_quartiles.as_mut() {
+                    if let Some(v) = self.unsorted_stats.as_mut() {
                         v.add(n);
                     }
                     if let Some(v) = self.online.as_mut() {
@@ -1678,6 +1723,14 @@ impl Stats {
 
         let record_count = *RECORD_COUNT.get().unwrap_or(&1);
 
+        // get the stats separator
+        let stats_separator = if self.which.mode || self.which.percentiles {
+            std::env::var("QSV_STATS_SEPARATOR")
+                .unwrap_or_else(|_| DEFAULT_STATS_SEPARATOR.to_string())
+        } else {
+            DEFAULT_STATS_SEPARATOR.to_string()
+        };
+
         // modes/antimodes & cardinality/uniqueness_ratio
         // we do this second because we can use the sort order with cardinality, to skip sorting
         // if its not required. This makes not only cardinality computation faster, it also makes
@@ -1712,12 +1765,6 @@ impl Stats {
                     ]);
                 }
                 if self.which.mode {
-                    // get the modes separator
-                    let modes_separator = ANTIMODES_SEPARATOR.get_or_init(|| {
-                        std::env::var("QSV_MODES_SEPARATOR")
-                            .unwrap_or_else(|_| DEFAULT_MODES_SEPARATOR.to_string())
-                    });
-
                     // mode/s & antimode/s
                     if cardinality == record_count {
                         // all values unique
@@ -1743,12 +1790,12 @@ impl Stats {
                             modes_result
                                 .iter()
                                 .map(|c| util::visualize_whitespace(&String::from_utf8_lossy(c)))
-                                .join(modes_separator)
+                                .join(&stats_separator)
                         } else {
                             modes_result
                                 .iter()
                                 .map(|c| String::from_utf8_lossy(c))
-                                .join(modes_separator)
+                                .join(&stats_separator)
                         };
 
                         // antimode/s ============
@@ -1774,11 +1821,11 @@ impl Stats {
                         let antimodes_vals = &antimodes_result
                             .iter()
                             .map(|c| String::from_utf8_lossy(c))
-                            .join(modes_separator);
+                            .join(&stats_separator);
 
                         // if the antimodes result starts with the separator,
                         // it indicates that NULL is the first antimode. Add NULL to the list.
-                        if antimodes_vals.starts_with(modes_separator) {
+                        if antimodes_vals.starts_with(&stats_separator) {
                             antimodes_list.push_str("NULL");
                         }
                         antimodes_list.push_str(antimodes_vals);
@@ -2008,7 +2055,7 @@ impl Stats {
         // as q2==median, cache and reuse it if the --median or --mad flags are set
         let mut existing_median = None;
         let mut quartile_pieces = Vec::with_capacity(9);
-        match self.med_mad_quartiles.as_mut().and_then(|v| match typ {
+        match self.unsorted_stats.as_mut().and_then(|v| match typ {
             TInteger | TFloat | TDate | TDateTime => {
                 if self.which.quartiles {
                     v.quartiles()
@@ -2096,7 +2143,7 @@ impl Stats {
         }
 
         // median
-        if let Some(v) = self.med_mad_quartiles.as_mut().and_then(|v| {
+        if let Some(v) = self.unsorted_stats.as_mut().and_then(|v| {
             if let TNull | TString = typ {
                 None
             } else if let Some(existing_median) = existing_median {
@@ -2123,7 +2170,7 @@ impl Stats {
         }
 
         // median absolute deviation (MAD)
-        if let Some(v) = self.med_mad_quartiles.as_mut().and_then(|v| {
+        if let Some(v) = self.unsorted_stats.as_mut().and_then(|v| {
             if let TNull | TString = typ {
                 None
             } else if self.which.mad {
@@ -2153,6 +2200,46 @@ impl Stats {
         // append it here to preserve legacy ordering of columns
         pieces.extend_from_slice(&mc_pieces);
 
+        // Add percentiles after quartiles
+        if let Some(v) = self.unsorted_stats.as_mut() {
+            match typ {
+                TInteger | TFloat | TDate | TDateTime => {
+                    let percentile_list = self
+                        .which
+                        .percentile_list
+                        .split(',')
+                        .filter_map(|p| p.trim().parse::<f64>().ok())
+                        .map(|p| p as u8)
+                        .collect::<Vec<_>>();
+
+                    if let Some(percentile_values) = v.custom_percentiles(&percentile_list) {
+                        let formatted_values = if typ == TDateTime || typ == TDate {
+                            percentile_values
+                                .iter()
+                                .map(|p| {
+                                    // Explicitly cast f64 to i64 for timestamp conversion
+                                    #[allow(clippy::cast_possible_truncation)]
+                                    let ts = p.round() as i64;
+                                    timestamp_ms_to_rfc3339(ts, typ)
+                                })
+                                .collect::<Vec<_>>()
+                        } else {
+                            percentile_values
+                                .iter()
+                                .map(|p| util::round_num(*p, round_places))
+                                .collect::<Vec<_>>()
+                        };
+                        pieces.push(formatted_values.join(&stats_separator));
+                    } else {
+                        pieces.push(empty());
+                    }
+                },
+                _ => pieces.push(empty()),
+            }
+        } else if self.which.percentiles {
+            pieces.push(empty());
+        }
+
         if dataset_stats {
             // add an empty field for qsv__value
             pieces.push(empty());
@@ -2173,7 +2260,7 @@ impl Commute for Stats {
         self.sum_stotlen = self.sum_stotlen.saturating_add(other.sum_stotlen);
         self.sum.merge(other.sum);
         self.modes.merge(other.modes);
-        self.med_mad_quartiles.merge(other.med_mad_quartiles);
+        self.unsorted_stats.merge(other.unsorted_stats);
         self.online.merge(other.online);
         self.online_len.merge(other.online_len);
         self.minmax.merge(other.minmax);
@@ -2230,6 +2317,7 @@ impl FieldType {
         }
 
         // Check for float
+        // we use fast_float2 as it doesn't need to validate the sample as UTF-8 first
         if fast_float2::parse::<f64, &[u8]>(sample).is_ok() {
             return (FieldType::TFloat, 0);
         }
