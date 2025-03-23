@@ -368,9 +368,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ahash::RandomState;
 use cached::{SizedCache, proc_macro::cached};
 use dynfmt2::Format;
+use foldhash::fast::RandomState;
 use geosuggest_core::{
     CitiesRecord, CountryRecord, Engine,
     storage::{self, IndexStorage},

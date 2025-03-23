@@ -1,6 +1,6 @@
 use std::{borrow::ToOwned, collections::hash_map::Entry, process};
 
-use ahash::AHashMap;
+use foldhash::{HashMap, HashMapExt};
 use serde::Deserialize;
 use stats::Frequencies;
 
@@ -694,7 +694,7 @@ fn param_prop_frequency(name: &str, rows: CsvData, idx: bool) -> bool {
     assert_eq_ftables(&got_ftables, &expected_ftables)
 }
 
-type FTables = AHashMap<String, Frequencies<String>>;
+type FTables = HashMap<String, Frequencies<String>>;
 
 #[derive(Deserialize)]
 struct FRow {
@@ -706,11 +706,11 @@ struct FRow {
 fn ftables_from_rows<T: Csv>(rows: T) -> FTables {
     let mut rows = rows.to_vecs();
     if rows.len() <= 1 {
-        return AHashMap::new();
+        return HashMap::new();
     }
 
     let header = rows.remove(0);
-    let mut ftables = AHashMap::new();
+    let mut ftables = HashMap::new();
     for field in &header {
         ftables.insert(field.clone(), Frequencies::new());
     }
@@ -728,7 +728,7 @@ fn ftables_from_rows<T: Csv>(rows: T) -> FTables {
 
 fn ftables_from_csv_string(data: String) -> FTables {
     let mut rdr = csv::Reader::from_reader(data.as_bytes());
-    let mut ftables = AHashMap::new();
+    let mut ftables = HashMap::new();
     for frow in rdr.deserialize() {
         let frow: FRow = frow.unwrap();
         match ftables.entry(frow.field) {

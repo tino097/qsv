@@ -101,7 +101,7 @@ Common options:
 
 use std::collections::HashMap;
 
-use ahash::RandomState;
+use foldhash::fast::RandomState;
 use serde::{Deserialize, Serialize};
 
 use crate::{

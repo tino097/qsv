@@ -62,7 +62,7 @@ use std::{
     path::Path,
 };
 
-use ahash::AHashMap;
+use foldhash::{HashMap, HashMapExt};
 use regex::Regex;
 use serde::Deserialize;
 
@@ -124,7 +124,7 @@ impl Args {
         let key_col = self.key_column(&rconfig, &headers)?;
         let mut r#gen = WriterGenerator::new(self.flag_filename.clone());
 
-        let mut writers: AHashMap<Vec<u8>, BoxedWriter> = AHashMap::new();
+        let mut writers: HashMap<Vec<u8>, BoxedWriter> = HashMap::new();
         let mut row = csv::ByteRecord::new();
         while rdr.read_byte_record(&mut row)? {
             // Decide what file to put this in.

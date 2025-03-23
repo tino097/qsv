@@ -66,8 +66,8 @@ Common options:
                             Must be a single character. (default: ,)
 "#;
 
-use ahash::AHashMap;
 use dynfmt2::Format;
+use foldhash::{HashMap, HashMapExt};
 use serde::Deserialize;
 
 use crate::{
@@ -90,8 +90,8 @@ struct Args {
     flag_delimiter:  Option<Delimiter>,
 }
 
-type Values = AHashMap<String, String>;
-type ValuesNum = AHashMap<String, u64>;
+type Values = HashMap<String, String>;
+type ValuesNum = HashMap<String, u64>;
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;

@@ -92,8 +92,8 @@ Common options:
 
 use std::{collections::hash_map::Entry, fmt, io, iter::repeat_n, mem::swap, str};
 
-use ahash::AHashMap;
 use byteorder::{BigEndian, WriteBytesExt};
+use foldhash::{HashMap, HashMapExt};
 use serde::Deserialize;
 
 use crate::{
@@ -463,7 +463,7 @@ impl Args {
 
 struct ValueIndex<R> {
     // This maps tuples of values to corresponding rows.
-    values:   AHashMap<Vec<ByteString>, Vec<usize>>,
+    values:   HashMap<Vec<ByteString>, Vec<usize>>,
     idx:      Indexed<R, io::Cursor<Vec<u8>>>,
     num_rows: usize,
 }
@@ -503,7 +503,7 @@ impl<R: io::Read + io::Seek> ValueIndex<R> {
         zerosi: bool,
         nulls: bool,
     ) -> CliResult<ValueIndex<R>> {
-        let mut val_idx = AHashMap::with_capacity(20_000);
+        let mut val_idx = HashMap::with_capacity(20_000);
         let mut row_idx = io::Cursor::new(Vec::with_capacity(8 * 20_000));
         let (mut rowi, mut count) = (0_usize, 0_usize);
 

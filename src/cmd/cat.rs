@@ -192,9 +192,9 @@ impl Args {
     // this algorithm is largely inspired by https://github.com/vi/csvcatrow by @vi
     // https://github.com/dathere/qsv/issues/527
     fn cat_rowskey(&self) -> CliResult<()> {
-        // ahash is a faster hasher than the default one used by IndexSet and IndexMap
-        type AhashIndexSet<T> = IndexSet<T, ahash::RandomState>;
-        type AhashIndexMap<T, T2> = IndexMap<T, T2, ahash::RandomState>;
+        // foldhash is a faster hasher than the default one used by IndexSet and IndexMap
+        type FhashIndexSet<T> = IndexSet<T, foldhash::fast::RandomState>;
+        type FhashIndexMap<T, T2> = IndexMap<T, T2, foldhash::fast::RandomState>;
 
         let Ok(group_kind) = GroupKind::from_str(&self.flag_group) else {
             return fail_incorrectusage_clierror!(
@@ -204,7 +204,7 @@ impl Args {
             );
         };
 
-        let mut columns_global: AhashIndexSet<Box<[u8]>> = AhashIndexSet::default();
+        let mut columns_global: FhashIndexSet<Box<[u8]>> = FhashIndexSet::default();
 
         if group_kind != GroupKind::None {
             columns_global.insert(self.flag_group_name.as_bytes().to_vec().into_boxed_slice());
@@ -273,7 +273,7 @@ impl Args {
         let mut conf_path;
         let mut rdr;
         let mut header: &csv::ByteRecord;
-        let mut columns_of_this_file: AhashIndexMap<Box<[u8]>, usize> = AhashIndexMap::default();
+        let mut columns_of_this_file: FhashIndexMap<Box<[u8]>, usize> = FhashIndexMap::default();
         columns_of_this_file.reserve(num_columns_global);
         let mut row: csv::ByteRecord = csv::ByteRecord::with_capacity(500, num_columns_global);
 

@@ -6,7 +6,7 @@ use std::{
     str::FromStr,
 };
 
-use ahash::AHashSet;
+use foldhash::HashSet;
 use regex::bytes::Regex;
 use serde::de::{Deserialize, Deserializer, Error};
 
@@ -52,7 +52,7 @@ impl SelectColumns {
             map.extend(idxs?);
         }
         if self.invert {
-            let set: AHashSet<_> = map.into_iter().collect();
+            let set: HashSet<_> = map.into_iter().collect();
             let mut map = vec![];
             for i in 0..first_record.len() {
                 if !set.contains(&i) {
