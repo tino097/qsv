@@ -1507,10 +1507,11 @@ struct Stats {
     sum:            Option<TypedSum>,          // 32 bytes
     modes:          Option<Unsorted<Vec<u8>>>, // 32 bytes
     // we use the same Unsorted struct for median, mad, quartiles & percentiles
+    #[allow(clippy::struct_field_names)]
     unsorted_stats: Option<Unsorted<f64>>, // 32 bytes
-    online:         Option<OnlineStats>,   // 48 bytes
-    online_len:     Option<OnlineStats>,   // 48 bytes
-    minmax:         Option<TypedMinMax>,   // 432 bytes
+    online:         Option<OnlineStats>, // 48 bytes
+    online_len:     Option<OnlineStats>, // 48 bytes
+    minmax:         Option<TypedMinMax>, // 432 bytes
 }
 
 #[inline]
