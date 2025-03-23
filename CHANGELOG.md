@@ -6,19 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.3.0] - 2025-03-22
+## [3.3.0] - 2025-03-23
 
 ### Added
 * `stats`: add configurable boolean inferencing https://github.com/dathere/qsv/pull/2595
 * `stats`: add `--percentiles` option https://github.com/dathere/qsv/pull/2617
 
 ### Changed
+* refactor: replace ahash with faster foldhash https://github.com/dathere/qsv/pull/2619
 * replace std `assert_eq!` macro with `similar_asserts::assert_eq!` macro for easier debugging https://github.com/dathere/qsv/pull/2605
 * deps: bump polars to 0.46.0 at py-1.25.2 tag https://github.com/dathere/qsv/pull/2604
+* deps: bump Polars to v0.46.0 at py-1.26.0 tag https://github.com/dathere/qsv/pull/2621
 * build(deps): bump actix-web from 4.9.0 to 4.10.2 by @dependabot in https://github.com/dathere/qsv/pull/2591
 * build(deps): bump indexmap from 2.7.1 to 2.8.0 by @dependabot in https://github.com/dathere/qsv/pull/2592
 * build(deps): bump mimalloc from 0.1.43 to 0.1.44 by @dependabot in https://github.com/dathere/qsv/pull/2608
 * build(deps): bump qsv-stats from 0.30.0 to 0.31.0 by @dependabot in https://github.com/dathere/qsv/pull/2603
+* build(deps): bump qsv-stats from 0.31.0 to 0.32.0 by @dependabot in https://github.com/dathere/qsv/pull/2620
 * build(deps): bump reqwest from 0.12.12 to 0.12.13 by @dependabot in https://github.com/dathere/qsv/pull/2593
 * build(deps): bump reqwest from 0.12.13 to 0.12.14 by @dependabot in https://github.com/dathere/qsv/pull/2596
 * build(deps): bump reqwest from 0.12.14 to 0.12.15 by @dependabot in https://github.com/dathere/qsv/pull/2609
