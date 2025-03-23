@@ -307,7 +307,8 @@ impl<R: io::Read + io::Seek, W: io::Write> IoState<R, W> {
 
         while self.rdr1.read_byte_record(&mut row)? {
             key = get_row_key(&self.sel1, &row, self.casei, self.zerosi);
-            if validx.values.get(&key).is_none() {
+            #[allow(clippy::map_entry)]
+            if !validx.values.contains_key(&key) {
                 if anti {
                     self.keys_wtr.write_key(&key)?;
                     self.wtr.write_record(&row)?;
