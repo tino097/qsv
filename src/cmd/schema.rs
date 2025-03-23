@@ -80,8 +80,8 @@ Common options:
 
 use std::{fs::File, io::Write, path::Path};
 
-use ahash::{AHashMap, AHashSet};
 use csv::ByteRecord;
+use foldhash::{HashMap, HashMapExt, HashSet};
 use grex::RegExpBuilder;
 use itertools::Itertools;
 use log::{debug, error, info, warn};
@@ -486,7 +486,7 @@ fn build_low_cardinality_column_selector_arg(
 fn get_unique_values(
     args: &util::SchemaArgs,
     column_select_arg: &str,
-) -> CliResult<AHashMap<String, Vec<String>>> {
+) -> CliResult<HashMap<String, Vec<String>>> {
     // prepare arg for invoking cmd::frequency
     let freq_args = crate::cmd::frequency::Args {
         arg_input:            args.arg_input.clone(),
@@ -530,8 +530,8 @@ fn get_unique_values(
 fn construct_map_of_unique_values(
     freq_csv_fields: &ByteRecord,
     frequency_tables: &[Frequencies<Vec<u8>>],
-) -> CliResult<AHashMap<String, Vec<String>>> {
-    let mut unique_values_map: AHashMap<String, Vec<String>> = AHashMap::new();
+) -> CliResult<HashMap<String, Vec<String>>> {
+    let mut unique_values_map: HashMap<String, Vec<String>> = HashMap::new();
     let mut unique_values = Vec::with_capacity(freq_csv_fields.len());
     // iterate through fields and gather unique values for each field
     for (i, header_byte_slice) in freq_csv_fields.iter().enumerate() {
@@ -592,7 +592,7 @@ fn get_required_fields(properties_map: &Map<String, Value>) -> Vec<Value> {
 fn generate_string_patterns(
     args: &util::SchemaArgs,
     properties_map: &Map<String, Value>,
-) -> CliResult<AHashMap<String, String>> {
+) -> CliResult<HashMap<String, String>> {
     let rconfig = Config::new(args.arg_input.as_ref())
         .delimiter(args.flag_delimiter)
         .no_headers(args.flag_no_headers)
@@ -603,7 +603,7 @@ fn generate_string_patterns(
     let headers = rdr.byte_headers()?.clone();
     let sel = rconfig.selection(&headers)?;
 
-    let mut pattern_map: AHashMap<String, String> = AHashMap::new();
+    let mut pattern_map: HashMap<String, String> = HashMap::new();
 
     // return empty pattern map when:
     //  * no columns are selected
@@ -615,7 +615,7 @@ fn generate_string_patterns(
     }
 
     // Map each Header to its unique Set of values
-    let mut unique_values_map: AHashMap<String, AHashSet<String>> = AHashMap::new();
+    let mut unique_values_map: HashMap<String, HashSet<String>> = HashMap::new();
 
     #[allow(unused_assignments)]
     let mut record = csv::ByteRecord::new();

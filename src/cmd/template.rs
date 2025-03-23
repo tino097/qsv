@@ -128,7 +128,7 @@ use std::{
     },
 };
 
-use ahash::{HashMap, HashMapExt};
+use foldhash::{HashMap, HashMapExt};
 #[cfg(any(feature = "feature_capable", feature = "lite"))]
 use indicatif::{ProgressBar, ProgressDrawTarget};
 use minijinja::{Environment, Value, value::ValueKind};
@@ -852,7 +852,7 @@ fn register_lookup(
     let row_len = lookup_table.headers.len();
     for record in rdr.records().flatten() {
         let mut row_data: HashMap<String, String> =
-            HashMap::with_capacity_and_hasher(row_len, ahash::RandomState::new());
+            HashMap::with_capacity_and_hasher(row_len, foldhash::fast::RandomState::default());
 
         // Store all fields for this row
         for (header, value) in lookup_table.headers.iter().zip(record.iter()) {

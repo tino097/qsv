@@ -206,8 +206,8 @@ use std::{
     },
 };
 
-use ahash::{HashSet, HashSetExt};
 use csv::ByteRecord;
+use foldhash::{HashSet, HashSetExt};
 use indicatif::HumanCount;
 #[cfg(any(feature = "feature_capable", feature = "lite"))]
 use indicatif::{ProgressBar, ProgressDrawTarget};
