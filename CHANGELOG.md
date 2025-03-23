@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.3.0] - 2025-03-23
 
+## Highlights:
+* `stats` got another round of improvements:
+  * __boolean inferencing is now configurable!__<br />Before, it was limited to a simple, English-centric heuristic:
+    - When a column's cardinality is 2; and the 2 values's first characters are `0/1`. `t/f` or `y/n` case-insensitive, the data type of the column is inferred as boolean
+    - With the new `--boolean-patterns <arg>` option, we can now specify arbitrary `true_pattern:false_pattern` pattern pairs. Each pattern can be a string of length > 1 and are case-insensitive. If a pattern ends with "*", it is treated as a prefix.<br />For example, `t*:f*` matches "true", "Truthy", "T" as boolean true so long as the corresponding false pattern (e.g. "Fake, False, f") is also matched and the cardinality is 2.<br />
+    For backwards compatibility, the default true/false pairs are `1:0,t*:f*,y*:n*`
+  * __percentiles can now be computed!__<br />By enabling the `--percentiles` flag, `stats` will now return the 5th, 10th, 40th, 60th, 90th and 95th percentile by default using the [nearest-rank method](https://en.wikipedia.org/wiki/Percentile#The_nearest-rank_method) for all numeric and date/datetime columns. The returned percentiles can be configured to return different percentiles using the `--percentile-list <arg>` option.<br />
+  Note that [Method 3 for computing quartiles](https://en.wikipedia.org/wiki/Quartile#Method_3), is basically a specialized implementation of the nearest rank method for q1 (25th), q2 (50th or median) and q3 (75th percentile), thus the choice of defaults for `--percentile-list`.
+* `frequency`: got a performance boost now that we're using `qsv-stats` 0.32.0, which now uses the faster `foldhash` crate
+* in the same vein, by replacing `ahash` with `foldhash` suite-wide, qsv got a tad faster when doing hash lookups
+* `sample`: "streaming" bernoulli sampling now works for any remotely hosted CSVs with servers that support chunked downloads, without requiring range request support.
+* we're now using the [latest Polars engine - v0.46.0 at the py-1.26.0 tag](https://github.com/pola-rs/polars/releases/tag/py-1.26.0).
+
 ### Added
 * `stats`: add configurable boolean inferencing https://github.com/dathere/qsv/pull/2595
 * `stats`: add `--percentiles` option https://github.com/dathere/qsv/pull/2617
