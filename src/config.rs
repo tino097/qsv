@@ -10,9 +10,10 @@ use qsv_sniffer::{SampleSize, Sniffer};
 use serde::de::{Deserialize, Deserializer, Error};
 
 use crate::{
+    CliResult,
     index::Indexed,
     select::{SelectColumns, Selection},
-    util, CliResult,
+    util,
 };
 
 // rdr default is 8k in csv crate, we're making it 128k
@@ -170,18 +171,23 @@ impl Config {
             Some(s) if s == "-" => (None, default_delim, false),
             Some(ref s) => {
                 let path = PathBuf::from(s);
+                // if QSV_SKIP_FORMAT_CHECK is set or path is a temp file, we skip format check
+                skip_format_check = sniff
+                    || util::get_envvar_flag("QSV_SKIP_FORMAT_CHECK")
+                    || path.starts_with(std::env::temp_dir());
                 let (file_extension, delim, snappy) = get_delim_by_extension(&path, default_delim);
-                skip_format_check = sniff || util::get_envvar_flag("QSV_SKIP_FORMAT_CHECK");
-                if !skip_format_check {
-                    format_error = match file_extension.as_str() {
+                format_error = if skip_format_check {
+                    None
+                } else {
+                    match file_extension.as_str() {
                         "csv" | "tsv" | "tab" | "ssv" => None,
                         ext => Some(format!(
                             "{} is using an unsupported file format: {ext}. Set \
                              QSV_SKIP_FORMAT_CHECK to skip input format checking.",
                             path.display()
                         )),
-                    };
-                }
+                    }
+                };
                 (Some(path), delim, snappy || file_extension.ends_with("sz"))
             },
         };
@@ -599,7 +605,7 @@ impl Config {
     /// Check if the index file exists and is newer than the CSV file.
     /// If so, return the index file.
     /// If not, return None.
-    /// Unless QSV_AUTOINDEX is set, in which case, we'll recreate the
+    /// Unless QSV_AUTOINDEX_SIZE is set, in which case, we'll recreate the
     /// stale index automatically
     #[inline]
     pub fn indexed(&self) -> CliResult<Option<Indexed<fs::File, fs::File>>> {
@@ -714,7 +720,7 @@ pub fn get_delim_by_extension(path: &Path, default_delim: u8) -> (String, u8, bo
     let file_extension = if snappy {
         path_str
             .strip_suffix(".sz")
-            .and_then(|s| s.split('.').last())
+            .and_then(|s| s.split('.').next_back())
             .unwrap_or("")
             .to_string()
     } else {
@@ -745,8 +751,8 @@ mod tests {
     fn test_csv_extension() {
         let path = PathBuf::from("test.csv");
         let (ext, delim, snappy) = get_delim_by_extension(&path, b',');
-        assert_eq!(ext, "csv");
-        assert_eq!(delim, b',');
+        similar_asserts::assert_eq!(ext, "csv");
+        similar_asserts::assert_eq!(delim, b',');
         assert!(!snappy);
     }
 
@@ -754,8 +760,8 @@ mod tests {
     fn test_tsv_extension() {
         let path = PathBuf::from("test.tsv");
         let (ext, delim, snappy) = get_delim_by_extension(&path, b',');
-        assert_eq!(ext, "tsv");
-        assert_eq!(delim, b'\t');
+        similar_asserts::assert_eq!(ext, "tsv");
+        similar_asserts::assert_eq!(delim, b'\t');
         assert!(!snappy);
     }
 
@@ -763,8 +769,8 @@ mod tests {
     fn test_ssv_extension() {
         let path = PathBuf::from("test.ssv");
         let (ext, delim, snappy) = get_delim_by_extension(&path, b',');
-        assert_eq!(ext, "ssv");
-        assert_eq!(delim, b';');
+        similar_asserts::assert_eq!(ext, "ssv");
+        similar_asserts::assert_eq!(delim, b';');
         assert!(!snappy);
     }
 
@@ -772,8 +778,8 @@ mod tests {
     fn test_snappy_csv_extension() {
         let path = PathBuf::from("test.csv.sz");
         let (ext, delim, snappy) = get_delim_by_extension(&path, b',');
-        assert_eq!(ext, "csv");
-        assert_eq!(delim, b',');
+        similar_asserts::assert_eq!(ext, "csv");
+        similar_asserts::assert_eq!(delim, b',');
         assert!(snappy);
     }
 
@@ -781,8 +787,8 @@ mod tests {
     fn test_snappy_tsv_extension() {
         let path = PathBuf::from("test.tsv.sz");
         let (ext, delim, snappy) = get_delim_by_extension(&path, b',');
-        assert_eq!(ext, "tsv");
-        assert_eq!(delim, b'\t');
+        similar_asserts::assert_eq!(ext, "tsv");
+        similar_asserts::assert_eq!(delim, b'\t');
         assert!(snappy);
     }
 
@@ -791,8 +797,8 @@ mod tests {
         let path = PathBuf::from("test.unknown");
         let default_delim = b'|';
         let (ext, delim, snappy) = get_delim_by_extension(&path, default_delim);
-        assert_eq!(ext, "unknown");
-        assert_eq!(delim, default_delim);
+        similar_asserts::assert_eq!(ext, "unknown");
+        similar_asserts::assert_eq!(delim, default_delim);
         assert!(!snappy);
     }
 
@@ -801,8 +807,8 @@ mod tests {
         let path = PathBuf::from("test");
         let default_delim = b',';
         let (ext, delim, snappy) = get_delim_by_extension(&path, default_delim);
-        assert_eq!(ext, "");
-        assert_eq!(delim, default_delim);
+        similar_asserts::assert_eq!(ext, "");
+        similar_asserts::assert_eq!(delim, default_delim);
         assert!(!snappy);
     }
 }

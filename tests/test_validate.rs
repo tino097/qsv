@@ -29,7 +29,7 @@ fn validate_good_tab() {
 
     let got: String = wrk.stdout(&mut cmd);
     let expected = r#"Valid: 29 Columns: ("case_enquiry_id", "open_dt", "target_dt", "closed_dt", "ontime", "case_status", "closure_reason", "case_title", "subject", "reason", "type", "queue", "department", "submittedphoto", "closedphoto", "location", "fire_district", "pwd_district", "city_council_district", "police_district", "neighborhood", "neighborhood_services_district", "ward", "precinct", "location_street_name", "location_zipcode", "latitude", "longitude", "source"); Records: 100; Delimiter: TAB"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -59,7 +59,7 @@ fn validate_good_csv_msg() {
 
     let got: String = wrk.stdout(&mut cmd);
     let expected = r#"Valid: 3 Columns: ("title", "name", "real age (earth years)"); Records: 3; Delimiter: ,"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -74,7 +74,7 @@ fn validate_empty_csv_msg() {
 
     let got: String = wrk.stdout(&mut cmd);
     let expected = r#"Valid: 3 Columns: ("title", "name", "real age (earth years)"); Records: 0; Delimiter: ,"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -105,7 +105,7 @@ fn validate_good_csv_pretty_json() {
     "real age (earth years)"
   ]
 }"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -125,7 +125,7 @@ fn validate_good_csv_json() {
 
     let got: String = wrk.stdout(&mut cmd);
     let expected = r#"{"delimiter_char":",","header_row":true,"quote_char":"\"","num_records":3,"num_fields":3,"fields":["title","name","age"]}"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -147,7 +147,7 @@ fn validate_bad_csv() {
     let expected = r#"Validation error: CSV error: record 2 (line: 3, byte: 36): found record with 2 fields, but the previous record has 3 fields.
 Use `qsv fixlengths` to fix record length issues.
 "#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     wrk.assert_err(&mut cmd);
 }
@@ -171,7 +171,7 @@ fn validate_bad_csv_first_record() {
     let expected = r#"Validation error: CSV error: record 1 (line: 2, byte: 15): found record with 2 fields, but the previous record has 3 fields.
 Use `qsv fixlengths` to fix record length issues.
 "#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     wrk.assert_err(&mut cmd);
 }
@@ -195,7 +195,7 @@ fn validate_bad_csv_last_record() {
     let expected = r#"Validation error: CSV error: record 3 (line: 4, byte: 54): found record with 4 fields, but the previous record has 3 fields.
 Use `qsv fixlengths` to fix record length issues.
 "#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     wrk.assert_err(&mut cmd);
 }
@@ -228,7 +228,7 @@ fn validate_bad_csv_prettyjson() {
   ]
 }
 "#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     wrk.assert_err(&mut cmd);
 }
@@ -273,12 +273,12 @@ fn validate_adur_public_toilets_dataset_with_json_schema() {
 
     // check invalid file output
     let invalid_output: String = wrk.from_str(&wrk.path("data.csv.invalid"));
-    assert_eq!(adur_invalids().to_string(), invalid_output);
+    similar_asserts::assert_eq!(adur_invalids().to_string(), invalid_output);
 
     // check validation error output
 
     let validation_error_output: String = wrk.from_str(&wrk.path("data.csv.validation-errors.tsv"));
-    assert_eq!(adur_errors(), validation_error_output);
+    similar_asserts::assert_eq!(adur_errors(), validation_error_output);
     wrk.assert_err(&mut cmd);
 }
 
@@ -300,6 +300,10 @@ fn validate_adur_public_toilets_dataset_with_json_schema_valid_output() {
         .arg("schema.json")
         .args(["--valid-output", "-"]);
 
+    let out = wrk.output_stderr(&mut cmd);
+    let expected = "13\n";
+    similar_asserts::assert_eq!(out, expected);
+
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["ExtractDate", "OrganisationURI", "OrganisationLabel", "ServiceTypeURI", "ServiceTypeLabel", "LocationText", "CoordinateReferenceSystem", "GeoX", "GeoY", "GeoPointLicensingURL", "Category", "AccessibleCategory", "RADARKeyNeeded", "BabyChange", "FamilyToilet", "ChangingPlace", "AutomaticPublicConvenience", "FullTimeStaffing", "PartOfCommunityScheme", "CommunitySchemeName", "ChargeAmount", "InfoURL", "OpeningHours", "ManagedBy", "ReportEmail", "ReportTel", "Notes", "UPRN", "Postcode", "StreetAddress", "GeoAreaURI", "GeoAreaLabel"], 
@@ -317,11 +321,7 @@ fn validate_adur_public_toilets_dataset_with_json_schema_valid_output() {
         svec!["07/07/2014 00:00", "http://opendatacommunities.org/id/district-council/adur", "Adur", "http://id.esd.org.uk/service/579", "Public toilets", "BEACH TOILETS BASIN ROAD SOUTH SOUTHWICK", "OSGB36", "522007", "106062", "http://www.ordnancesurvey.co.uk/business-and-government/help-and-support/public-sector/guidance/derived-data-exemptions.html", "Female and male", "None", "No", "No", "No", "No", "No", "No", "No", "", "", "http://www.adur-worthing.gov.uk/streets-and-travel/public-toilets/", "", "ADC", "surveyor_14@adur-worthing.gov.uk", "01903 221471", "Grounds staff only not public", "60032527", "", "PUBLIC CONVENIENCE NORTH PAVILION BUCKINGHAM PARK UPPER SHOREHAM ROAD SHOREHAM-BY-SEA", "", ""], 
         svec!["07/07/2014 00:00", "http://opendatacommunities.org/id/district-council/adur", "Adur", "http://id.esd.org.uk/service/579", "Public toilets", "BEACH TOILETS BASIN ROAD SOUTH SOUTHWICK", "OSGB36", "522083", "105168", "http://www.ordnancesurvey.co.uk/business-and-government/help-and-support/public-sector/guidance/derived-data-exemptions.html", "Female and male", "Unisex", "Yes", "No", "No", "No", "No", "No", "No", "", "", "http://www.adur-worthing.gov.uk/streets-and-travel/public-toilets/", "09.00 - 17.00", "ADC", "surveyor_15@adur-worthing.gov.uk", "01903 221471", "", "60034215", "", "PUBLIC CONVENIENCES CIVIC CENTRE HAM ROAD SHOREHAM-BY-SEA", "", ""]    
     ];
-    assert_eq!(got, expected);
-
-    let num_recs = wrk.output_stderr(&mut cmd);
-    let num_recs_expected = "13".to_string();
-    assert_eq!(num_recs.trim_end(), num_recs_expected);
+    similar_asserts::assert_eq!(got, expected);
 
     wrk.assert_err(&mut cmd);
 }
@@ -347,7 +347,7 @@ fn validate_with_schema_noheader() {
 
     let got = wrk.output_stderr(&mut cmd);
     let expected = "Cannot validate CSV without headers against a JSON Schema.\n".to_string();
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     wrk.assert_err(&mut cmd);
 }
@@ -367,10 +367,386 @@ fn validate_adur_public_toilets_dataset_with_json_schema_url() {
     wrk.output(&mut cmd);
 
     let invalid_output: String = wrk.from_str(&wrk.path("data.csv.invalid"));
-    assert_eq!(adur_invalids().to_string(), invalid_output);
+    similar_asserts::assert_eq!(adur_invalids().to_string(), invalid_output);
 
     // check validation error output
     let validation_error_output: String = wrk.from_str(&wrk.path("data.csv.validation-errors.tsv"));
-    assert_eq!(adur_errors(), validation_error_output);
+    similar_asserts::assert_eq!(adur_errors(), validation_error_output);
     wrk.assert_err(&mut cmd);
+}
+
+#[test]
+fn validate_dynenum_with_column() {
+    let wrk = Workdir::new("validate_dynenum_with_column").flexible(true);
+
+    // Create lookup file first
+    wrk.create(
+        "lookup.csv",
+        vec![
+            svec!["code", "name", "category"],
+            svec!["A1", "Apple", "fruit"],
+            svec!["B2", "Banana", "fruit"],
+            svec!["C3", "Carrot", "vegetable"],
+        ],
+    );
+
+    // Create test data
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["id", "product", "type"],
+            svec!["1", "Apple", "fruit"],
+            svec!["2", "Banana", "fruit"],
+            svec!["3", "Orange", "fruit"], // Invalid - not in lookup
+            svec!["4", "Grape", "fruit"],  // Invalid - not in lookup
+        ],
+    );
+
+    // Create schema using dynamicEnum with column specification
+    wrk.create_from_string(
+        "schema.json",
+        r#"{
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+                "id": { "type": "string" },
+                "product": { 
+                    "type": "string",
+                    "dynamicEnum": "lookup.csv|name"
+                },
+                "type": { "type": "string" }
+            }
+        }"#,
+    );
+
+    // Run validate command
+    let mut cmd = wrk.command("validate");
+    cmd.arg("data.csv").arg("schema.json");
+    wrk.output(&mut cmd);
+
+    wrk.assert_err(&mut cmd);
+
+    // Check validation-errors.tsv
+    let validation_errors: String = wrk.from_str(&wrk.path("data.csv.validation-errors.tsv"));
+
+    let expected_errors = "row_number\tfield\terror\n3\tproduct\t\"Orange\" is not a valid \
+                           dynamicEnum value\n4\tproduct\t\"Grape\" is not a valid dynamicEnum \
+                           value\n";
+    similar_asserts::assert_eq!(validation_errors, expected_errors);
+
+    // Check valid records
+    let valid_records: Vec<Vec<String>> = wrk.read_csv("data.csv.valid");
+    let expected_valid = vec![svec!["1", "Apple", "fruit"], svec!["2", "Banana", "fruit"]];
+    similar_asserts::assert_eq!(valid_records, expected_valid);
+
+    // Check invalid records
+    let invalid_records: Vec<Vec<String>> = wrk.read_csv("data.csv.invalid");
+    let expected_invalid = vec![svec!["3", "Orange", "fruit"], svec!["4", "Grape", "fruit"]];
+    similar_asserts::assert_eq!(invalid_records, expected_invalid);
+
+    wrk.assert_err(&mut cmd);
+}
+
+#[test]
+fn validate_dynenum_with_column_index() {
+    let wrk = Workdir::new("validate_dynenum_with_column_index").flexible(true);
+
+    // Create a sample CSV file with multiple columns
+    wrk.create(
+        "lookup.csv",
+        vec![
+            svec!["code", "name", "category"],
+            svec!["A1", "Apple", "fruit"],
+            svec!["B2", "Banana", "fruit"],
+            svec!["C3", "Carrot", "vegetable"],
+        ],
+    );
+
+    // Create test data
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["id", "category", "code"],
+            svec!["1", "fruit", "A1"],
+            svec!["2", "vegetable", "D4"], // Invalid - code not in lookup
+            svec!["3", "fruit", "B2"],
+            svec!["4", "fruit", "X9"], // Invalid - code not in lookup
+        ],
+    );
+
+    // Create schema using dynamicEnum with column index
+    wrk.create_from_string(
+        "schema.json",
+        r#"{
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+                "id": { "type": "string" },
+                "category": { "type": "string" },
+                "code": { 
+                    "type": "string",
+                    "dynamicEnum": "lookup.csv|0"
+                }
+            }
+        }"#,
+    );
+
+    // Run validate command
+    let mut cmd = wrk.command("validate");
+    cmd.arg("data.csv").arg("schema.json");
+    wrk.output(&mut cmd);
+
+    wrk.assert_err(&mut cmd);
+
+    // Check validation-errors.tsv
+    let validation_errors = wrk
+        .read_to_string("data.csv.validation-errors.tsv")
+        .unwrap();
+    let expected_errors = "row_number\tfield\terror\n2\tcode\t\"D4\" is not a valid dynamicEnum \
+                           value\n4\tcode\t\"X9\" is not a valid dynamicEnum value\n";
+    similar_asserts::assert_eq!(validation_errors, expected_errors);
+
+    // Check valid records
+    let valid_records: Vec<Vec<String>> = wrk.read_csv("data.csv.valid");
+    let expected_valid = vec![svec!["1", "fruit", "A1"], svec!["3", "fruit", "B2"]];
+    similar_asserts::assert_eq!(valid_records, expected_valid);
+
+    // Check invalid records
+    let invalid_records: Vec<Vec<String>> = wrk.read_csv("data.csv.invalid");
+    let expected_invalid = vec![svec!["2", "vegetable", "D4"], svec!["4", "fruit", "X9"]];
+    similar_asserts::assert_eq!(invalid_records, expected_invalid);
+
+    wrk.assert_err(&mut cmd);
+}
+
+#[test]
+fn validate_dynenum_with_invalid_column() {
+    let wrk = Workdir::new("validate_dynenum_with_invalid_column").flexible(true);
+
+    // Create lookup file first
+    wrk.create(
+        "lookup.csv",
+        vec![
+            svec!["code", "name"],
+            svec!["A1", "Apple"],
+            svec!["B2", "Banana"],
+        ],
+    );
+
+    // Create test data
+    wrk.create("data.csv", vec![svec!["id", "name"], svec!["1", "Apple"]]);
+
+    // Create schema using dynamicEnum with non-existent column
+    wrk.create_from_string(
+        "schema.json",
+        r#"{
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+                "id": { "type": "string" },
+                "name": { 
+                    "type": "string",
+                    "dynamicEnum": "lookup.csv|nonexistent_column"
+                }
+            }
+        }"#,
+    );
+
+    // Run validate command
+    let mut cmd = wrk.command("validate");
+    cmd.arg("data.csv").arg("schema.json");
+
+    // Check error output
+    let got = wrk.output_stderr(&mut cmd);
+    #[cfg(feature = "lite")]
+    similar_asserts::assert_eq!(got, "1 out of 1 records invalid.\n");
+    #[cfg(not(feature = "lite"))]
+    assert!(got.ends_with(
+        "Cannot compile JSONschema. error: Column 'nonexistent_column' not found in lookup \
+         table\nTry running `qsv validate schema schema.json` to check the JSON Schema file.\n"
+    ));
+
+    wrk.assert_err(&mut cmd);
+}
+
+#[test]
+fn validate_dynenum_with_remote_csv() {
+    let wrk = Workdir::new("validate_dynenum_with_remote_csv").flexible(true);
+
+    // Create test data
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["id", "fruit"],
+            svec!["1", "banana"],
+            svec!["2", "mango"], // Invalid - not in fruits.csv
+            svec!["3", "apple"],
+            svec!["4", "dragonfruit"], // Invalid - not in fruits.csv
+        ],
+    );
+
+    // Create schema using dynamicEnum with remote CSV
+    wrk.create_from_string(
+        "schema.json",
+        r#"{
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+                "id": { "type": "string" },
+                "fruit": { 
+                    "type": "string",
+                    "dynamicEnum": "https://raw.githubusercontent.com/dathere/qsv/refs/heads/master/resources/test/fruits.csv"
+                }
+            }
+        }"#,
+    );
+
+    // Run validate command
+    let mut cmd = wrk.command("validate");
+    cmd.arg("data.csv").arg("schema.json");
+    wrk.output(&mut cmd);
+
+    wrk.assert_err(&mut cmd);
+
+    // Check validation-errors.tsv
+    let validation_errors = wrk
+        .read_to_string("data.csv.validation-errors.tsv")
+        .unwrap();
+    let expected_errors = "row_number\tfield\terror\n2\tfruit\t\"mango\" is not a valid \
+                           dynamicEnum value\n4\tfruit\t\"dragonfruit\" is not a valid \
+                           dynamicEnum value\n";
+    similar_asserts::assert_eq!(validation_errors, expected_errors);
+
+    // Check valid records
+    let valid_records: Vec<Vec<String>> = wrk.read_csv("data.csv.valid");
+    let expected_valid = vec![svec!["1", "banana"], svec!["3", "apple"]];
+    similar_asserts::assert_eq!(valid_records, expected_valid);
+
+    // Check invalid records
+    let invalid_records: Vec<Vec<String>> = wrk.read_csv("data.csv.invalid");
+    let expected_invalid = vec![svec!["2", "mango"], svec!["4", "dragonfruit"]];
+    similar_asserts::assert_eq!(invalid_records, expected_invalid);
+
+    wrk.assert_err(&mut cmd);
+}
+
+#[cfg(feature = "lite")]
+#[test]
+fn validate_lite_dynenum_combinations() {
+    let wrk = Workdir::new("validate_lite_dynenum_combinations").flexible(true);
+
+    // Create lookup file first
+    wrk.create(
+        "lookup.csv",
+        vec![
+            svec!["id", "name", "category"],
+            svec!["1", "Apple", "fruit"],
+            svec!["2", "Banana", "fruit"],
+            svec!["3", "Carrot", "vegetable"],
+        ],
+    );
+
+    // Test cases with different dynamicEnum URI patterns
+    let test_cases = vec![
+        // Simple file path
+        (
+            "lookup.csv",
+            vec![
+                svec!["id", "product"],
+                svec!["1", "Apple"],   // invalid
+                svec!["2", "Orange"],  // invalid
+            ],
+            2,
+        ),
+        // File path with column name
+        (
+            "lookup.csv|name",
+            vec![
+                svec!["id", "product"],
+                svec!["1", "Apple"],   // valid
+                svec!["2", "Orange"],  // invalid
+            ],
+            1,
+        ),
+        // File path with column index (2nd col - 0-based index)
+        (
+            "lookup.csv|1",
+            vec![
+                svec!["id", "product"],
+                svec!["1", "Apple"],   // valid
+                svec!["2", "Orange"],  // invalid
+            ],
+            1,
+        ),
+        // HTTP URL
+        (
+            "https://raw.githubusercontent.com/dathere/qsv/refs/heads/master/resources/test/fruits.csv",
+            vec![
+                svec!["id", "fruit"],
+                svec!["1", "banana"],  // valid
+                svec!["2", "mango"],   // invalid
+            ],
+            1,
+        ),
+        // HTTP URL with column
+        (
+            "https://raw.githubusercontent.com/dathere/qsv/refs/heads/master/resources/test/fruits.csv|0",
+            vec![
+                svec!["id", "fruit"],
+                svec!["1", "banana"],  // valid
+                svec!["2", "mango"],   // invalid
+            ],
+            1,
+        ),
+        // HTTP URL with column by name
+        (
+            "https://raw.githubusercontent.com/dathere/qsv/refs/heads/master/resources/test/fruits.csv|fruit",
+            vec![
+                svec!["id", "fruit"],
+                svec!["1", "banana"],  // valid
+                svec!["2", "mango"],   // invalid
+                svec!["3", "strawberry"], // valid
+            ],
+            1,
+        ),
+    ];
+
+    for (uri, data, expected_invalid_count) in test_cases {
+        // Create schema using dynamicEnum
+        let schema = format!(
+            r#"{{
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {{
+                    "id": {{ "type": "string" }},
+                    "product": {{ 
+                        "type": "string",
+                        "dynamicEnum": "{}"
+                    }}
+                }}
+            }}"#,
+            uri
+        );
+        wrk.create_from_string("schema.json", &schema);
+
+        // Create test data
+        wrk.create("data.csv", data);
+
+        // Run validate command
+        let mut cmd = wrk.command("validate");
+        cmd.arg("data.csv").arg("schema.json");
+        wrk.output(&mut cmd);
+
+        // Check validation errors count
+        let validation_errors = wrk
+            .read_to_string("data.csv.validation-errors.tsv")
+            .unwrap();
+        let error_count = validation_errors.lines().count() - 1; // subtract header row
+        similar_asserts::assert_eq!(
+            error_count,
+            expected_invalid_count,
+            "Failed for URI: {}",
+            uri
+        );
+    }
 }

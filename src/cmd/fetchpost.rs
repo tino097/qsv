@@ -152,6 +152,11 @@ Fetchpost options:
                                Typical alternative values are `multipart/form-data` and `text/plain`.
                                It is the responsibility of the user to format the payload accordingly
                                when using --payload-tpl.
+   -j, --globals-json <file>   A JSON file containing global variables.
+                               When posting as an HTML Form, this file is added to the Form data.
+                               When constructing a payload using a MiniJinja template, the JSON
+                               properties can be accessed in templates using the "qsv_g" namespace
+                               (e.g. {{qsv_g.api_key}}, {{qsv_g.base_url}}).
     -c, --new-column <name>    Put the fetched values in a new column. Specifying this option
                                results in a CSV. Otherwise, the output is in JSONL format.
     --jaq <selector>           Apply jaq selector to API returned JSON response.
@@ -244,24 +249,24 @@ Common options:
                                Not valid for stdin.
 "#;
 
-use std::{fs, io::Write, num::NonZeroU32, sync::OnceLock, thread, time};
+use std::{fs, io::Write, num::NonZeroU32, path::PathBuf, sync::OnceLock, thread, time};
 
 use cached::{
+    Cached, IOCached, RedisCache, Return, SizedCache,
     proc_macro::{cached, io_cached},
     stores::DiskCacheBuilder,
-    Cached, IOCached, RedisCache, Return, SizedCache,
 };
-use flate2::{write::GzEncoder, Compression};
+use flate2::{Compression, write::GzEncoder};
 use governor::{
+    Quota, RateLimiter,
     clock::DefaultClock,
     middleware::NoOpMiddleware,
-    state::{direct::NotKeyed, InMemoryState},
-    Quota, RateLimiter,
+    state::{InMemoryState, direct::NotKeyed},
 };
 use indicatif::{HumanCount, MultiProgress, ProgressBar, ProgressDrawTarget};
 use log::{
-    debug, error, info, log_enabled, warn,
     Level::{Debug, Trace, Warn},
+    debug, error, info, log_enabled, warn,
 };
 use minijinja::Environment;
 use minijinja_contrib::pycompat::unknown_method_callback;
@@ -272,18 +277,20 @@ use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue},
 };
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use url::Url;
 use util::expand_tilde;
 
 use crate::{
+    CliError, CliResult,
     cmd::fetch::{
-        get_ratelimit_header_value, parse_ratelimit_header_value, process_jaq, CacheType,
-        DiskCacheConfig, FetchResponse, RedisConfig, ReportKind, DEFAULT_ACCEPT_ENCODING,
+        CacheType, DEFAULT_ACCEPT_ENCODING, DiskCacheConfig, FetchResponse, JAQ_FILTER,
+        RedisConfig, ReportKind, compile_jaq_filter, get_ratelimit_header_value,
+        parse_ratelimit_header_value, process_jaq,
     },
     config::{Config, Delimiter},
     select::SelectColumns,
-    util, CliError, CliResult,
+    util,
 };
 
 #[derive(PartialEq, Eq, Copy, Clone)]
@@ -307,9 +314,10 @@ impl std::fmt::Display for ContentType {
 struct Args {
     flag_payload_tpl:    Option<String>,
     flag_content_type:   Option<String>,
+    flag_globals_json:   Option<PathBuf>,
     flag_new_column:     Option<String>,
     flag_jaq:            Option<String>,
-    flag_jaqfile:        Option<String>,
+    flag_jaqfile:        Option<PathBuf>,
     flag_pretty:         bool,
     flag_rate_limit:     u32,
     flag_timeout:        u16,
@@ -374,16 +382,17 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         .unwrap();
 
     // setup diskcache dir response caching
-    let diskcache_dir = if let Some(dir) = &args.flag_disk_cache_dir {
-        if dir.starts_with('~') {
-            // expand the tilde
-            let expanded_dir = expand_tilde(dir).unwrap();
-            expanded_dir.to_string_lossy().to_string()
-        } else {
-            dir.to_string()
-        }
-    } else {
-        String::new()
+    let diskcache_dir = match &args.flag_disk_cache_dir {
+        Some(dir) => {
+            if dir.starts_with('~') {
+                // expand the tilde
+                let expanded_dir = expand_tilde(dir).unwrap();
+                expanded_dir.to_string_lossy().to_string()
+            } else {
+                dir.to_string()
+            }
+        },
+        _ => String::new(),
     };
 
     let cache_type = if args.flag_no_cache {
@@ -420,14 +429,14 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             Err(e) => {
                 return fail_incorrectusage_clierror!(
                     r#"Invalid Redis connection string "{conn_str}": {e:?}"#
-                )
+                );
             },
         };
 
         let mut redis_conn;
         match redis_client.get_connection() {
             Err(e) => {
-                return fail_clierror!(r#"Cannot connect to Redis using "{conn_str}": {e:?}"#)
+                return fail_clierror!(r#"Cannot connect to Redis using "{conn_str}": {e:?}"#);
             },
             Ok(x) => redis_conn = x,
         }
@@ -443,6 +452,24 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         CacheType::InMemory
     };
     log::info!("Cache Type: {cache_type:?}");
+
+    // setup globals JSON context if specified
+    let mut globals_flag = false;
+    let globals_ctx = match args.flag_globals_json {
+        Some(globals_json) => {
+            globals_flag = true;
+            match std::fs::read(globals_json) {
+                Ok(mut bytes) => match simd_json::from_slice(&mut bytes) {
+                    Ok(json) => json,
+                    Err(e) => return fail_clierror!("Failed to parse globals JSON file: {e}"),
+                },
+                Err(e) => return fail_clierror!("Failed to read globals JSON file: {e}"),
+            }
+        },
+        _ => {
+            json!("")
+        },
+    };
 
     let mut rconfig = Config::new(args.arg_input.as_ref())
         .delimiter(args.flag_delimiter)
@@ -501,10 +528,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     // or as a column selector
     let url_column_str = format!("{:?}", args.arg_url_column);
     let re = Regex::new(r"^IndexedName\((.*)\[0\]\)$").unwrap();
-    let literal_url = if let Some(caps) = re.captures(&url_column_str) {
-        caps[1].to_lowercase()
-    } else {
-        String::new()
+    let literal_url = match re.captures(&url_column_str) {
+        Some(caps) => caps[1].to_lowercase(),
+        _ => String::new(),
     };
     let literal_url_used = literal_url.starts_with("http");
 
@@ -524,7 +550,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         _ => {
             return fail_incorrectusage_clierror!(
                 "Rate Limit should be between 0 to 1000 queries per second."
-            )
+            );
         },
     };
     info!("RATE LIMIT: {rate_limit}");
@@ -580,29 +606,34 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             HeaderValue::from_str(DEFAULT_ACCEPT_ENCODING).unwrap(),
         );
 
-        if let Some(content_type) = args.flag_content_type {
-            // if the user set --content-type and uses one of these known content-types,
-            // change payload_content_type accordingly so it can take advantage of auto
-            // validation of JSON and url encoding of URL Forms.
-            payload_content_type = match content_type.to_lowercase().as_str() {
-                "application/json" => ContentType::Json,
-                "application/x-www-form-urlencoded" => ContentType::Form,
-                _ => ContentType::Manual,
-            };
-            map.append(
-                reqwest::header::CONTENT_TYPE,
-                HeaderValue::from_str(&content_type).unwrap(),
-            );
-        } else if payload_content_type == ContentType::Json {
-            map.append(
-                reqwest::header::CONTENT_TYPE,
-                HeaderValue::from_str("application/json").unwrap(),
-            );
-        } else {
-            map.append(
-                reqwest::header::CONTENT_TYPE,
-                HeaderValue::from_str("application/x-www-form-urlencoded").unwrap(),
-            );
+        match args.flag_content_type {
+            Some(content_type) => {
+                // if the user set --content-type and uses one of these known content-types,
+                // change payload_content_type accordingly so it can take advantage of auto
+                // validation of JSON and url encoding of URL Forms.
+                payload_content_type = match content_type.to_lowercase().as_str() {
+                    "application/json" => ContentType::Json,
+                    "application/x-www-form-urlencoded" => ContentType::Form,
+                    _ => ContentType::Manual,
+                };
+                map.append(
+                    reqwest::header::CONTENT_TYPE,
+                    HeaderValue::from_str(&content_type).unwrap(),
+                );
+            },
+            _ => {
+                if payload_content_type == ContentType::Json {
+                    map.append(
+                        reqwest::header::CONTENT_TYPE,
+                        HeaderValue::from_str("application/json").unwrap(),
+                    );
+                } else {
+                    map.append(
+                        reqwest::header::CONTENT_TYPE,
+                        HeaderValue::from_str("application/x-www-form-urlencoded").unwrap(),
+                    );
+                }
+            },
         }
         if args.flag_compress {
             map.append(
@@ -669,6 +700,16 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         Some(ref jaq_file) => Some(fs::read_to_string(jaq_file)?),
         None => args.flag_jaq.as_ref().map(std::string::ToString::to_string),
     };
+
+    // this is primarily to check if the jaq query is valid
+    // and if is, to cache the compiled jaq filter
+    if let Some(ref query) = jaq_selector {
+        let Ok(()) = JAQ_FILTER.set(compile_jaq_filter(query)?) else {
+            return Err(CliError::Other(
+                "Failed to cache precompiled JAQ filter".to_string(),
+            ));
+        };
+    }
 
     // prepare report
     let report = if args.flag_report.to_lowercase().starts_with('d') {
@@ -761,7 +802,23 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let mut running_success_count = 0_u64;
     let mut was_cached;
     let mut now = time::Instant::now();
-    let mut form_body_jsonmap = serde_json::map::Map::with_capacity(col_list.len());
+    let mut form_body_jsonmap = serde_json::map::Map::with_capacity(col_list.len() + 1);
+
+    let globals_jsonmap = if globals_flag {
+        let mut map = serde_json::map::Map::new();
+        if payload_content_type == ContentType::Form {
+            if let Some(globals_obj) = globals_ctx.as_object() {
+                for (key, value) in globals_obj {
+                    map.insert(key.clone(), value.clone());
+                }
+            }
+        } else {
+            map.insert("qsv_g".to_string(), globals_ctx);
+        }
+        map
+    } else {
+        serde_json::map::Map::new()
+    };
 
     let header_key_vec: Vec<String> = headers
         .iter()
@@ -777,10 +834,14 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
         if report != ReportKind::None {
             now = time::Instant::now();
-        };
+        }
 
         // construct body per the column-list
-        form_body_jsonmap.clear();
+        if globals_flag {
+            form_body_jsonmap.clone_from(&globals_jsonmap);
+        } else {
+            form_body_jsonmap.clear();
+        }
         for col_idx in &*col_list {
             form_body_jsonmap.insert(
                 (header_key_vec[*col_idx]).to_string(),
@@ -899,7 +960,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                             return fail_clierror!(
                                 "Cannot deserialize Redis cache value. Try flushing the Redis \
                                  cache with --flushdb: {e}"
-                            )
+                            );
                         },
                     };
                     if !args.flag_cache_error && final_response.status_code != 200 {
@@ -915,7 +976,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         if GET_REDIS_RESPONSE.cache_remove(&key).is_err() && log_enabled!(Warn) {
                             // failure to remove cache keys is non-fatal. Continue, but log it.
                             wwarn!(r#"Cannot remove Redis key "{key}""#);
-                        };
+                        }
                     }
                 },
                 CacheType::None => {
@@ -935,7 +996,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                     was_cached = false;
                 },
             }
-        };
+        }
 
         if final_response.status_code == 200 {
             running_success_count += 1;
@@ -1485,7 +1546,7 @@ fn get_response(
                 // we multiply reset_secs by 1001 instead of 1000 to give the server a teeny bit
                 // more breathing room before we hit it again
                 let pause_time =
-                    (reset_secs * 1001) + (retries as u64 * rand::thread_rng().gen_range(10..30));
+                    (reset_secs * 1001) + (retries as u64 * rand::rng().random_range(10..30));
                 debug!(
                     "sleeping for {pause_time} ms until ratelimit is reset/retry_after has elapsed"
                 );

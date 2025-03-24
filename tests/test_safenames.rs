@@ -48,11 +48,11 @@ fn safenames_conditional() {
         svec!["1", "b", "33", "1", "b", "33", "34", "z", "42"],
         svec!["2", "c", "34", "3", "d", "31", "3", "y", "3.14"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let changed_headers = wrk.output_stderr(&mut cmd);
     let expected_count = "7\n";
-    assert_eq!(changed_headers, expected_count);
+    similar_asserts::assert_eq!(changed_headers, expected_count);
 }
 
 #[test]
@@ -97,11 +97,11 @@ fn safenames_always() {
         svec!["1", "b", "33", "1", "b", "33", "34"],
         svec!["2", "c", "34", "3", "d", "31", "3"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let changed_headers = wrk.output_stderr(&mut cmd);
     let expected_count = "6\n";
-    assert_eq!(changed_headers, expected_count);
+    similar_asserts::assert_eq!(changed_headers, expected_count);
 }
 
 #[test]
@@ -131,7 +131,7 @@ fn safenames_verify() {
 
     let changed_headers = wrk.output_stderr(&mut cmd);
     let expected_count = "6\n";
-    assert_eq!(changed_headers, expected_count);
+    similar_asserts::assert_eq!(changed_headers, expected_count);
 
     wrk.assert_success(&mut cmd);
 }
@@ -157,7 +157,9 @@ fn safenames_verify_verbose() {
                 "col1",
                 "_1",
             ],
-            svec!["1", "b", "33", "1", "b", "33", "34", "z", "42", "3", "2", "1", "0"],
+            svec![
+                "1", "b", "33", "1", "b", "33", "34", "z", "42", "3", "2", "1", "0"
+            ],
         ],
     );
 
@@ -205,7 +207,9 @@ fn safenames_verify_verbose_pretty_json() {
                 "col1",
                 "_1",
             ],
-            svec!["1", "b", "33", "1", "b", "33", "34", "z", "42", "3", "2", "1", "0"],
+            svec![
+                "1", "b", "33", "1", "b", "33", "34", "z", "42", "3", "2", "1", "0"
+            ],
         ],
     );
 
@@ -260,7 +264,7 @@ fn safenames_verify_verbose_pretty_json() {
   ]
 }"#;
 
-    // assert_eq!(got, expected);
+    // similar_asserts::assert_eq!(got, expected);
     assert!(got == expected || got == expected2);
 
     wrk.assert_success(&mut cmd);
@@ -287,7 +291,9 @@ fn safenames_verify_verbose_json() {
                 "col1",
                 "_1",
             ],
-            svec!["1", "b", "33", "1", "b", "33", "34", "z", "42", "3", "2", "1", "0"],
+            svec![
+                "1", "b", "33", "1", "b", "33", "34", "z", "42", "3", "2", "1", "0"
+            ],
         ],
     );
 
@@ -370,11 +376,11 @@ fn safenames_reserved_names_default() {
         svec!["1", "b", "33", "1", "b", "33", "34"],
         svec!["2", "c", "34", "3", "d", "31", "3"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let changed_headers = wrk.output_stderr(&mut cmd);
     let expected_count = "6\n";
-    assert_eq!(changed_headers, expected_count);
+    similar_asserts::assert_eq!(changed_headers, expected_count);
 }
 
 #[test]
@@ -414,11 +420,11 @@ fn safenames_reserved_names_specified() {
         svec!["1", "b", "33", "1", "b", "33", "34"],
         svec!["2", "c", "34", "3", "d", "31", "3"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let changed_headers = wrk.output_stderr(&mut cmd);
     let expected_count = "6\n";
-    assert_eq!(changed_headers, expected_count);
+    similar_asserts::assert_eq!(changed_headers, expected_count);
 }
 
 #[test]
@@ -458,9 +464,9 @@ fn safenames_reserved_names_specified_case_insensitive() {
         svec!["1", "b", "33", "1", "b", "33", "34"],
         svec!["2", "c", "34", "3", "d", "31", "3"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let changed_headers = wrk.output_stderr(&mut cmd);
     let expected_count = "6\n";
-    assert_eq!(changed_headers, expected_count);
+    similar_asserts::assert_eq!(changed_headers, expected_count);
 }

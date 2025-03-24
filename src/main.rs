@@ -41,7 +41,7 @@ use rand::Rng;
 use serde::Deserialize;
 
 use crate::{
-    clitypes::{CliError, CliResult, QsvExitCode, CURRENT_COMMAND},
+    clitypes::{CURRENT_COMMAND, CliError, CliResult, QsvExitCode},
     config::SPONSOR_MESSAGE,
 };
 
@@ -161,10 +161,12 @@ fn main() -> QsvExitCode {
     #[cfg(all(feature = "luau", feature = "feature_capable"))]
     enabled_commands.push_str("    luau        Execute Luau script on CSV data\n");
 
-    enabled_commands.push_str(
-        "    partition   Partition CSV data based on a column value
-    pro         Interact with the qsv pro API\n",
-    );
+    enabled_commands.push_str("    partition   Partition CSV data based on a column value\n");
+
+    #[cfg(all(feature = "polars", feature = "feature_capable"))]
+    enabled_commands.push_str("    pivotp      Pivots CSV files using the Pola.rs engine\n");
+
+    enabled_commands.push_str("    pro         Interact with the qsv pro API\n");
 
     #[cfg(all(feature = "prompt", feature = "feature_capable"))]
     enabled_commands.push_str("    prompt      Open a file dialog to pick a file\n");
@@ -215,7 +217,8 @@ fn main() -> QsvExitCode {
     let num_commands = enabled_commands.split('\n').count();
 
     let now = Instant::now();
-    let (qsv_args, _) = match util::init_logger() {
+    #[allow(unused_variables)]
+    let (qsv_args, logger_handle) = match util::init_logger() {
         Ok((qsv_args, logger_handle)) => (qsv_args, logger_handle),
         Err(e) => {
             eprintln!("{e}");
@@ -259,9 +262,9 @@ fn main() -> QsvExitCode {
                  following {num_commands} commands:\n{enabled_commands}\n\n{SPONSOR_MESSAGE}"
             );
 
-            // if no command is specified, auto-check for updates 10% of the time
-            let mut rng = rand::thread_rng(); //DevSkim: ignore DS148264
-            if rng.gen_range(0..10) == 0 {
+            // if no command is specified, auto-check for updates 50% of the time
+            let mut rng = rand::rng(); //DevSkim: ignore DS148264
+            if rng.random_range(0..2) == 0 {
                 _ = util::qsv_check_for_update(true, false);
             }
             util::log_end(qsv_args, now);
@@ -378,6 +381,8 @@ enum Command {
     #[cfg(all(feature = "luau", feature = "feature_capable"))]
     Luau,
     Partition,
+    #[cfg(all(feature = "polars", feature = "feature_capable"))]
+    PivotP,
     Pro,
     #[cfg(all(feature = "prompt", feature = "feature_capable"))]
     Prompt,
@@ -476,6 +481,8 @@ impl Command {
             #[cfg(all(feature = "luau", feature = "feature_capable"))]
             Command::Luau => cmd::luau::run(argv),
             Command::Partition => cmd::partition::run(argv),
+            #[cfg(all(feature = "polars", feature = "feature_capable"))]
+            Command::PivotP => cmd::pivotp::run(argv),
             Command::Pro => cmd::pro::run(argv),
             #[cfg(all(feature = "prompt", feature = "feature_capable"))]
             Command::Prompt => cmd::prompt::run(argv),

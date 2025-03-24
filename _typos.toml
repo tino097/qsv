@@ -1,5 +1,5 @@
 [default]
-extend-ignore-identifiers-re = ["wrk", "flate", "ND"]
+extend-ignore-identifiers-re = ["wrk", "flate", "ND", "typ"]
 
 [default.extend-identifiers]
 # typos in third-party code/libraries
@@ -8,13 +8,22 @@ seperator   = "seperator"
 
 [default.extend-words]
 # these are false positives in data/examples
-ALLE   = "ALLE"
-ba     = "ba"
-fo     = "fo"
-hel    = "hel"
-inout  = "inout"
-UE     = "UE"
-seeked = "seeked"
+ALLE          = "ALLE"
+ba            = "ba"
+Environnement = "Environnement"
+fo            = "fo"
+hel           = "hel"
+inout         = "inout"
+UE            = "UE"
+seeked        = "seeked"
 
 [files]
-extend-exclude = ["*.pynb", "*.ipynb", "*.lua", "*.csv", "*.jsonl"]
+extend-exclude = [
+    "*.pynb",
+    "*.ipynb",
+    "*.lua",
+    "*.csv",
+    "*.jsonl",
+    "*.tab",
+    "*.ssv",
+]

@@ -10,20 +10,21 @@ extern crate stats;
 use std::{env, fmt, mem::transmute, ops};
 
 use quickcheck::{Arbitrary, Gen, QuickCheck, Testable};
-use rand::{thread_rng, Rng};
+use rand::Rng;
+// use similar_asserts::assert_eq;
 
 macro_rules! svec[
-    ($($x:expr),*) => (
+    ($($x:expr_2021),*) => (
         vec![$($x),*].into_iter()
                      .map(|s: &'static str| s.to_string())
                      .collect::<Vec<String>>()
     );
-    ($($x:expr,)*) => (svec![$($x),*]);
+    ($($x:expr_2021,)*) => (svec![$($x),*]);
 ];
 
 macro_rules! rassert_eq {
-    ($given:expr, $expected:expr) => {{
-        assert_eq!($given, $expected);
+    ($given:expr_2021, $expected:expr_2021) => {{
+        similar_asserts::assert_eq!($given, $expected);
         true
     }};
 }
@@ -93,6 +94,8 @@ mod test_jsonl;
 mod test_luau;
 #[cfg(any(feature = "feature_capable", feature = "lite"))]
 mod test_partition;
+#[cfg(feature = "polars")]
+mod test_pivotp;
 #[cfg(feature = "prompt")]
 mod test_prompt;
 mod test_pseudo;
@@ -131,15 +134,19 @@ mod test_transpose;
 mod test_validate;
 
 fn qcheck<T: Testable>(p: T) {
-    env::set_var("QSV_SKIPUTF8_CHECK", "1");
-    QuickCheck::new().gen(Gen::new(5)).quickcheck(p);
-    env::set_var("QSV_SKIPUTF8_CHECK", "");
+    // safety: we are in single-threaded code.
+    unsafe { env::set_var("QSV_SKIPUTF8_CHECK", "1") };
+    QuickCheck::new().r#gen(Gen::new(5)).quickcheck(p);
+    // safety: we are in single-threaded code.
+    unsafe { env::set_var("QSV_SKIPUTF8_CHECK", "") };
 }
 
 fn qcheck_sized<T: Testable>(p: T, size: usize) {
-    env::set_var("QSV_SKIPUTF8_CHECK", "1");
-    QuickCheck::new().gen(Gen::new(size)).quickcheck(p);
-    env::set_var("QSV_SKIPUTF8_CHECK", "");
+    // safety: we are in single-threaded code.
+    unsafe { env::set_var("QSV_SKIPUTF8_CHECK", "1") };
+    QuickCheck::new().r#gen(Gen::new(size)).quickcheck(p);
+    // safety: we are in single-threaded code.
+    unsafe { env::set_var("QSV_SKIPUTF8_CHECK", "") };
 }
 
 pub type CsvVecs = Vec<Vec<String>>;
@@ -169,7 +176,6 @@ impl CsvRecord {
     }
 }
 
-#[allow(clippy::needless_lifetimes)]
 impl ops::Deref for CsvRecord {
     type Target = [String];
 
@@ -178,7 +184,6 @@ impl ops::Deref for CsvRecord {
     }
 }
 
-#[allow(clippy::needless_lifetimes)]
 impl ops::DerefMut for CsvRecord {
     fn deref_mut<'a>(&'a mut self) -> &'a mut [String] {
         &mut self.0
@@ -238,7 +243,6 @@ impl CsvData {
     }
 }
 
-#[allow(clippy::needless_lifetimes)]
 impl ops::Deref for CsvData {
     type Target = [CsvRecord];
 
@@ -250,9 +254,9 @@ impl ops::Deref for CsvData {
 impl Arbitrary for CsvData {
     fn arbitrary(g: &mut Gen) -> CsvData {
         let record_len = g.size();
-        let mut rng = thread_rng();
+        let mut rng = rand::rng();
 
-        let num_records: usize = rng.gen_range(0..100);
+        let num_records: usize = rng.random_range(0..100);
         let mut d = CsvData {
             data: (0..num_records)
                 .map(|_| CsvRecord((0..record_len).map(|_| Arbitrary::arbitrary(g)).collect()))

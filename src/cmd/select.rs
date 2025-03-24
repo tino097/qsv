@@ -88,13 +88,14 @@ Common options:
                            Must be a single character. (default: ,)
 "#;
 
-use rand::{seq::SliceRandom, SeedableRng};
+use rand::{SeedableRng, seq::SliceRandom};
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
     select::SelectColumns,
-    util, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]
@@ -127,12 +128,13 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let headers = rdr.byte_headers()?.clone();
     let sel = if args.flag_random {
         // Use seed if it is provided when initializing the random number generator.
-        let mut rng = if let Some(seed) = args.flag_seed {
-            // we add the DevSkim ignore comment here because we don't need to worry about
-            // cryptographic security in this context.
-            rand::rngs::StdRng::seed_from_u64(seed) // DevSkim: ignore DS148264
-        } else {
-            rand::rngs::StdRng::from_entropy()
+        let mut rng = match args.flag_seed {
+            Some(seed) => {
+                // we add the DevSkim ignore comment here because we don't need to worry about
+                // cryptographic security in this context.
+                rand::rngs::StdRng::seed_from_u64(seed) // DevSkim: ignore DS148264
+            },
+            _ => rand::rngs::StdRng::from_os_rng(),
         };
 
         let initial_selection = rconfig.selection(&headers)?;

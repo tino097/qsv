@@ -6,7 +6,7 @@ use rand::Rng;
 use serde::Deserialize;
 
 use crate::{
-    clitypes::{CliError, CliResult, QsvExitCode, CURRENT_COMMAND},
+    clitypes::{CURRENT_COMMAND, CliError, CliResult, QsvExitCode},
     config::SPONSOR_MESSAGE,
 };
 
@@ -106,7 +106,8 @@ fn main() -> QsvExitCode {
     util::qsv_custom_panic();
 
     let now = Instant::now();
-    let (qsv_args, _) = match util::init_logger() {
+    #[allow(unused_variables)]
+    let (qsv_args, logger_handle) = match util::init_logger() {
         Ok((qsv_args, logger_handle)) => (qsv_args, logger_handle),
         Err(e) => {
             eprintln!("{e}");
@@ -150,9 +151,9 @@ fn main() -> QsvExitCode {
                  following 49 commands:\n{COMMAND_LIST}\n\n{SPONSOR_MESSAGE}",
             );
 
-            // if no command is specified, auto-check for updates 10% of the time
-            let mut rng = rand::thread_rng(); //DevSkim: ignore DS148264
-            if rng.gen_range(0..10) == 0 {
+            // if no command is specified, auto-check for updates 50% of the time
+            let mut rng = rand::rng(); //DevSkim: ignore DS148264
+            if rng.random_range(0..2) == 0 {
                 _ = util::qsv_check_for_update(true, false);
             }
             util::log_end(qsv_args, now);

@@ -354,6 +354,7 @@ _arguments "${_arguments_options[@]}" : \
 '--drop-equal-fields[]' \
 '--jobs[]' \
 '--output[]' \
+'--delimiter[]' \
 '-h[Print help]' \
 '--help[Print help]' \
 && ret=0
@@ -388,13 +389,13 @@ _arguments "${_arguments_options[@]}" : \
 '--sheet[]' \
 '--header-row[]' \
 '--metadata[]' \
+'--table[]' \
+'--range[]' \
 '--error-format[]' \
 '--flexible[]' \
 '--trim[]' \
 '--date-format[]' \
 '--keep-zero-time[]' \
-'--table[]' \
-'--range[]' \
 '--jobs[]' \
 '--output[]' \
 '--delimiter[]' \
@@ -421,6 +422,7 @@ _arguments "${_arguments_options[@]}" : \
 '--dupes-output[]' \
 '--human-readable[]' \
 '--memory-limit[]' \
+'--temp-dir[]' \
 '--no-headers[]' \
 '--delimiter[]' \
 '--quiet[]' \
@@ -531,11 +533,13 @@ _arguments "${_arguments_options[@]}" : \
 (fixlengths)
 _arguments "${_arguments_options[@]}" : \
 '--length[]' \
+'--remove-empty[]' \
 '--insert[]' \
 '--quote[]' \
 '--escape[]' \
 '--output[]' \
 '--delimiter[]' \
+'--quiet[]' \
 '-h[Print help]' \
 '--help[Print help]' \
 && ret=0
@@ -989,14 +993,18 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (join)
 _arguments "${_arguments_options[@]}" : \
-'--ignore-case[]' \
 '--left[]' \
 '--left-anti[]' \
 '--left-semi[]' \
 '--right[]' \
+'--right-anti[]' \
+'--right-semi[]' \
 '--full[]' \
 '--cross[]' \
 '--nulls[]' \
+'--keys-output[]' \
+'--ignore-case[]' \
+'--ignore-leading-zeros[]' \
 '--output[]' \
 '--no-headers[]' \
 '--delimiter[]' \
@@ -1010,31 +1018,41 @@ _arguments "${_arguments_options[@]}" : \
 '--left-anti[]' \
 '--left-semi[]' \
 '--right[]' \
+'--right-anti[]' \
+'--right-semi[]' \
 '--full[]' \
 '--cross[]' \
+'--non-equi[]' \
 '--coalesce[]' \
 '--filter-left[]' \
 '--filter-right[]' \
 '--validate[]' \
+'--maintain-order[]' \
 '--nulls[]' \
 '--streaming[]' \
 '--try-parsedates[]' \
 '--infer-len[]' \
+'--cache-schema[]' \
 '--low-memory[]' \
 '--no-optimizations[]' \
 '--ignore-errors[]' \
 '--decimal-comma[]' \
 '--asof[]' \
+'--no-sort[]' \
 '--left_by[]' \
 '--right_by[]' \
 '--strategy[]' \
 '--tolerance[]' \
+'--allow-exact-matches[]' \
 '--sql-filter[]' \
 '--datetime-format[]' \
 '--date-format[]' \
 '--time-format[]' \
 '--float-precision[]' \
 '--null-value[]' \
+'--ignore-case[]' \
+'--ignore-leading-zeros[]' \
+'--norm-unicode[]' \
 '--output[]' \
 '--delimiter[]' \
 '--quiet[]' \
@@ -1071,6 +1089,7 @@ _arguments "${_arguments_options[@]}" : \
 '--filter[]' \
 '--find[]' \
 '--ignore-case[]' \
+'--freeze-columns[]' \
 '--echo-column[]' \
 '--debug[]' \
 '-h[Print help]' \
@@ -1499,6 +1518,7 @@ _arguments "${_arguments_options[@]}" : \
 '--len[]' \
 '--index[]' \
 '--json[]' \
+'--invert[]' \
 '--output[]' \
 '--no-headers[]' \
 '--delimiter[]' \
@@ -1732,6 +1752,8 @@ _arguments "${_arguments_options[@]}" : \
 '--jobs[]' \
 '--stats-jsonl[]' \
 '--cache-threshold[]' \
+'--vis-whitespace[]' \
+'--dataset-stats[]' \
 '--output[]' \
 '--no-headers[]' \
 '--delimiter[]' \
@@ -1757,11 +1779,20 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--template[]' \
 '--template-file[]' \
+'--globals-json[]' \
 '--outfilename[]' \
+'--outsubdir-size[]' \
 '--customfilter-error[]' \
+'--jobs[]' \
+'--batch[]' \
+'--timeout[]' \
+'--cache-dir[]' \
+'--ckan-api[]' \
+'--ckan-token[]' \
 '--output[]' \
 '--no-headers[]' \
 '--delimiter[]' \
+'--progressbar[]' \
 '-h[Print help]' \
 '--help[Print help]' \
 && ret=0
@@ -1913,6 +1944,7 @@ _arguments "${_arguments_options[@]}" : \
 '--delimiter[]' \
 '--output[]' \
 '--memcheck[]' \
+'--quiet[]' \
 '-h[Print help]' \
 '--help[Print help]' \
 && ret=0
@@ -1939,6 +1971,9 @@ _arguments "${_arguments_options[@]}" : \
 '--jobs[]' \
 '--batch[]' \
 '--timeout[]' \
+'--cache-dir[]' \
+'--ckan-api[]' \
+'--ckan-token[]' \
 '--no-headers[]' \
 '--delimiter[]' \
 '--progressbar[]' \

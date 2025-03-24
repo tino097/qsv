@@ -5,20 +5,24 @@ Compute summary statistics & infers data types for each column in a CSV.
 UTF-8 encoded. If you encounter problems generating stats, use `qsv validate` to confirm the
 input CSV is valid.
 
-Summary statistics includes sum, min/max/range, sort order, min/max/sum/avg length, mean,
-standard error of the mean (SEM), stddev, variance, coefficient of variation (CV), nullcount,
-max_precision, sparsity, quartiles, interquartile range (IQR), lower/upper fences, skewness, median,
-cardinality, mode/s & "antimode/s", and median absolute deviation (MAD). Note that some statistics
-require loading the entire file into memory, so they must be enabled explicitly. 
+Summary stats include sum, min/max/range, sort order/sortiness, min/max/sum/avg/stddev/variance/cv length,
+mean, standard error of the mean (SEM), geometric mean, harmonic mean, stddev, variance, coefficient of
+variation (CV), nullcount, max_precision, sparsity, Median Absolute Deviation (MAD), quartiles,
+interquartile range (IQR), lower/upper fences, skewness, median, cardinality/uniqueness ratio,
+mode/s & "antimode/s" & percentiles.
+
+Note that some stats require loading the entire file into memory, so they must be enabled explicitly. 
 
 By default, the following "streaming" statistics are reported for *every* column:
-sum, min/max/range values, sort order, min/max/sum/avg length, mean, sem, stddev, variance, cv,
-nullcount, max_precision & sparsity. The default set of statistics corresponds to ones that can be
-computed efficiently on a stream of data (i.e., constant memory) and works with arbitrarily large CSVs.
+  sum, min/max/range values, sort order/sortiness, min/max/sum/avg/stddev/variance/cv length, mean, sem,
+  geometric_mean, harmonic_mean,stddev, variance, cv, nullcount, max_precision & sparsity.
+
+The default set of statistics corresponds to ones that can be computed efficiently on a stream of data
+(i.e., constant memory) and works with arbitrarily large CSVs.
 
 The following additional "non-streaming" statistics require loading the entire file into memory:
-cardinality, mode/antimode, median, MAD, quartiles and its related measures (IQR,
-lower/upper fences & skewness).
+cardinality/uniqueness ratio, modes/antimodes, median, MAD, quartiles and its related measures
+(q1, q2, q3, IQR, lower/upper fences & skewness) and percentiles.
 
 When computing "non-streaming" statistics, an Out-Of-Memory (OOM) heuristic check is done.
 If the file is larger than the available memory minus a headroom buffer of 20% (which can be
@@ -27,10 +31,10 @@ preemptively prevented.
 
 "Antimode" is the least frequently occurring non-zero value and is the opposite of mode.
 It returns "*ALL" if all the values are unique, and only returns a preview of the first
-10 antimodes.
+10 antimodes, truncating after 100 characters (configurable with QSV_ANTIMODES_LEN).
 
 If you need all the antimode values of a column, run the `frequency` command with --limit set
-to zero. The resulting frequency table will have all the antimode values.
+to zero. The resulting frequency table will have all the "antimode" values.
 
 Summary statistics for dates are also computed when --infer-dates is enabled, with DateTime
 results in rfc3339 format and Date results in "yyyy-mm-dd" format in the UTC timezone.
@@ -62,10 +66,10 @@ The arguments used to generate the cached stats are saved in <FILESTEM>.stats.cs
 If stats have already been computed for the input file with similar arguments and the file
 hasn't changed, the stats will be loaded from the cache instead of recomputing it.
 
-These cached stats are also used by other qsv commands (currently `schema` & `tojsonl`) to
-load the stats into memory faster. If the cached stats are not current (i.e., the input file
-is newer than the cached stats), the cached stats will be ignored and recomputed. For example,
-see the "boston311" test files in 
+These cached stats are also used by other qsv commands (currently `describegpt`, `frequency`,
+`joinp`, `pivotp`, `schema`, `sqlp` & `tojsonl`) to work smarter & faster.
+If the cached stats are not current (i.e., the input file is newer than the cached stats),
+the cached stats will be ignored and recomputed. For example, see the "boston311" test files in 
 https://github.com/dathere/qsv/blob/4529d51273218347fef6aca15ac24e22b85b2ec4/tests/test_stats.rs#L608.
 
 Examples:
@@ -77,16 +81,17 @@ Compute all statistics for the "nyc311.csv" file:
     $ qsv stats --everything nyc311.csv
     $ qsv stats -E nyc311.csv
 
-Compute all statistics for the "nyc311.csv", inferring dates using default date column name patterns:
+Compute all statistics for "nyc311.csv", inferring dates using default date column name patterns:
     $ qsv stats -E --infer-dates nyc311.csv
 
-Compute all statistics for the "nyc311.csv", inferring dates only for columns with "_date" & "_dte":
+Compute all statistics for "nyc311.csv", inferring dates only for columns with "_date" & "_dte"
+in the column names:
     $ qsv stats -E --infer-dates --dates-whitelist _date,_dte nyc311.csv
 
-In addition, also infer boolean data types for the "nyc311.csv" file:
+In addition, also infer boolean data types for "nyc311.csv" file:
     $ qsv stats -E --infer-dates --dates-whitelist _date --infer-boolean nyc311.csv
 
-In addition to basis "streaming" stats, also compute the cardinality for the "nyc311.csv" file:
+In addition to basic "streaming" stats, also compute cardinality for the "nyc311.csv" file:
     $ qsv stats --cardinality nyc311.csv
 
 Prefer DMY format when inferring dates for the "nyc311.csv" file:
@@ -98,12 +103,12 @@ Infer data types only for the "nyc311.csv" file:
 Infer data types only, including boolean and date types for the "nyc311.csv" file:
     $ qsv stats --typesonly --infer-boolean --infer-dates nyc311.csv
 
-Automatically create an index for the "nyc311.csv" file if it's larger than 5MB
-and there is no existing index file:
+Automatically create an index for the "nyc311.csv" file to enable multithreading
+if it's larger than 5MB and there is no existing index file:
     $ qsv stats -E --cache-threshold -5000000 nyc311.csv
 
-Auto-create an index for the "nyc311.csv" file if it's larger than 5MB and delete the index
-and the stats cache file after the stats run:
+Auto-create a TEMPORARY index for the "nyc311.csv" file to enable multithreading
+if it's larger than 5MB and delete the index and the stats cache file after the stats run:
     $ qsv stats -E --cache-threshold -5000005 nyc311.csv
 
 Prompt for CSV/TSV/TAB file to compute stats for:
@@ -129,25 +134,58 @@ stats options:
                               See 'qsv select --help' for the format details.
                               This is provided here because piping 'qsv select'
                               into 'qsv stats' will prevent the use of indexing.
-    -E, --everything          Compute all statistics available.
+    -E, --everything          Compute all statistics available EXCEPT --dataset-stats.
     --typesonly               Infer data types only and do not compute statistics.
-                              Note that if you want to infer dates, you'll still need to use
-                              the --infer-dates and --dates-whitelist options.
+                              Note that if you want to infer dates and boolean types, you'll
+                              still need to use the --infer-dates & --infer-boolean options.
+
+                              BOOLEAN INFERENCING:
     --infer-boolean           Infer boolean data type. This automatically enables
                               the --cardinality option. When a column's cardinality is 2,
-                              and the 2 values' first characters are 0/1, t/f & y/n
-                              case-insensitive, the data type is inferred as boolean.
+                              and the 2 values' are in the true/false patterns specified
+                              by --boolean-patterns, the data type is inferred as boolean.
+    --boolean-patterns <arg>  Comma-separated list of boolean pattern pairs in the format
+                              "true_pattern:false_pattern". Each pattern can be a string
+                              of any length. The patterns are case-insensitive. If a pattern
+                              ends with a "*", it is treated as a prefix. For example,
+                              "t*:f*,y*:n*" will match "true", "truthy", "Truth" as boolean true
+                              values so long as the corresponding false pattern (e.g. False, f, etc.)
+                              is also matched & cardinality is 2. Ignored if --infer-boolean is false.
+                              [default: 1:0,t*:f*,y*:n*]
+
     --mode                    Compute the mode/s & antimode/s. Multimodal-aware.
-                              This requires loading all CSV data in memory.
-    --cardinality             Compute the cardinality.
-                              This requires loading all CSV data in memory.
+                              If there are multiple modes/antimodes, they are separated by the
+                              QSV_STATS_SEPARATOR environment variable. If not set, the default
+                              separator is "|".
+                              Uses memory proportional to the cardinality of each column.
+    --cardinality             Compute the cardinality and the uniqueness ratio.
+                              This is automatically enabled if --infer-boolean is enabled.
+                              https://en.wikipedia.org/wiki/Cardinality_(SQL_statements)
+                              Uses memory proportional to the number of unique values in each column.
+
+                              NUMERIC & DATE/DATETIME STATS THAT REQUIRE IN-MEMORY SORTING:
+                              The following statistics are only computed for numeric & date/datetime
+                              columns & require loading & sorting ALL the selected columns' data
+                              in memory FIRST before computing the statistics.
+
     --median                  Compute the median.
-                              This requires loading all CSV data in memory.
+                              Loads & sorts all the selected columns' data in memory.
+                              https://en.wikipedia.org/wiki/Median
     --mad                     Compute the median absolute deviation (MAD).
-                              This requires loading all CSV data in memory.
-    --quartiles               Compute the quartiles, the IQR, the lower/upper inner/outer
-                              fences and skewness.
-                              This requires loading all CSV data in memory.
+                              https://en.wikipedia.org/wiki/Median_absolute_deviation
+    --quartiles               Compute the quartiles (using method 3), the IQR, the lower/upper,
+                              inner/outer fences and skewness.
+                              https://en.wikipedia.org/wiki/Quartile#Method_3
+    --percentiles             Compute custom percentiles using the nearest rank method.
+                              https://en.wikipedia.org/wiki/Percentile#The_nearest-rank_method
+    --percentile-list <arg>   Comma-separated list of percentiles to compute.
+                              For example, "5,10,40,60,90,95" will compute percentiles
+                              5th, 10th, 40th, 60th, 90th, and 95th.
+                              Multiple percentiles are separated by the QSV_STATS_SEPARATOR
+                              environment variable. If not set, the default separator is "|".
+                              It is ignored if --percentiles is not set.
+                              [default: 5,10,40,60,90,95]
+
     --round <decimal_places>  Round statistics to <decimal_places>. Rounding is done following
                               Midpoint Nearest Even (aka "Bankers Rounding") rule.
                               https://docs.rs/rust_decimal/latest/rust_decimal/enum.RoundingStrategy.html
@@ -157,12 +195,14 @@ stats options:
                               [default: 4]
     --nulls                   Include NULLs in the population size for computing
                               mean and standard deviation.
-    --infer-dates             Infer date/datetime datatypes. This is an expensive
+
+                              DATE INFERENCING:
+    --infer-dates             Infer date/datetime data types. This is an expensive
                               option and should only be used when you know there
                               are date/datetime fields.
                               Also, if timezone is not specified in the data, it'll
                               be set to UTC.
-    --dates-whitelist <list>  The case-insensitive patterns to look for when 
+    --dates-whitelist <list>  The comma-separated, case-insensitive patterns to look for when 
                               shortlisting fields for date inferencing.
                               i.e. if the field's name has any of these patterns,
                               it is shortlisted for date inferencing.
@@ -180,6 +220,7 @@ stats options:
                               [default: date,time,due,open,close,created]
     --prefer-dmy              Parse dates in dmy format. Otherwise, use mdy format.
                               Ignored if --infer-dates is false.
+
     --force                   Force recomputing stats even if valid precomputed stats
                               cache exists.
     -j, --jobs <arg>          The number of jobs to run in parallel.
@@ -189,22 +230,30 @@ stats options:
                               number of CPUs detected.
     --stats-jsonl             Also write the stats in JSONL format. 
                               If set, the stats will be written to <FILESTEM>.stats.csv.data.jsonl.
-                              Note that this option used internally by other qsv commands
-                              (currently `frequency`, `schema`. `tojsonl` & `sqlp`) to load cached stats. 
-                              You can preemptively create the stats-jsonl file by using
-                              this option BEFORE running the `frequency`, `schema` & `tojsonl`
-                              commands and they will automatically use it.
- -c, --cache-threshold <arg>  When greater than 1, the threshold in milliseconds before caching
-                              stats results. If a stats run takes longer than this threshold,
-                              the stats results will be cached.
-                              Set to 0 to suppress caching. 
-                              Set to 1 to force caching.
-                              Set to a negative number to automatically create an index
-                              when the input file size is greater than abs(arg) in bytes.
-                              If the negative number ends with 5, it will delete the index
-                              file and the stats cache file after the stats run. Otherwise,
-                              the index file and the cache files are kept.
+                              Note that this option used internally by other qsv "smart" commands (see
+                              https://github.com/dathere/qsv/blob/master/docs/PERFORMANCE.md#stats-cache)
+                              to load cached stats to make them work smarter & faster.
+                              You can preemptively create the stats-jsonl file by using this option
+                              BEFORE running "smart" commands and they will automatically use it.
+ -c, --cache-threshold <arg>  Controls the creation of stats cache files.
+                                - when greater than 1, the threshold in milliseconds before caching
+                                  stats results. If a stats run takes longer than this threshold,
+                                  the stats results will be cached.
+                                - 0 to suppress caching. 
+                                - 1 to force caching.
+                                - a negative number to automatically create an index when
+                                  the input file size is greater than abs(arg) in bytes.
+                                  If the negative number ends with 5, it will delete the index
+                                  file and the stats cache file after the stats run. Otherwise,
+                                  the index file and the cache files are kept.
                               [default: 5000]
+    --vis-whitespace          Visualize whitespace characters in the output.
+                              See https://github.com/dathere/qsv/wiki/Supplemental#whitespace-markers
+                              for the list of whitespace markers.
+    --dataset-stats           Compute dataset statistics (e.g. row count, column count, file size and
+                              fingerprint hash) and add them as additional rows to the output, with
+                              the qsv__ prefix and an additional qsv__value column.
+                              The --everything option DOES NOT enable this option.
 
 Common options:
     -h, --help             Display this message
@@ -228,23 +277,22 @@ inferencing & to compile smart Data Dictionaries in the most performant way poss
 for Datapusher+ (https://github.com/dathere/datapusher-plus).
 
 It underpins the `schema` and `validate` commands - enabling the automatic creation of
-a JSONschema based on a CSV's summary statistics; and use the generated JSONschema to
-quickly validate complex CSVs (NYC's 311 data) at almost 930,000 records/sec.
+a JSON Schema based on a CSV's summary statistics; and use the generated JSON Schema
+to quickly validate complex CSVs hundreds of thousands of records/sec.
 
-It's type inferences are also used by the `tojsonl` command to generate properly typed
-JSONL files; the `frequency` command to short-circuit frequency table generation for columns
-with all unique values; and the `schema` command to set the data type of a column and identify
-low-cardinality columns for enum generation in the JSONschema.
+It's type inferences are also used by the "smart" commands (see
+https://github.com/dathere/qsv/blob/master/docs/PERFORMANCE.md#stats-cache)
+to make them work smarter & faster.
 
 To safeguard against undefined behavior, `stats` is the most extensively tested command,
-with ~500 tests.
+with ~520 tests.
 */
 
 use std::{
     default::Default,
     fmt, fs, io,
     io::Write,
-    iter::repeat,
+    iter::repeat_n,
     path::{Path, PathBuf},
     str,
     sync::OnceLock,
@@ -252,47 +300,54 @@ use std::{
 
 use crossbeam_channel;
 use itertools::Itertools;
+use phf::phf_map;
 use qsv_dateparser::parse_with_preference;
 use serde::{Deserialize, Serialize};
-use simd_json::{prelude::ValueAsScalar, OwnedValue};
+use simd_json::{OwnedValue, prelude::ValueAsScalar};
 use smallvec::SmallVec;
-use stats::{merge_all, Commute, MinMax, OnlineStats, Unsorted};
+use stats::{Commute, MinMax, OnlineStats, Unsorted, merge_all};
 use tempfile::NamedTempFile;
 use threadpool::ThreadPool;
 
 use self::FieldType::{TDate, TDateTime, TFloat, TInteger, TNull, TString};
 use crate::{
-    config::{get_delim_by_extension, Config, Delimiter},
+    CliResult,
+    config::{Config, Delimiter, get_delim_by_extension},
     select::{SelectColumns, Selection},
-    util, CliResult,
+    util,
 };
 
 #[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Clone, Deserialize)]
 pub struct Args {
-    pub arg_input:            Option<String>,
-    pub flag_select:          SelectColumns,
-    pub flag_everything:      bool,
-    pub flag_typesonly:       bool,
-    pub flag_infer_boolean:   bool,
-    pub flag_mode:            bool,
-    pub flag_cardinality:     bool,
-    pub flag_median:          bool,
-    pub flag_mad:             bool,
-    pub flag_quartiles:       bool,
-    pub flag_round:           u32,
-    pub flag_nulls:           bool,
-    pub flag_infer_dates:     bool,
-    pub flag_dates_whitelist: String,
-    pub flag_prefer_dmy:      bool,
-    pub flag_force:           bool,
-    pub flag_jobs:            Option<usize>,
-    pub flag_stats_jsonl:     bool,
-    pub flag_cache_threshold: isize,
-    pub flag_output:          Option<String>,
-    pub flag_no_headers:      bool,
-    pub flag_delimiter:       Option<Delimiter>,
-    pub flag_memcheck:        bool,
+    pub arg_input:             Option<String>,
+    pub flag_select:           SelectColumns,
+    pub flag_everything:       bool,
+    pub flag_typesonly:        bool,
+    pub flag_infer_boolean:    bool,
+    pub flag_boolean_patterns: String,
+    pub flag_mode:             bool,
+    pub flag_cardinality:      bool,
+    pub flag_median:           bool,
+    pub flag_mad:              bool,
+    pub flag_quartiles:        bool,
+    pub flag_percentiles:      bool,
+    pub flag_percentile_list:  String,
+    pub flag_round:            u32,
+    pub flag_nulls:            bool,
+    pub flag_infer_dates:      bool,
+    pub flag_dates_whitelist:  String,
+    pub flag_prefer_dmy:       bool,
+    pub flag_force:            bool,
+    pub flag_jobs:             Option<usize>,
+    pub flag_stats_jsonl:      bool,
+    pub flag_cache_threshold:  isize,
+    pub flag_output:           Option<String>,
+    pub flag_no_headers:       bool,
+    pub flag_delimiter:        Option<Delimiter>,
+    pub flag_memcheck:         bool,
+    pub flag_vis_whitespace:   bool,
+    pub flag_dataset_stats:    bool,
 }
 
 // this struct is used to serialize/deserialize the stats to
@@ -310,6 +365,8 @@ struct StatsArgs {
     flag_median:          bool,
     flag_mad:             bool,
     flag_quartiles:       bool,
+    flag_percentiles:     bool,
+    flag_percentile_list: String,
     flag_round:           u32,
     flag_nulls:           bool,
     flag_infer_dates:     bool,
@@ -343,6 +400,11 @@ impl StatsArgs {
             flag_median:          value["flag_median"].as_bool().unwrap_or_default(),
             flag_mad:             value["flag_mad"].as_bool().unwrap_or_default(),
             flag_quartiles:       value["flag_quartiles"].as_bool().unwrap_or_default(),
+            flag_percentiles:     value["flag_percentiles"].as_bool().unwrap_or_default(),
+            flag_percentile_list: value["flag_percentile_list"]
+                .as_str()
+                .unwrap_or("5,10,40,60,90,95")
+                .to_string(),
             flag_round:           value["flag_round"].as_u64().unwrap_or_default() as u32,
             flag_nulls:           value["flag_nulls"].as_bool().unwrap_or_default(),
             flag_infer_dates:     value["flag_infer_dates"].as_bool().unwrap_or_default(),
@@ -379,13 +441,14 @@ impl StatsArgs {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Default, Debug)]
 pub struct StatsData {
     pub field:                String,
     // type is a reserved keyword in Rust
     // so we escape it as r#type
     // we need to do this for serde to work
     pub r#type:               String,
+    #[serde(default)]
     pub is_ascii:             bool,
     pub sum:                  Option<f64>,
     pub min:                  Option<String>,
@@ -396,6 +459,9 @@ pub struct StatsData {
     pub max_length:           Option<usize>,
     pub sum_length:           Option<usize>,
     pub avg_length:           Option<f64>,
+    pub stddev_length:        Option<f64>,
+    pub variance_length:      Option<f64>,
+    pub cv_length:            Option<f64>,
     pub mean:                 Option<f64>,
     pub sem:                  Option<f64>,
     pub stddev:               Option<f64>,
@@ -415,6 +481,7 @@ pub struct StatsData {
     pub upper_outer_fence:    Option<f64>,
     pub skewness:             Option<f64>,
     pub cardinality:          u64,
+    pub uniqueness_ratio:     Option<f64>,
     pub mode:                 Option<String>,
     pub mode_count:           Option<u64>,
     pub mode_occurrences:     Option<u64>,
@@ -433,48 +500,57 @@ pub enum JsonTypes {
 
 // we use this to serialize the StatsData data structure
 // to a JSONL file using serde_json
-const STATSDATA_TYPES_ARRAY: [JsonTypes; MAX_STAT_COLUMNS] = [
-    JsonTypes::String, //field
-    JsonTypes::String, //type
-    JsonTypes::Bool,   //is_ascii
-    JsonTypes::Float,  //sum
-    JsonTypes::String, //min
-    JsonTypes::String, //max
-    JsonTypes::Float,  //range
-    JsonTypes::String, //sort_order
-    JsonTypes::Int,    //min_length
-    JsonTypes::Int,    //max_length
-    JsonTypes::Int,    //sum_length
-    JsonTypes::Float,  //avg_length
-    JsonTypes::Float,  //mean
-    JsonTypes::Float,  //sem
-    JsonTypes::Float,  //stddev
-    JsonTypes::Float,  //variance
-    JsonTypes::Float,  //cv
-    JsonTypes::Int,    //nullcount
-    JsonTypes::Int,    //max_precision
-    JsonTypes::Float,  //sparsity
-    JsonTypes::Float,  //mad
-    JsonTypes::Float,  //lower_outer_fence
-    JsonTypes::Float,  //lower_inner_fence
-    JsonTypes::Float,  //q1
-    JsonTypes::Float,  //q2_median
-    JsonTypes::Float,  //q3
-    JsonTypes::Float,  //iqr
-    JsonTypes::Float,  //upper_inner_fence
-    JsonTypes::Float,  //upper_outer_fence
-    JsonTypes::Float,  //skewness
-    JsonTypes::Int,    //cardinality
-    JsonTypes::String, //mode
-    JsonTypes::Int,    //mode_count
-    JsonTypes::Int,    //mode_occurrences
-    JsonTypes::String, //antimode
-    JsonTypes::Int,    //antimode_count
-    JsonTypes::Int,    //antimode_occurrences
-];
+pub static STATSDATA_TYPES_MAP: phf::Map<&'static str, JsonTypes> = phf_map! {
+    "field" => JsonTypes::String,
+    "type" => JsonTypes::String,
+    "is_ascii" => JsonTypes::Bool,
+    "sum" => JsonTypes::Float,
+    "min" => JsonTypes::String,
+    "max" => JsonTypes::String,
+    "range" => JsonTypes::Float,
+    "sort_order" => JsonTypes::String,
+    "sortiness" => JsonTypes::Float,
+    "min_length" => JsonTypes::Int,
+    "max_length" => JsonTypes::Int,
+    "sum_length" => JsonTypes::Int,
+    "avg_length" => JsonTypes::Float,
+    "stddev_length" => JsonTypes::Float,
+    "variance_length" => JsonTypes::Float,
+    "cv_length" => JsonTypes::Float,
+    "mean" => JsonTypes::Float,
+    "sem" => JsonTypes::Float,
+    "geometric_mean" => JsonTypes::Float,
+    "harmonic_mean" => JsonTypes::Float,
+    "stddev" => JsonTypes::Float,
+    "variance" => JsonTypes::Float,
+    "cv" => JsonTypes::Float,
+    "nullcount" => JsonTypes::Int,
+    "max_precision" => JsonTypes::Int,
+    "sparsity" => JsonTypes::Float,
+    "mad" => JsonTypes::Float,
+    "lower_outer_fence" => JsonTypes::Float,
+    "lower_inner_fence" => JsonTypes::Float,
+    "q1" => JsonTypes::Float,
+    "q2_median" => JsonTypes::Float,
+    "q3" => JsonTypes::Float,
+    "iqr" => JsonTypes::Float,
+    "upper_inner_fence" => JsonTypes::Float,
+    "upper_outer_fence" => JsonTypes::Float,
+    "skewness" => JsonTypes::Float,
+    "cardinality" => JsonTypes::Int,
+    "uniqueness_ratio" => JsonTypes::Float,
+    "mode" => JsonTypes::String,
+    "mode_count" => JsonTypes::Int,
+    "mode_occurrences" => JsonTypes::Int,
+    "antimode" => JsonTypes::String,
+    "antimode_count" => JsonTypes::Int,
+    "antimode_occurrences" => JsonTypes::Int,
+    "qsv__value" => JsonTypes::Int,
+};
 
-static INFER_DATE_FLAGS: OnceLock<SmallVec<[bool; 8]>> = OnceLock::new();
+static INFER_DATE_FLAGS: OnceLock<SmallVec<[bool; 50]>> = OnceLock::new();
 static RECORD_COUNT: OnceLock<u64> = OnceLock::new();
+static ANTIMODES_LEN: OnceLock<usize> = OnceLock::new();
 
 // standard overflow and underflow strings
 // for sum, sum_length and avg_length
@@ -489,16 +565,74 @@ const MS_IN_DAY_INT: i64 = 86_400_000;
 const DAY_DECIMAL_PLACES: u32 = 5;
 
 // maximum number of output columns
-const MAX_STAT_COLUMNS: usize = 37;
+const MAX_STAT_COLUMNS: usize = 44;
+
+// the first N columns are fingerprint hash columns
+const FINGERPRINT_HASH_COLUMNS: usize = 26;
 
 // maximum number of antimodes to display
 const MAX_ANTIMODES: usize = 10;
-// maximum length of antimode string before truncating and appending "..."
-const MAX_ANTIMODE_LEN: usize = 100;
+// default length of antimode string before truncating and appending "..."
+const DEFAULT_ANTIMODES_LEN: usize = 100;
 
-// we do this so this is evaluated at compile-time
-pub const fn get_stats_data_types() -> [JsonTypes; MAX_STAT_COLUMNS] {
-    STATSDATA_TYPES_ARRAY
+// the default separator we use for stats that have multiple values
+// in one column, i.e. antimodes/modes & percentiles
+pub const DEFAULT_STATS_SEPARATOR: &str = "|";
+
+static BOOLEAN_PATTERNS: OnceLock<Vec<BooleanPattern>> = OnceLock::new();
+#[derive(Clone, Debug)]
+struct BooleanPattern {
+    true_pattern:  String,
+    false_pattern: String,
+}
+
+impl BooleanPattern {
+    fn matches(&self, value: &str) -> Option<bool> {
+        let value_lower = value.to_lowercase();
+
+        // Check for exact match first
+        if value_lower == self.true_pattern {
+            return Some(true);
+        } else if value_lower == self.false_pattern {
+            return Some(false);
+        }
+
+        // Check for prefix match if pattern ends with "*"
+        if self.true_pattern.ends_with('*') {
+            let prefix = &self.true_pattern[..self.true_pattern.len() - 1];
+            if value_lower.starts_with(prefix) {
+                return Some(true);
+            }
+        }
+
+        if self.false_pattern.ends_with('*') {
+            let prefix = &self.false_pattern[..self.false_pattern.len() - 1];
+            if value_lower.starts_with(prefix) {
+                return Some(false);
+            }
+        }
+
+        None
+    }
+}
+
+fn parse_boolean_patterns(boolean_patterns: &str) -> Vec<BooleanPattern> {
+    boolean_patterns
+        .split(',')
+        .filter_map(|pair| {
+            let mut parts = pair.split(':');
+            let true_pattern = parts.next()?.trim().to_lowercase();
+            let false_pattern = parts.next()?.trim().to_lowercase();
+            if true_pattern.is_empty() || false_pattern.is_empty() {
+                None
+            } else {
+                Some(BooleanPattern {
+                    true_pattern,
+                    false_pattern,
+                })
+            }
+        })
+        .collect()
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -513,8 +647,11 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     }
 
     // inferring boolean requires inferring cardinality
-    if args.flag_infer_boolean && !args.flag_cardinality {
-        args.flag_cardinality = true;
+    if args.flag_infer_boolean {
+        if !args.flag_cardinality {
+            args.flag_cardinality = true;
+        }
+        let _ = BOOLEAN_PATTERNS.set(parse_boolean_patterns(&args.flag_boolean_patterns));
     }
 
     // check prefer_dmy env var
@@ -536,6 +673,8 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         flag_median:          args.flag_median,
         flag_mad:             args.flag_mad,
         flag_quartiles:       args.flag_quartiles,
+        flag_percentiles:     args.flag_percentiles,
+        flag_percentile_list: args.flag_percentile_list.clone(),
         flag_round:           args.flag_round,
         flag_nulls:           args.flag_nulls,
         flag_infer_dates:     args.flag_infer_dates,
@@ -572,10 +711,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     // find the delimiter to use based on the extension of the output file
     // and if we need to snappy compress the output
-    let (output_extension, output_delim, snappy) = if let Some(ref output_path) = args.flag_output {
-        get_delim_by_extension(Path::new(&output_path), b',')
-    } else {
-        (String::new(), b',', false)
+    let (output_extension, output_delim, snappy) = match args.flag_output {
+        Some(ref output_path) => get_delim_by_extension(Path::new(&output_path), b','),
+        _ => (String::new(), b',', false),
     };
     let stats_csv_tempfile_fname = format!(
         "{stem}.{prime_ext}{snappy_ext}",
@@ -645,92 +783,100 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         log::warn!(
                             "Could not read {path_file_stem}.stats.csv.json: {e:?}, recomputing..."
                         );
-                        fs::remove_file(&stats_file)?;
-                        fs::remove_file(&stats_args_json_file)?;
+                        // remove stats cache files silently even if they don't exists
+                        let _ = fs::remove_file(&stats_file);
+                        let _ = fs::remove_file(&stats_args_json_file);
                         String::new()
                     },
                 };
 
-            let time_saved: u64;
-            // deserialize the existing stats args json
-            let existing_stats_args_json: StatsArgs = {
-                let mut json_buffer = existing_stats_args_json_str.into_bytes();
-                match simd_json::to_owned_value(&mut json_buffer) {
-                    Ok(value) => {
-                        // Convert OwnedValue to StatsArgs
-                        match StatsArgs::from_owned_value(&value) {
-                            Ok(mut stat_args) => {
-                                // we init these fields to empty values because we don't want to
-                                // compare them when checking if the
-                                // args are the same
-                                stat_args.canonical_input_path = String::new();
-                                stat_args.canonical_stats_path = String::new();
-                                stat_args.record_count = 0;
-                                stat_args.date_generated = String::new();
-                                time_saved = stat_args.compute_duration_ms;
-                                stat_args.compute_duration_ms = 0;
-                                stat_args
-                            },
-                            Err(e) => {
-                                time_saved = 0;
-                                log::warn!(
-                                    "Could not deserialize {path_file_stem}.stats.csv.json: \
-                                     {e:?}, recomputing..."
-                                );
-                                fs::remove_file(&stats_file)?;
-                                fs::remove_file(&stats_args_json_file)?;
-                                StatsArgs::default()
-                            },
-                        }
-                    },
-                    Err(e) => {
-                        time_saved = 0;
-                        log::warn!(
-                            "Could not parse {path_file_stem}.stats.csv.json: {e:?}, \
-                             recomputing..."
-                        );
-                        fs::remove_file(&stats_file)?;
-                        fs::remove_file(&stats_args_json_file)?;
-                        StatsArgs::default()
-                    },
-                }
-            };
+            if !existing_stats_args_json_str.is_empty() {
+                let time_saved: u64;
+                // deserialize the existing stats args json
+                let existing_stats_args_json: StatsArgs = {
+                    let mut json_buffer = existing_stats_args_json_str.into_bytes();
+                    match simd_json::to_owned_value(&mut json_buffer) {
+                        Ok(value) => {
+                            // Convert OwnedValue to StatsArgs
+                            match StatsArgs::from_owned_value(&value) {
+                                Ok(mut stat_args) => {
+                                    // we init these fields to empty values because we don't want to
+                                    // compare them when checking if the
+                                    // args are the same
+                                    stat_args.canonical_input_path = String::new();
+                                    stat_args.canonical_stats_path = String::new();
+                                    stat_args.record_count = 0;
+                                    stat_args.date_generated = String::new();
+                                    time_saved = stat_args.compute_duration_ms;
+                                    stat_args.compute_duration_ms = 0;
+                                    stat_args
+                                },
+                                Err(e) => {
+                                    time_saved = 0;
+                                    log::warn!(
+                                        "Could not deserialize {path_file_stem}.stats.csv.json: \
+                                         {e:?}, recomputing..."
+                                    );
+                                    let _ = fs::remove_file(&stats_file);
+                                    let _ = fs::remove_file(&stats_args_json_file);
+                                    StatsArgs::default()
+                                },
+                            }
+                        },
+                        Err(e) => {
+                            time_saved = 0;
+                            log::warn!(
+                                "Could not parse {path_file_stem}.stats.csv.json: {e:?}, \
+                                 recomputing..."
+                            );
+                            let _ = fs::remove_file(&stats_file);
+                            let _ = fs::remove_file(&stats_args_json_file);
+                            StatsArgs::default()
+                        },
+                    }
+                };
 
-            // check if the cached stats are current (ie the stats file is newer than the input
-            // file), use the same args or if the --everything flag was set, and
-            // all the other non-stats args are equal. If so, we don't need to recompute the stats
-            let input_file_modified = fs::metadata(&path)?.modified()?;
-            let stats_file_modified = fs::metadata(&stats_file)?.modified()?;
-            #[allow(clippy::nonminimal_bool)]
-            if stats_file_modified > input_file_modified
-                && (existing_stats_args_json == current_stats_args
-                    || existing_stats_args_json.flag_everything
-                        && existing_stats_args_json.flag_infer_dates
-                            == current_stats_args.flag_infer_dates
-                        && existing_stats_args_json.flag_dates_whitelist
-                            == current_stats_args.flag_dates_whitelist
-                        && existing_stats_args_json.flag_prefer_dmy
-                            == current_stats_args.flag_prefer_dmy
-                        && existing_stats_args_json.flag_no_headers
-                            == current_stats_args.flag_no_headers
-                        && existing_stats_args_json.flag_dates_whitelist
-                            == current_stats_args.flag_dates_whitelist
-                        && existing_stats_args_json.flag_delimiter
-                            == current_stats_args.flag_delimiter
-                        && existing_stats_args_json.flag_nulls == current_stats_args.flag_nulls
-                        && existing_stats_args_json.qsv_version == current_stats_args.qsv_version)
-            {
-                log::info!(
-                    "{path_file_stem}.stats.csv already exists and is current. Skipping compute \
-                     and using cached stats instead - {time_saved} secs saved...",
-                );
-                compute_stats = false;
-            } else {
-                log::info!(
-                    "{path_file_stem}.stats.csv already exists, but is older than the input file \
-                     or the args have changed, recomputing...",
-                );
-                fs::remove_file(&stats_file)?;
+                // check if the cached stats are current (ie the stats file is newer than the input
+                // file), use the same args or if the --everything flag was set, and
+                // all the other non-stats args are equal. If so, we don't need to recompute the
+                // stats
+                let input_file_modified = fs::metadata(&path)?.modified()?;
+                let stats_file_modified = fs::metadata(&stats_file)
+                    .and_then(|m| m.modified())
+                    .unwrap_or(input_file_modified);
+                #[allow(clippy::nonminimal_bool)]
+                if stats_file_modified > input_file_modified
+                    && (existing_stats_args_json == current_stats_args
+                        || existing_stats_args_json.flag_everything
+                            && existing_stats_args_json.flag_infer_dates
+                                == current_stats_args.flag_infer_dates
+                            && existing_stats_args_json.flag_dates_whitelist
+                                == current_stats_args.flag_dates_whitelist
+                            && existing_stats_args_json.flag_prefer_dmy
+                                == current_stats_args.flag_prefer_dmy
+                            && existing_stats_args_json.flag_no_headers
+                                == current_stats_args.flag_no_headers
+                            && existing_stats_args_json.flag_dates_whitelist
+                                == current_stats_args.flag_dates_whitelist
+                            && existing_stats_args_json.flag_delimiter
+                                == current_stats_args.flag_delimiter
+                            && existing_stats_args_json.flag_nulls == current_stats_args.flag_nulls
+                            && existing_stats_args_json.qsv_version
+                                == current_stats_args.qsv_version)
+                {
+                    log::info!(
+                        "{path_file_stem}.stats.csv already exists and is current. Skipping \
+                         compute and using cached stats instead - {time_saved} milliseconds \
+                         saved...",
+                    );
+                    compute_stats = false;
+                } else {
+                    log::info!(
+                        "{path_file_stem}.stats.csv already exists, but is older than the input \
+                         file or the args have changed, recomputing...",
+                    );
+                    let _ = fs::remove_file(&stats_file);
+                }
             }
         }
         if compute_stats {
@@ -754,34 +900,43 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 autoindex_set = true;
             }
 
-            // we need to count the number of records in the file to calculate sparsity
-            // safety: we know util::count_rows() will not return an Err, so we can use unwrap
-            let record_count = RECORD_COUNT.get_or_init(|| util::count_rows(&rconfig).unwrap());
-            // log::info!("scanning {record_count} records...");
+            // we need to count the number of records in the file to calculate sparsity and
+            // cardinality
+            let record_count: u64;
 
             let (headers, stats) = match rconfig.indexed()? {
-                None => args.sequential_stats(&args.flag_dates_whitelist),
+                None => {
+                    // without an index, we need to count the number of records in the file
+                    // safety: we know util::count_rows() will not return an Err
+                    record_count = util::count_rows(&rconfig).unwrap();
+                    args.sequential_stats(&args.flag_dates_whitelist)
+                },
                 Some(idx) => {
-                    let idx_count = idx.count();
-                    if let Some(num_jobs) = args.flag_jobs {
-                        if num_jobs == 1 {
-                            args.sequential_stats(&args.flag_dates_whitelist)
-                        } else {
-                            args.parallel_stats(&args.flag_dates_whitelist, idx_count)
-                        }
-                    } else {
-                        args.parallel_stats(&args.flag_dates_whitelist, idx_count)
+                    // with an index, we get the rowcount instantaneously from the index
+                    record_count = idx.count();
+                    match args.flag_jobs {
+                        Some(num_jobs) => {
+                            if num_jobs == 1 {
+                                args.sequential_stats(&args.flag_dates_whitelist)
+                            } else {
+                                args.parallel_stats(&args.flag_dates_whitelist, record_count)
+                            }
+                        },
+                        _ => args.parallel_stats(&args.flag_dates_whitelist, record_count),
                     }
                 },
             }?;
+            // we cache the record count so we don't have to count the records again
+            let _ = RECORD_COUNT.set(record_count);
+            // log::info!("scanned {record_count} records...");
 
-            let stats_sr_vec = args.stats_to_records(stats);
+            let stats_sr_vec = args.stats_to_records(stats, args.flag_vis_whitespace);
             let mut work_br;
 
             // vec we use to compute dataset-level fingerprint hash
             let mut stats_br_vec: Vec<csv::ByteRecord> = Vec::with_capacity(stats_sr_vec.len());
 
-            let stats_headers_sr = args.stat_headers();
+            let stats_headers_sr = args.stats_headers();
             wtr.write_record(&stats_headers_sr)?;
             let fields = headers.iter().zip(stats_sr_vec);
             for (i, (header, stat)) in fields.enumerate() {
@@ -799,72 +954,75 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 stats_br_vec.push(work_br);
             }
 
-            // Add dataset-level stats as additional rows ====================
-            let num_stats_fields = stats_headers_sr.len();
-            let mut dataset_stats_br = csv::ByteRecord::with_capacity(128, num_stats_fields);
+            if args.flag_dataset_stats {
+                // Add dataset-level stats as additional rows ====================
+                let num_stats_fields = stats_headers_sr.len();
+                let mut dataset_stats_br = csv::ByteRecord::with_capacity(128, num_stats_fields);
 
-            // Helper closure to write a dataset stat row
-            let mut write_dataset_stat = |name: &[u8], value: u64| -> CliResult<()> {
+                // Helper closure to write a dataset stat row
+                let mut write_dataset_stat = |name: &[u8], value: u64| -> CliResult<()> {
+                    dataset_stats_br.clear();
+                    dataset_stats_br.push_field(name);
+                    // Fill middle columns with empty strings
+                    for _ in 2..num_stats_fields {
+                        dataset_stats_br.push_field(b"");
+                    }
+                    // write qsv__value as last column
+                    dataset_stats_br.push_field(itoa::Buffer::new().format(value).as_bytes());
+                    wtr.write_byte_record(&dataset_stats_br)
+                        .map_err(std::convert::Into::into)
+                };
+
+                // Write qsv__rowcount
+                write_dataset_stat(b"qsv__rowcount", record_count)?;
+
+                // Write qsv__columncount
+                let ds_column_count = headers.len() as u64;
+                write_dataset_stat(b"qsv__columncount", ds_column_count)?;
+
+                // Write qsv__filesize_bytes
+                let ds_filesize_bytes = fs::metadata(&path)?.len();
+                write_dataset_stat(b"qsv__filesize_bytes", ds_filesize_bytes)?;
+
+                // Compute hash of stats for data fingerprinting
+                let stats_hash = {
+                    // the first FINGERPRINT_HASH_COLUMNS are used for the fingerprint hash
+                    let mut hash_input = Vec::with_capacity(FINGERPRINT_HASH_COLUMNS);
+
+                    // First, create a stable representation of the stats
+                    for record in &stats_br_vec {
+                        // Take FINGERPRINT_HASH_COLUMNS columns only
+                        for field in record.iter().take(FINGERPRINT_HASH_COLUMNS) {
+                            let s = String::from_utf8_lossy(field);
+                            // Standardize number format
+                            if let Ok(f) = s.parse::<f64>() {
+                                hash_input.extend_from_slice(format!("{f:.10}").as_bytes());
+                            } else {
+                                hash_input.extend_from_slice(field);
+                            }
+                            hash_input.push(0x1F); // field separator
+                        }
+                        hash_input.push(b'\n');
+                    }
+
+                    // Add dataset stats
+                    hash_input.extend_from_slice(
+                        format!("{record_count}\x1F{ds_column_count}\x1F{ds_filesize_bytes}\n")
+                            .as_bytes(),
+                    );
+                    sha256::digest(hash_input.as_slice())
+                };
+
                 dataset_stats_br.clear();
-                dataset_stats_br.push_field(name);
+                dataset_stats_br.push_field(b"qsv__fingerprint_hash");
                 // Fill middle columns with empty strings
                 for _ in 2..num_stats_fields {
                     dataset_stats_br.push_field(b"");
                 }
                 // write qsv__value as last column
-                dataset_stats_br.push_field(itoa::Buffer::new().format(value).as_bytes());
-                wtr.write_byte_record(&dataset_stats_br)
-                    .map_err(std::convert::Into::into)
-            };
-
-            // Write qsv__rowcount
-            write_dataset_stat(b"qsv__rowcount", *record_count)?;
-
-            // Write qsv__columncount
-            let ds_column_count = headers.len() as u64;
-            write_dataset_stat(b"qsv__columncount", ds_column_count)?;
-
-            // Write qsv__filesize_bytes
-            let ds_filesize_bytes = fs::metadata(&path)?.len();
-            write_dataset_stat(b"qsv__filesize_bytes", ds_filesize_bytes)?;
-
-            // Compute hash of stats for data fingerprinting
-            let stats_hash = {
-                let mut hash_input = Vec::with_capacity(16);
-
-                // First, create a stable representation of the stats
-                for record in &stats_br_vec {
-                    // Take first 16 columns only
-                    for field in record.iter().take(16) {
-                        let s = String::from_utf8_lossy(field);
-                        // Standardize number format
-                        if let Ok(f) = s.parse::<f64>() {
-                            hash_input.extend_from_slice(format!("{f:.10}").as_bytes());
-                        } else {
-                            hash_input.extend_from_slice(field);
-                        }
-                        hash_input.push(0x1F); // field separator
-                    }
-                    hash_input.push(b'\n');
-                }
-
-                // Add dataset stats
-                hash_input.extend_from_slice(
-                    format!("{record_count}\x1F{ds_column_count}\x1F{ds_filesize_bytes}\n")
-                        .as_bytes(),
-                );
-                sha256::digest(hash_input.as_slice())
-            };
-
-            dataset_stats_br.clear();
-            dataset_stats_br.push_field(b"qsv__fingerprint_hash");
-            // Fill middle columns with empty strings
-            for _ in 2..num_stats_fields {
-                dataset_stats_br.push_field(b"");
+                dataset_stats_br.push_field(stats_hash.as_bytes());
+                wtr.write_byte_record(&dataset_stats_br)?;
             }
-            // write qsv__value as last column
-            dataset_stats_br.push_field(stats_hash.as_bytes());
-            wtr.write_byte_record(&dataset_stats_br)?;
 
             // update the stats args json metadata ===============
             // if the stats run took longer than the cache threshold and the threshold > 0,
@@ -878,16 +1036,11 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 // safety: we know the path is a valid PathBuf, so we can use unwrap
                 current_stats_args.canonical_input_path =
                     path.canonicalize()?.to_str().unwrap().to_string();
-                current_stats_args.record_count = *record_count;
+                current_stats_args.record_count = record_count;
                 current_stats_args.date_generated = chrono::Utc::now().to_rfc3339();
             }
         }
     }
-
-    // ensure create_cache is false if the user specified --cache-threshold 0
-    if args.flag_cache_threshold == 0 {
-        create_cache = false;
-    };
 
     wtr.flush()?;
 
@@ -930,8 +1083,10 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             fs::copy(currstats_filename.clone(), stats_pathbuf.clone())?;
         }
 
-        if args.flag_cache_threshold.is_negative() && args.flag_cache_threshold % 10 == -5 {
-            // if the cache threshold is a negative number ending in 5,
+        if args.flag_cache_threshold == 0
+            || (args.flag_cache_threshold.is_negative() && args.flag_cache_threshold % 10 == -5)
+        {
+            // if the cache threshold zero or is a negative number ending in 5,
             // delete both the index file and the stats cache file
             if autoindex_set {
                 let index_file = path.with_extension("csv.idx");
@@ -941,10 +1096,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                     log::warn!("Could not remove index file: {}", index_file.display());
                 }
             }
-            create_cache = false;
-        }
 
-        if !create_cache {
             // remove the stats cache file
             if fs::remove_file(stats_pathbuf.clone()).is_err() {
                 // fails silently if it can't remove the stats file
@@ -953,6 +1105,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                     stats_pathbuf.display()
                 );
             }
+            create_cache = false;
         }
 
         if compute_stats && create_cache {
@@ -975,8 +1128,13 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
             // save the stats data to "<FILESTEM>.stats.csv.data.jsonl"
             if write_stats_jsonl {
-                stats_pathbuf.set_extension("data.jsonl");
-                util::csv_to_jsonl(&currstats_filename, &get_stats_data_types(), &stats_pathbuf)?;
+                let mut stats_jsonl_pathbuf = stats_pathbuf.clone();
+                stats_jsonl_pathbuf.set_extension("data.jsonl");
+                util::csv_to_jsonl(
+                    &currstats_filename,
+                    &STATSDATA_TYPES_MAP,
+                    &stats_jsonl_pathbuf,
+                )?;
             }
         }
     }
@@ -1029,14 +1187,14 @@ impl Args {
         let nchunks = util::num_of_chunks(idx_count as usize, chunk_size);
 
         let pool = ThreadPool::new(njobs);
-        let (send, recv) = crossbeam_channel::bounded(0);
+        let (send, recv) = crossbeam_channel::bounded(nchunks);
         for i in 0..nchunks {
             let (send, args, sel) = (send.clone(), self.clone(), sel.clone());
             pool.execute(move || {
-                // safety: indexed() is safe as we know we have an index file
-                // if it does return an Err, you have a bigger problem as the index file was
-                // modified WHILE stats is running and you NEED to abort if that
-                // happens, however unlikely
+                // safety: indexed() & seek() are safe as we know we have an index file
+                // if indexed() or seek() does return an Err, you have a bigger problem
+                // as the index file was modified WHILE stats is running and you actually
+                // NEED to abort if that happens, however unlikely
                 let mut idx = unsafe {
                     args.rconfig()
                         .indexed()
@@ -1056,11 +1214,12 @@ impl Args {
         Ok((headers, merge_all(recv.iter()).unwrap_or_default()))
     }
 
-    fn stats_to_records(&self, stats: Vec<Stats>) -> Vec<csv::StringRecord> {
+    fn stats_to_records(&self, stats: Vec<Stats>, visualize_ws: bool) -> Vec<csv::StringRecord> {
         let round_places = self.flag_round;
         let infer_boolean = self.flag_infer_boolean;
+        let dataset_stats = self.flag_dataset_stats;
         let mut records = Vec::with_capacity(stats.len());
-        records.extend(repeat(csv::StringRecord::new()).take(stats.len()));
+        records.extend(repeat_n(csv::StringRecord::new(), stats.len()));
         let pool = ThreadPool::new(util::njobs(self.flag_jobs));
         let mut results = Vec::with_capacity(stats.len());
         for mut stat in stats {
@@ -1069,7 +1228,7 @@ impl Args {
             pool.execute(move || {
                 // safety: this will only return an Error if the channel has been disconnected
                 // which will not happen in this case
-                send.send(stat.to_record(round_places, infer_boolean))
+                send.send(stat.to_record(round_places, infer_boolean, visualize_ws, dataset_stats))
                     .unwrap();
             });
         }
@@ -1144,25 +1303,27 @@ impl Args {
     #[inline]
     fn new_stats(&self, record_len: usize) -> Vec<Stats> {
         let mut stats: Vec<Stats> = Vec::with_capacity(record_len);
-        stats.extend(
-            repeat(Stats::new(WhichStats {
-                include_nulls: self.flag_nulls,
-                sum:           !self.flag_typesonly,
-                range:         !self.flag_typesonly || self.flag_infer_boolean,
-                dist:          !self.flag_typesonly,
-                cardinality:   self.flag_everything || self.flag_cardinality,
-                median:        !self.flag_everything && self.flag_median && !self.flag_quartiles,
-                mad:           self.flag_everything || self.flag_mad,
-                quartiles:     self.flag_everything || self.flag_quartiles,
-                mode:          self.flag_everything || self.flag_mode,
-                typesonly:     self.flag_typesonly,
-            }))
-            .take(record_len),
-        );
+        stats.extend(repeat_n(
+            Stats::new(WhichStats {
+                include_nulls:   self.flag_nulls,
+                sum:             !self.flag_typesonly,
+                range:           !self.flag_typesonly || self.flag_infer_boolean,
+                dist:            !self.flag_typesonly,
+                cardinality:     self.flag_everything || self.flag_cardinality,
+                median:          !self.flag_everything && self.flag_median && !self.flag_quartiles,
+                mad:             self.flag_everything || self.flag_mad,
+                quartiles:       self.flag_everything || self.flag_quartiles,
+                mode:            self.flag_everything || self.flag_mode,
+                typesonly:       self.flag_typesonly,
+                percentiles:     self.flag_everything || self.flag_percentiles,
+                percentile_list: self.flag_percentile_list.clone(),
+            }),
+            record_len,
+        ));
         stats
     }
 
-    pub fn stat_headers(&self) -> csv::StringRecord {
+    pub fn stats_headers(&self) -> csv::StringRecord {
         if self.flag_typesonly {
             return csv::StringRecord::from(vec!["field", "type"]);
         }
@@ -1171,7 +1332,8 @@ impl Args {
         let mut fields = Vec::with_capacity(MAX_STAT_COLUMNS);
 
         // these are the standard stats columns that are always output
-        // the "streaming" stats
+        // the "streaming" stats that are always included in stats output
+        // aka the FINGERPRINT_HASH_COLUMNS
         fields.extend_from_slice(&[
             "field",
             "type",
@@ -1181,12 +1343,18 @@ impl Args {
             "max",
             "range",
             "sort_order",
+            "sortiness",
             "min_length",
             "max_length",
             "sum_length",
             "avg_length",
+            "stddev_length",
+            "variance_length",
+            "cv_length",
             "mean",
             "sem",
+            "geometric_mean",
+            "harmonic_mean",
             "stddev",
             "variance",
             "cv",
@@ -1196,14 +1364,14 @@ impl Args {
         ]);
 
         // these are the stats columns that are only output if the user requested them
-        let all = self.flag_everything;
-        if self.flag_median && !self.flag_quartiles && !all {
+        let everything = self.flag_everything;
+        if self.flag_median && !self.flag_quartiles && !everything {
             fields.push("median");
         }
-        if self.flag_mad || all {
+        if self.flag_mad || everything {
             fields.push("mad");
         }
-        if self.flag_quartiles || all {
+        if self.flag_quartiles || everything {
             fields.extend_from_slice(&[
                 "lower_outer_fence",
                 "lower_inner_fence",
@@ -1216,10 +1384,10 @@ impl Args {
                 "skewness",
             ]);
         }
-        if self.flag_cardinality || all {
-            fields.push("cardinality");
+        if self.flag_cardinality || everything {
+            fields.extend_from_slice(&["cardinality", "uniqueness_ratio"]);
         }
-        if self.flag_mode || all {
+        if self.flag_mode || everything {
             fields.extend_from_slice(&[
                 "mode",
                 "mode_count",
@@ -1229,9 +1397,13 @@ impl Args {
                 "antimode_occurrences",
             ]);
         }
-
-        // we add the qsv__value field at the end for dataset-level stats
-        fields.push("qsv__value");
+        if self.flag_percentiles || everything {
+            fields.push("percentiles");
+        }
+        if self.flag_dataset_stats {
+            // we add the qsv__value field at the end for dataset-level stats
+            fields.push("qsv__value");
+        }
 
         csv::StringRecord::from(fields)
     }
@@ -1299,16 +1471,18 @@ fn init_date_inference(
 
 #[derive(Clone, Debug, Eq, PartialEq, Default, Serialize, Deserialize)]
 struct WhichStats {
-    include_nulls: bool,
-    sum:           bool,
-    range:         bool,
-    dist:          bool,
-    cardinality:   bool,
-    median:        bool,
-    mad:           bool,
-    quartiles:     bool,
-    mode:          bool,
-    typesonly:     bool,
+    include_nulls:   bool,
+    sum:             bool,
+    range:           bool,
+    dist:            bool,
+    cardinality:     bool,
+    median:          bool,
+    mad:             bool,
+    quartiles:       bool,
+    mode:            bool,
+    typesonly:       bool,
+    percentiles:     bool,
+    percentile_list: String,
 }
 
 impl Commute for WhichStats {
@@ -1318,21 +1492,26 @@ impl Commute for WhichStats {
     }
 }
 
+#[allow(clippy::unsafe_derive_deserialize)]
+#[repr(C)]
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
-pub struct Stats {
-    typ:           FieldType,
-    is_ascii:      bool,
-    sum:           Option<TypedSum>,
-    sum_stotlen:   u64,
-    minmax:        Option<TypedMinMax>,
-    online:        Option<OnlineStats>,
-    nullcount:     u64,
-    max_precision: u16,
-    modes:         Option<Unsorted<Vec<u8>>>,
-    median:        Option<Unsorted<f64>>,
-    mad:           Option<Unsorted<f64>>,
-    quartiles:     Option<Unsorted<f64>>,
-    which:         WhichStats,
+struct Stats {
+    // optimal memory layout for this central struct
+    // this ordering consumes 688 bytes
+    typ:            FieldType,                 // 1 byte
+    is_ascii:       bool,                      // 1 byte
+    max_precision:  u16,                       // 2 bytes
+    which:          WhichStats,                // 10 bytes
+    nullcount:      u64,                       // 8 bytes
+    sum_stotlen:    u64,                       // 8 bytes
+    sum:            Option<TypedSum>,          // 32 bytes
+    modes:          Option<Unsorted<Vec<u8>>>, // 32 bytes
+    // we use the same Unsorted struct for median, mad, quartiles & percentiles
+    #[allow(clippy::struct_field_names)]
+    unsorted_stats: Option<Unsorted<f64>>, // 32 bytes
+    online:         Option<OnlineStats>, // 48 bytes
+    online_len:     Option<OnlineStats>, // 48 bytes
+    minmax:         Option<TypedMinMax>, // 432 bytes
 }
 
 #[inline]
@@ -1351,8 +1530,8 @@ fn timestamp_ms_to_rfc3339(timestamp: i64, typ: FieldType) -> String {
 
 impl Stats {
     fn new(which: WhichStats) -> Stats {
-        let (mut sum, mut minmax, mut online, mut modes, mut median, mut quartiles, mut mad) =
-            (None, None, None, None, None, None, None);
+        let (mut sum, mut minmax, mut online, mut online_len, mut modes, mut unsorted_stats) =
+            (None, None, None, None, None, None);
         if which.sum {
             sum = Some(TypedSum::default());
         }
@@ -1361,32 +1540,28 @@ impl Stats {
         }
         if which.dist {
             online = Some(stats::OnlineStats::default());
+            online_len = Some(stats::OnlineStats::default());
         }
         if which.mode || which.cardinality {
             modes = Some(stats::Unsorted::default());
         }
-        if which.quartiles {
-            quartiles = Some(stats::Unsorted::default());
-        } else if which.median {
-            median = Some(stats::Unsorted::default());
-        }
-        if which.mad {
-            mad = Some(stats::Unsorted::default());
+        // we use the same Unsorted struct for median, mad, quartiles & percentiles
+        if which.quartiles || which.median || which.mad || which.percentiles {
+            unsorted_stats = Some(stats::Unsorted::default());
         }
         Stats {
             typ: FieldType::default(),
             is_ascii: true,
-            sum,
-            sum_stotlen: 0,
-            minmax,
-            online,
-            nullcount: 0,
             max_precision: 0,
-            modes,
-            median,
-            mad,
-            quartiles,
             which,
+            nullcount: 0,
+            sum_stotlen: 0,
+            sum,
+            modes,
+            unsorted_stats,
+            online,
+            online_len,
+            minmax,
         }
     }
 
@@ -1406,41 +1581,38 @@ impl Stats {
         let t = self.typ;
         if let Some(v) = self.sum.as_mut() {
             v.add(t, sample);
-        };
+        }
         if let Some(v) = self.minmax.as_mut() {
-            if let Some(ts_val) = timestamp_val {
-                v.add(t, itoa::Buffer::new().format(ts_val).as_bytes());
-            } else {
+            if timestamp_val == 0 {
                 v.add(t, sample);
+            } else {
+                v.add(t, itoa::Buffer::new().format(timestamp_val).as_bytes());
             }
-        };
+        }
         if let Some(v) = self.modes.as_mut() {
             v.add(sample.to_vec());
-        };
+        }
         if sample_type == TNull {
             self.nullcount += 1;
         }
         match t {
             TString => {
                 self.is_ascii &= sample.is_ascii();
+                if let Some(v) = self.online_len.as_mut() {
+                    v.add(&sample.len());
+                }
             },
             TFloat | TInteger => {
                 if sample_type == TNull {
                     if self.which.include_nulls {
                         if let Some(v) = self.online.as_mut() {
                             v.add_null();
-                        };
+                        }
                     }
                 } else {
                     // safety: we know the sample is a valid f64, so we can use unwrap
-                    let n = fast_float2::parse(sample).unwrap();
-                    if let Some(v) = self.median.as_mut() {
-                        v.add(n);
-                    }
-                    if let Some(v) = self.mad.as_mut() {
-                        v.add(n);
-                    }
-                    if let Some(v) = self.quartiles.as_mut() {
+                    let n = unsafe { fast_float2::parse(sample).unwrap_unchecked() };
+                    if let Some(v) = self.unsorted_stats.as_mut() {
                         v.add(n);
                     }
                     if let Some(v) = self.online.as_mut() {
@@ -1450,7 +1622,13 @@ impl Stats {
                         let mut ryu_buffer = ryu::Buffer::new();
                         // safety: we know that n is a valid f64
                         // so there will always be a fraction part, even if it's 0
-                        let fractpart = ryu_buffer.format_finite(n).split('.').next_back().unwrap();
+                        let fractpart = unsafe {
+                            ryu_buffer
+                                .format_finite(n)
+                                .split('.')
+                                .next_back()
+                                .unwrap_unchecked()
+                        };
                         self.max_precision = std::cmp::max(
                             self.max_precision,
                             (if *fractpart == *"0" {
@@ -1466,7 +1644,7 @@ impl Stats {
                 if self.which.include_nulls {
                     if let Some(v) = self.online.as_mut() {
                         v.add_null();
-                    };
+                    }
                 }
             },
             TDateTime | TDate => {
@@ -1474,22 +1652,15 @@ impl Stats {
                     if self.which.include_nulls {
                         if let Some(v) = self.online.as_mut() {
                             v.add_null();
-                        };
+                        }
                     }
-                // if ts_val.is_some() then we successfully inferred a date from the sample
-                // and the timestamp value is not None
-                } else if let Some(ts_val) = timestamp_val {
+                // if timestamp_val != 0, then we successfully inferred a date from the sample
+                } else if timestamp_val != 0 {
                     // calculate date statistics by adding date samples as timestamps to
                     // millisecond precision.
                     #[allow(clippy::cast_precision_loss)]
-                    let n = ts_val as f64;
-                    if let Some(v) = self.median.as_mut() {
-                        v.add(n);
-                    }
-                    if let Some(v) = self.mad.as_mut() {
-                        v.add(n);
-                    }
-                    if let Some(v) = self.quartiles.as_mut() {
+                    let n = timestamp_val as f64;
+                    if let Some(v) = self.unsorted_stats.as_mut() {
                         v.add(n);
                     }
                     if let Some(v) = self.online.as_mut() {
@@ -1501,7 +1672,13 @@ impl Stats {
     }
 
     #[allow(clippy::wrong_self_convention)]
-    pub fn to_record(&mut self, round_places: u32, infer_boolean: bool) -> csv::StringRecord {
+    pub fn to_record(
+        &mut self,
+        round_places: u32,
+        infer_boolean: bool,
+        visualize_ws: bool,
+        dataset_stats: bool,
+    ) -> csv::StringRecord {
         // we're doing typesonly and not inferring boolean, just return the type
         if self.which.typesonly && !infer_boolean {
             return csv::StringRecord::from(vec![self.typ.to_string()]);
@@ -1514,78 +1691,127 @@ impl Stats {
 
         let empty = String::new;
 
-        // min/max/range/sort_order
+        // min/max/range/sort_order/sortiness
         // we do this first as we want to get the sort_order, so we can skip sorting if not
         // required. We also need to do this before --infer-boolean because we need to know
         // the min/max values to determine if the range is equal to the supported boolean
-        // ranges (0/1, f/t, n/y)
-        let mut minmax_range_sortorder_pieces = Vec::with_capacity(4);
-        let mut minval_lower: char = '\0';
-        let mut maxval_lower: char = '\0';
+        // ranges as specified by --boolean-patterns.
+        let mut minmax_range_sortorder_pieces = Vec::with_capacity(5);
+        let mut minval = String::new();
+        let mut maxval = String::new();
         let mut column_sorted = false;
         if let Some(mm) = self
             .minmax
             .as_ref()
-            .and_then(|mm| mm.show(typ, round_places))
+            .and_then(|mm| mm.show(typ, round_places, visualize_ws))
         {
-            // get first character of min/max values
-            minval_lower = mm.0.chars().next().unwrap_or_default().to_ascii_lowercase();
-            maxval_lower = mm.1.chars().next().unwrap_or_default().to_ascii_lowercase();
+            // save min/max values for boolean inferencing
+            minval.clone_from(&mm.0);
+            maxval.clone_from(&mm.1);
             if mm.3.starts_with("Ascending") {
                 column_sorted = true;
             }
-            minmax_range_sortorder_pieces.extend_from_slice(&[mm.0, mm.1, mm.2, mm.3]);
+            minmax_range_sortorder_pieces.extend_from_slice(&[mm.0, mm.1, mm.2, mm.3, mm.4]);
         } else {
-            minmax_range_sortorder_pieces.extend_from_slice(&[empty(), empty(), empty(), empty()]);
+            minmax_range_sortorder_pieces.extend_from_slice(&[
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+            ]);
         }
 
-        // modes/antimodes & cardinality
+        let record_count = *RECORD_COUNT.get().unwrap_or(&1);
+
+        // get the stats separator
+        let stats_separator = if self.which.mode || self.which.percentiles {
+            std::env::var("QSV_STATS_SEPARATOR")
+                .unwrap_or_else(|_| DEFAULT_STATS_SEPARATOR.to_string())
+        } else {
+            DEFAULT_STATS_SEPARATOR.to_string()
+        };
+
+        // modes/antimodes & cardinality/uniqueness_ratio
         // we do this second because we can use the sort order with cardinality, to skip sorting
         // if its not required. This makes not only cardinality computation faster, it also makes
         // modes/antimodes computation faster.
         // We also need to know the cardinality to --infer-boolean should that be enabled
         let mut cardinality = 0;
-        let mut mc_pieces = Vec::with_capacity(7);
+        let mut mc_pieces = Vec::with_capacity(8);
         match self.modes.as_mut() {
             None => {
                 if self.which.cardinality {
-                    mc_pieces.push(empty());
+                    mc_pieces.extend_from_slice(&[empty(), empty()]);
                 }
                 if self.which.mode {
-                    mc_pieces.extend_from_slice(&[empty(), empty(), empty(), empty()]);
+                    mc_pieces.extend_from_slice(&[
+                        empty(),
+                        empty(),
+                        empty(),
+                        empty(),
+                        empty(),
+                        empty(),
+                    ]);
                 }
             },
             Some(ref mut v) => {
                 if self.which.cardinality {
                     cardinality = v.cardinality(column_sorted, 1);
-                    mc_pieces.push(itoa::Buffer::new().format(cardinality).to_owned());
+                    #[allow(clippy::cast_precision_loss)]
+                    let uniqueness_ratio = (cardinality as f64) / (record_count as f64);
+                    mc_pieces.extend_from_slice(&[
+                        itoa::Buffer::new().format(cardinality).to_owned(),
+                        util::round_num(uniqueness_ratio, round_places),
+                    ]);
                 }
                 if self.which.mode {
-                    // mode/s
-                    let (modes_result, modes_count, mode_occurrences) = v.modes();
-                    let modes_list = modes_result
-                        .iter()
-                        .map(|c| String::from_utf8_lossy(c))
-                        .join(",");
-                    mc_pieces.extend_from_slice(&[
-                        modes_list,
-                        modes_count.to_string(),
-                        mode_occurrences.to_string(),
-                    ]);
-
-                    // antimode/s
-                    if mode_occurrences == 0 {
-                        // all the values are unique
-                        // so instead of returning everything, just say *ALL
-                        mc_pieces.extend_from_slice(&[
-                            "*ALL".to_string(),
-                            "0".to_string(),
-                            "1".to_string(),
-                        ]);
+                    // mode/s & antimode/s
+                    if cardinality == record_count {
+                        // all values unique
+                        mc_pieces.extend_from_slice(
+                            // modes - short-circuit modes calculation as there is none
+                            &[
+                                empty(),
+                                "0".to_string(),
+                                "0".to_string(),
+                                // antimodes - instead of returning everything, just say *ALL
+                                "*ALL".to_string(),
+                                "0".to_string(),
+                                "1".to_string(),
+                            ],
+                        );
                     } else {
-                        let (antimodes_result, antimodes_count, antimode_occurrences) =
-                            v.antimodes();
-                        let mut antimodes_list = String::new();
+                        let (
+                            (modes_result, modes_count, mode_occurrences),
+                            (antimodes_result, antimodes_count, antimode_occurrences),
+                        ) = v.modes_antimodes();
+                        // mode/s ============
+                        let modes_list = if visualize_ws {
+                            modes_result
+                                .iter()
+                                .map(|c| util::visualize_whitespace(&String::from_utf8_lossy(c)))
+                                .join(&stats_separator)
+                        } else {
+                            modes_result
+                                .iter()
+                                .map(|c| String::from_utf8_lossy(c))
+                                .join(&stats_separator)
+                        };
+
+                        // antimode/s ============
+                        let antimodes_len = ANTIMODES_LEN.get_or_init(|| {
+                            std::env::var("QSV_ANTIMODES_LEN")
+                                .map(|val| {
+                                    let parsed =
+                                        val.parse::<usize>().unwrap_or(DEFAULT_ANTIMODES_LEN);
+                                    // if 0, disable length limiting
+                                    if parsed == 0 { usize::MAX } else { parsed }
+                                })
+                                .unwrap_or(DEFAULT_ANTIMODES_LEN)
+                        });
+
+                        let mut antimodes_list = String::with_capacity(*antimodes_len);
 
                         // We only store the first 10 antimodes
                         // so if antimodes_count > 10, add the "*PREVIEW: " prefix
@@ -1596,20 +1822,32 @@ impl Stats {
                         let antimodes_vals = &antimodes_result
                             .iter()
                             .map(|c| String::from_utf8_lossy(c))
-                            .join(",");
-                        if antimodes_vals.starts_with(',') {
+                            .join(&stats_separator);
+
+                        // if the antimodes result starts with the separator,
+                        // it indicates that NULL is the first antimode. Add NULL to the list.
+                        if antimodes_vals.starts_with(&stats_separator) {
                             antimodes_list.push_str("NULL");
                         }
                         antimodes_list.push_str(antimodes_vals);
 
-                        // and truncate at 100 characters with an ellipsis
-                        if antimodes_list.len() > MAX_ANTIMODE_LEN {
-                            util::utf8_truncate(&mut antimodes_list, MAX_ANTIMODE_LEN + 1);
+                        // and truncate at antimodes_len characters with an ellipsis
+                        if antimodes_list.len() > *antimodes_len {
+                            util::utf8_truncate(&mut antimodes_list, *antimodes_len + 1);
                             antimodes_list.push_str("...");
                         }
 
                         mc_pieces.extend_from_slice(&[
-                            antimodes_list,
+                            // mode/s
+                            modes_list,
+                            modes_count.to_string(),
+                            mode_occurrences.to_string(),
+                            // antimode/s
+                            if visualize_ws {
+                                util::visualize_whitespace(&antimodes_list)
+                            } else {
+                                antimodes_list
+                            },
                             antimodes_count.to_string(),
                             antimode_occurrences.to_string(),
                         ]);
@@ -1620,12 +1858,20 @@ impl Stats {
 
         // type
         if cardinality == 2 && infer_boolean {
-            // if cardinality is 2, it's a boolean if its values' first character are 0/1, f/t, n/y
-            if (minval_lower == '0' && maxval_lower == '1')
-                || (minval_lower == 'f' && maxval_lower == 't')
-                || (minval_lower == 'n' && maxval_lower == 'y')
-            {
-                pieces.push("Boolean".to_string());
+            // if cardinality is 2, it's a boolean if its in the true/false patterns
+            let patterns = BOOLEAN_PATTERNS.get();
+            if let Some(patterns) = patterns {
+                let mut is_boolean = false;
+                for pattern in patterns {
+                    if pattern.matches(&minval).is_some() && pattern.matches(&maxval).is_some() {
+                        pieces.push("Boolean".to_string());
+                        is_boolean = true;
+                        break;
+                    }
+                }
+                if !is_boolean {
+                    pieces.push(typ.to_string());
+                }
             } else {
                 pieces.push(typ.to_string());
             }
@@ -1667,51 +1913,86 @@ impl Stats {
         // actually append it here - to preserve legacy ordering of columns
         pieces.extend_from_slice(&minmax_range_sortorder_pieces);
 
-        // min/max/sum/avg length
-        if typ == FieldType::TDate || typ == FieldType::TDateTime {
-            // returning min/max length for dates doesn't make sense
-            // especially since we convert the date stats to rfc3339 format
-            pieces.extend_from_slice(&[empty(), empty(), empty(), empty()]);
+        // min/max/sum/avg/stddev/variance/cv length
+        // we only show string length stats for String type
+        if typ != FieldType::TString {
+            pieces.extend_from_slice(&[
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+            ]);
         } else if let Some(mm) = self.minmax.as_ref().and_then(TypedMinMax::len_range) {
+            // we have a min/max length
             pieces.extend_from_slice(&[mm.0, mm.1]);
-            // we have a sum_length
-            if stotlen > 0 {
-                if stotlen < u64::MAX {
-                    // so we can compute avg_length
-                    pieces.push(itoa::Buffer::new().format(stotlen).to_owned());
-                    #[allow(clippy::cast_precision_loss)]
-                    pieces.push(util::round_num(
-                        stotlen as f64 / *RECORD_COUNT.get().unwrap_or(&1) as f64,
-                        4,
-                    ));
+            if stotlen < u64::MAX {
+                pieces.push(itoa::Buffer::new().format(stotlen).to_owned());
+                #[allow(clippy::cast_precision_loss)]
+                let avg_len = stotlen as f64 / record_count as f64;
+                pieces.push(util::round_num(avg_len, round_places));
+
+                if let Some(vl) = self.online_len.as_ref() {
+                    let vlen_stddev = vl.stddev();
+                    let vlen_variance = vl.variance();
+                    pieces.push(util::round_num(vlen_stddev, round_places));
+                    pieces.push(util::round_num(vlen_variance, round_places));
+                    pieces.push(util::round_num(vlen_stddev / avg_len, round_places));
                 } else {
-                    // however, we saturated the sum, it means we had an overflow
-                    // so we return OVERFLOW_STRING for sum and avg length
-                    pieces.extend_from_slice(&[
-                        OVERFLOW_STRING.to_string(),
-                        OVERFLOW_STRING.to_string(),
-                    ]);
+                    pieces.push(empty());
+                    pieces.push(empty());
+                    pieces.push(empty());
                 }
             } else {
-                pieces.extend_from_slice(&[empty(), empty()]);
+                // we saturated the sum of string lengths, it means we had an overflow
+                // so we return OVERFLOW_STRING for sum,avg,stddev,variance length
+                pieces.extend_from_slice(&[
+                    OVERFLOW_STRING.to_string(),
+                    OVERFLOW_STRING.to_string(),
+                    OVERFLOW_STRING.to_string(),
+                    OVERFLOW_STRING.to_string(),
+                    OVERFLOW_STRING.to_string(),
+                ]);
             }
         } else {
-            pieces.extend_from_slice(&[empty(), empty(), empty(), empty()]);
+            pieces.extend_from_slice(&[
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+            ]);
         }
 
-        // mean, sem, stddev, variance & cv
+        // mean, sem, geometric_mean, harmonic_mean, stddev, variance & cv
         if typ == TString || typ == TNull {
-            pieces.extend_from_slice(&[empty(), empty(), empty(), empty(), empty()]);
+            pieces.extend_from_slice(&[
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+            ]);
         } else if let Some(ref v) = self.online {
             let std_dev = v.stddev();
             #[allow(clippy::cast_precision_loss)]
             let sem = std_dev / (v.len() as f64).sqrt();
             let mean = v.mean();
             let cv = (std_dev / mean) * 100_f64;
+            let geometric_mean = v.geometric_mean();
+            let harmonic_mean = v.harmonic_mean();
             if self.typ == TFloat || self.typ == TInteger {
                 pieces.extend_from_slice(&[
                     util::round_num(mean, round_places),
                     util::round_num(sem, round_places),
+                    util::round_num(geometric_mean, round_places),
+                    util::round_num(harmonic_mean, round_places),
                     util::round_num(std_dev, round_places),
                     util::round_num(v.variance(), round_places),
                     util::round_num(cv, round_places),
@@ -1727,6 +2008,14 @@ impl Stats {
                     u32::max(round_places, DAY_DECIMAL_PLACES),
                 ));
                 pieces.push(util::round_num(
+                    geometric_mean / MS_IN_DAY,
+                    u32::max(round_places, DAY_DECIMAL_PLACES),
+                ));
+                pieces.push(util::round_num(
+                    harmonic_mean / MS_IN_DAY,
+                    u32::max(round_places, DAY_DECIMAL_PLACES),
+                ));
+                pieces.push(util::round_num(
                     std_dev / MS_IN_DAY,
                     u32::max(round_places, DAY_DECIMAL_PLACES),
                 ));
@@ -1737,7 +2026,15 @@ impl Stats {
                 pieces.push(util::round_num(cv, round_places));
             }
         } else {
-            pieces.extend_from_slice(&[empty(), empty(), empty(), empty(), empty()]);
+            pieces.extend_from_slice(&[
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+                empty(),
+            ]);
         }
 
         // nullcount
@@ -1755,54 +2052,23 @@ impl Stats {
         let sparsity: f64 = self.nullcount as f64 / *RECORD_COUNT.get().unwrap_or(&1) as f64;
         pieces.push(util::round_num(sparsity, round_places));
 
-        // median
-        let mut existing_median = None;
-        if let Some(v) = self.median.as_mut().and_then(|v| {
-            if let TNull | TString = typ {
-                None
-            } else {
-                existing_median = v.median();
-                existing_median
-            }
-        }) {
-            if typ == TDateTime || typ == TDate {
-                pieces.push(timestamp_ms_to_rfc3339(v as i64, typ));
-            } else {
-                pieces.push(util::round_num(v, round_places));
-            }
-        } else if self.which.median {
-            pieces.push(empty());
-        }
-
-        // median absolute deviation (MAD)
-        if let Some(v) = self.mad.as_mut().and_then(|v| {
-            if let TNull | TString = typ {
-                None
-            } else {
-                v.mad(existing_median)
-            }
-        }) {
-            if typ == TDateTime || typ == TDate {
-                // like stddev, return MAD in days
-                pieces.push(util::round_num(
-                    v / MS_IN_DAY,
-                    u32::max(round_places, DAY_DECIMAL_PLACES),
-                ));
-            } else {
-                pieces.push(util::round_num(v, round_places));
-            }
-        } else if self.which.mad {
-            pieces.push(empty());
-        }
-
         // quartiles
-        match self.quartiles.as_mut().and_then(|v| match typ {
-            TInteger | TFloat | TDate | TDateTime => v.quartiles(),
+        // as q2==median, cache and reuse it if the --median or --mad flags are set
+        let mut existing_median = None;
+        let mut quartile_pieces = Vec::with_capacity(9);
+        match self.unsorted_stats.as_mut().and_then(|v| match typ {
+            TInteger | TFloat | TDate | TDateTime => {
+                if self.which.quartiles {
+                    v.quartiles()
+                } else {
+                    None
+                }
+            },
             _ => None,
         }) {
             None => {
                 if self.which.quartiles {
-                    pieces.extend_from_slice(&[
+                    quartile_pieces.extend_from_slice(&[
                         empty(),
                         empty(),
                         empty(),
@@ -1816,6 +2082,7 @@ impl Stats {
                 }
             },
             Some((q1, q2, q3)) => {
+                existing_median = Some(q2);
                 let iqr = q3 - q1;
 
                 // use fused multiply add (mul_add) when possible
@@ -1846,7 +2113,7 @@ impl Stats {
                     // https://doc.rust-lang.org/reference/expressions/operator-expr.html#numeric-cast
                     // as values larger/smaller than what i64 can handle will automatically
                     // saturate to i64 max/min values.
-                    pieces.extend_from_slice(&[
+                    quartile_pieces.extend_from_slice(&[
                         timestamp_ms_to_rfc3339(lof as i64, typ),
                         timestamp_ms_to_rfc3339(lif as i64, typ),
                         timestamp_ms_to_rfc3339(q1 as i64, typ),
@@ -1861,7 +2128,7 @@ impl Stats {
                         timestamp_ms_to_rfc3339(uof as i64, typ),
                     ]);
                 } else {
-                    pieces.extend_from_slice(&[
+                    quartile_pieces.extend_from_slice(&[
                         util::round_num(lof, round_places),
                         util::round_num(lif, round_places),
                         util::round_num(q1, round_places),
@@ -1872,16 +2139,112 @@ impl Stats {
                         util::round_num(uof, round_places),
                     ]);
                 }
-                pieces.push(util::round_num(skewness, round_places));
+                quartile_pieces.push(util::round_num(skewness, round_places));
             },
         }
+
+        // median
+        if let Some(v) = self.unsorted_stats.as_mut().and_then(|v| {
+            if let TNull | TString = typ {
+                None
+            } else if let Some(existing_median) = existing_median {
+                // if we already calculated the q2 (median) in the quartiles, return it
+                if self.which.median {
+                    Some(existing_median)
+                } else {
+                    None
+                }
+            } else if self.which.median {
+                // otherwise, calculate the median
+                v.median()
+            } else {
+                None
+            }
+        }) {
+            if typ == TDateTime || typ == TDate {
+                pieces.push(timestamp_ms_to_rfc3339(v as i64, typ));
+            } else {
+                pieces.push(util::round_num(v, round_places));
+            }
+        } else if self.which.median {
+            pieces.push(empty());
+        }
+
+        // median absolute deviation (MAD)
+        if let Some(v) = self.unsorted_stats.as_mut().and_then(|v| {
+            if let TNull | TString = typ {
+                None
+            } else if self.which.mad {
+                v.mad(existing_median)
+            } else {
+                None
+            }
+        }) {
+            if typ == TDateTime || typ == TDate {
+                // like stddev, return MAD in days when the type is a date or datetime
+                pieces.push(util::round_num(
+                    v / MS_IN_DAY,
+                    u32::max(round_places, DAY_DECIMAL_PLACES),
+                ));
+            } else {
+                pieces.push(util::round_num(v, round_places));
+            }
+        } else if self.which.mad {
+            pieces.push(empty());
+        }
+
+        // quartiles
+        // append it here to preserve legacy ordering of columns
+        pieces.extend_from_slice(&quartile_pieces);
 
         // mode/modes/antimodes & cardinality
         // append it here to preserve legacy ordering of columns
         pieces.extend_from_slice(&mc_pieces);
 
-        // add an empty field for qsv__value
-        pieces.push(empty());
+        // Add percentiles after quartiles
+        if let Some(v) = self.unsorted_stats.as_mut() {
+            match typ {
+                TInteger | TFloat | TDate | TDateTime => {
+                    let percentile_list = self
+                        .which
+                        .percentile_list
+                        .split(',')
+                        .filter_map(|p| p.trim().parse::<f64>().ok())
+                        .map(|p| p as u8)
+                        .collect::<Vec<_>>();
+
+                    if let Some(percentile_values) = v.custom_percentiles(&percentile_list) {
+                        let formatted_values = if typ == TDateTime || typ == TDate {
+                            percentile_values
+                                .iter()
+                                .map(|p| {
+                                    // Explicitly cast f64 to i64 for timestamp conversion
+                                    #[allow(clippy::cast_possible_truncation)]
+                                    let ts = p.round() as i64;
+                                    timestamp_ms_to_rfc3339(ts, typ)
+                                })
+                                .collect::<Vec<_>>()
+                        } else {
+                            percentile_values
+                                .iter()
+                                .map(|p| util::round_num(*p, round_places))
+                                .collect::<Vec<_>>()
+                        };
+                        pieces.push(formatted_values.join(&stats_separator));
+                    } else {
+                        pieces.push(empty());
+                    }
+                },
+                _ => pieces.push(empty()),
+            }
+        } else if self.which.percentiles {
+            pieces.push(empty());
+        }
+
+        if dataset_stats {
+            // add an empty field for qsv__value
+            pieces.push(empty());
+        }
 
         csv::StringRecord::from(pieces)
     }
@@ -1892,16 +2255,16 @@ impl Commute for Stats {
     fn merge(&mut self, other: Stats) {
         self.typ.merge(other.typ);
         self.is_ascii &= other.is_ascii;
-        self.sum.merge(other.sum);
-        self.sum_stotlen = self.sum_stotlen.saturating_add(other.sum_stotlen);
-        self.minmax.merge(other.minmax);
-        self.online.merge(other.online);
-        self.nullcount += other.nullcount;
-        self.max_precision = std::cmp::max(self.max_precision, other.max_precision);
-        self.modes.merge(other.modes);
-        self.median.merge(other.median);
-        self.quartiles.merge(other.quartiles);
+        self.max_precision = self.max_precision.max(other.max_precision);
         self.which.merge(other.which);
+        self.nullcount += other.nullcount;
+        self.sum_stotlen = self.sum_stotlen.saturating_add(other.sum_stotlen);
+        self.sum.merge(other.sum);
+        self.modes.merge(other.modes);
+        self.unsorted_stats.merge(other.unsorted_stats);
+        self.online.merge(other.online);
+        self.online_len.merge(other.online_len);
+        self.minmax.merge(other.minmax);
     }
 }
 
@@ -1926,62 +2289,65 @@ impl FieldType {
     /// infer_dates signals if date inference should be attempted
     /// returns the inferred type and if infer_dates is true,
     /// the date in ms since the epoch if the type is a date or datetime
-    /// otherwise, None
+    /// otherwise, 0
     #[inline]
     pub fn from_sample(
         infer_dates: bool,
         prefer_dmy: bool,
         sample: &[u8],
         current_type: FieldType,
-    ) -> (FieldType, Option<i64>) {
+    ) -> (FieldType, i64) {
         // faster than sample.len() == 0 or sample.is_empty() per microbenchmarks
         if b"" == sample {
-            return (FieldType::TNull, None);
+            return (FieldType::TNull, 0);
         }
 
         // no need to do type checking if current_type is already a String
         if current_type == FieldType::TString {
-            return (FieldType::TString, None);
+            return (FieldType::TString, 0);
         }
 
-        if let Ok(s) = simdutf8::basic::from_utf8(sample) {
+        if let Ok(samp_int) = atoi_simd::parse::<i64>(sample) {
             // Check for integer, with leading zero check for strings like zip codes
-            if atoi_simd::parse::<i64>(s.as_bytes()).is_ok() {
-                if s == "0" || !s.starts_with('0') {
-                    return (FieldType::TInteger, None);
-                }
-                // If starts with '0' but not "0", it's a string
-                return (FieldType::TString, None);
+            // safety: we know sample is not null as we checked earlier
+            if samp_int == 0 || unsafe { *sample.get_unchecked(0) != b'0' } {
+                return (FieldType::TInteger, 0);
             }
+            // If starts with '0' and a valid integer != 0, it's a string with a leading zero
+            return (FieldType::TString, 0);
+        }
 
-            // Check for float
-            if fast_float2::parse::<f64, &[u8]>(s.as_bytes()).is_ok() {
-                return (FieldType::TFloat, None);
-            }
+        // Check for float
+        // we use fast_float2 as it doesn't need to validate the sample as UTF-8 first
+        if fast_float2::parse::<f64, &[u8]>(sample).is_ok() {
+            return (FieldType::TFloat, 0);
+        }
 
-            // Check for date/datetime if infer_dates is true
-            if infer_dates {
-                if let Ok(parsed_date) = parse_with_preference(s, prefer_dmy) {
-                    let ts_val = parsed_date.timestamp_millis();
-                    // check if the tstamp (Unix Epoch format) modulo by 86400000 (ms in a day)
-                    // if the remainder is 0, we says its Date type candidate, otherwise, its
-                    // DateTime. this is a performance optimization to avoid
-                    // parsing the date to rfc3339 and then checking if the time
-                    // component is T00:00:00, as was done previously
-                    // see https://stackoverflow.com/questions/40948290/is-it-safe-to-use-modulo-operator-with-unix-epoch-timestamp
-                    if ts_val % MS_IN_DAY_INT == 0 {
-                        return (FieldType::TDate, Some(ts_val));
-                    }
-                    return (FieldType::TDateTime, Some(ts_val));
-                }
+        // Only attempt UTF-8 validation and date parsing if infer_dates is true
+        if !infer_dates {
+            return (FieldType::TString, 0);
+        }
+
+        // Check if valid UTF-8 first, return early if not
+        if let Ok(s) = simdutf8::basic::from_utf8(sample) {
+            // Try date parsing
+            if let Ok(parsed_date) = parse_with_preference(s, prefer_dmy) {
+                let ts_val = parsed_date.timestamp_millis();
+                return if ts_val % MS_IN_DAY_INT == 0 {
+                    // if the date is a whole number of days, return as a date
+                    (FieldType::TDate, ts_val)
+                } else {
+                    // otherwise, return as a datetime
+                    (FieldType::TDateTime, ts_val)
+                };
             }
         } else {
             // If not valid UTF-8, it's a binary string, return as TString
-            return (FieldType::TString, None);
-        };
+            return (FieldType::TString, 0);
+        }
 
         // Default to TString if none of the above conditions are met
-        (FieldType::TString, None)
+        (FieldType::TString, 0)
     }
 }
 
@@ -2040,9 +2406,9 @@ impl fmt::Debug for FieldType {
 /// It also counts the total length of strings.
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq)]
 struct TypedSum {
+    float:   Option<f64>,
     integer: i64,
     stotlen: u64, // sum of the total length of strings
-    float:   Option<f64>,
 }
 
 impl TypedSum {
@@ -2054,7 +2420,6 @@ impl TypedSum {
         #[allow(clippy::cast_precision_loss)]
         match typ {
             TFloat => {
-                self.stotlen = self.stotlen.saturating_add(sample.len() as u64);
                 if let Ok(float_sample) = fast_float2::parse::<f64, &[u8]>(sample) {
                     if let Some(ref mut f) = self.float {
                         *f += float_sample;
@@ -2064,7 +2429,6 @@ impl TypedSum {
                 }
             },
             TInteger => {
-                self.stotlen = self.stotlen.saturating_add(sample.len() as u64);
                 if let Some(ref mut float) = self.float {
                     // safety: we know that the sample is a valid f64
                     *float += fast_float2::parse::<f64, &[u8]>(sample).unwrap();
@@ -2129,25 +2493,27 @@ impl Commute for TypedSum {
 /// where min/max/range/sort_order makes sense.
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq)]
 struct TypedMinMax {
+    floats:   MinMax<f64>,
+    integers: MinMax<i64>,
+    dates:    MinMax<i64>,
     strings:  MinMax<Vec<u8>>,
     str_len:  MinMax<usize>,
-    integers: MinMax<i64>,
-    floats:   MinMax<f64>,
-    dates:    MinMax<i64>,
 }
 
 impl TypedMinMax {
     #[inline]
     fn add(&mut self, typ: FieldType, sample: &[u8]) {
         let sample_len = sample.len();
-        self.str_len.add(sample_len);
         if sample_len == 0 {
+            self.str_len.add(0);
             return;
         }
-        self.strings.add(sample.to_vec());
         // safety: we can use unwrap below since we know the data type of the sample
         match typ {
-            TString | TNull => {},
+            TString => {
+                self.str_len.add(sample_len);
+                self.strings.add(sample.to_vec());
+            },
             TFloat => {
                 let n = fast_float2::parse::<f64, &[u8]>(sample).unwrap();
 
@@ -2160,6 +2526,7 @@ impl TypedMinMax {
                 #[allow(clippy::cast_precision_loss)]
                 self.floats.add(n as f64);
             },
+            TNull => {},
             // it must be a TDate or TDateTime
             // we use "_" here instead of "TDate | TDateTime" for the match to avoid
             // the overhead of matching on the OR value, however minor
@@ -2182,59 +2549,85 @@ impl TypedMinMax {
     }
 
     #[inline]
-    fn show(&self, typ: FieldType, round_places: u32) -> Option<(String, String, String, String)> {
+    fn show(
+        &self,
+        typ: FieldType,
+        round_places: u32,
+        visualize_ws: bool,
+    ) -> Option<(String, String, String, String, String)> {
         match typ {
             TNull => None,
             TString => {
-                if let (Some(min), Some(max), sort_order) = (
+                if let (Some(min), Some(max), sort_order, sortiness) = (
                     self.strings.min(),
                     self.strings.max(),
                     self.strings.sort_order(),
+                    self.strings.sortiness(),
                 ) {
-                    let min = String::from_utf8_lossy(min).to_string();
-                    let max = String::from_utf8_lossy(max).to_string();
-                    let sort_order = sort_order.to_string();
-                    Some((min, max, String::new(), sort_order))
+                    let min_str = String::from_utf8_lossy(min).to_string();
+                    let max_str = String::from_utf8_lossy(max).to_string();
+                    let (min_display, max_display) = if visualize_ws {
+                        (
+                            util::visualize_whitespace(&min_str),
+                            util::visualize_whitespace(&max_str),
+                        )
+                    } else {
+                        (min_str, max_str)
+                    };
+                    Some((
+                        min_display,
+                        max_display,
+                        String::new(),
+                        sort_order.to_string(),
+                        util::round_num(sortiness, round_places),
+                    ))
                 } else {
                     None
                 }
             },
             TInteger => {
-                if let (Some(min), Some(max), sort_order) = (
+                if let (Some(min), Some(max), sort_order, sortiness) = (
                     self.integers.min(),
                     self.integers.max(),
                     self.integers.sort_order(),
+                    self.integers.sortiness(),
                 ) {
                     Some((
                         itoa::Buffer::new().format(*min).to_owned(),
                         itoa::Buffer::new().format(*max).to_owned(),
                         itoa::Buffer::new().format(*max - *min).to_owned(),
                         sort_order.to_string(),
+                        util::round_num(sortiness, round_places),
                     ))
                 } else {
                     None
                 }
             },
             TFloat => {
-                if let (Some(min), Some(max), sort_order) = (
+                if let (Some(min), Some(max), sort_order, sortiness) = (
                     self.floats.min(),
                     self.floats.max(),
                     self.floats.sort_order(),
+                    self.floats.sortiness(),
                 ) {
                     Some((
                         ryu::Buffer::new().format(*min).to_owned(),
                         ryu::Buffer::new().format(*max).to_owned(),
                         util::round_num(*max - *min, round_places),
                         sort_order.to_string(),
+                        util::round_num(sortiness, round_places),
                     ))
                 } else {
                     None
                 }
             },
             TDateTime | TDate => {
-                if let (Some(min), Some(max), sort_order) =
-                    (self.dates.min(), self.dates.max(), self.dates.sort_order())
-                {
+                if let (Some(min), Some(max), sort_order, sortiness) = (
+                    self.dates.min(),
+                    self.dates.max(),
+                    self.dates.sort_order(),
+                    self.dates.sortiness(),
+                ) {
                     Some((
                         timestamp_ms_to_rfc3339(*min, typ),
                         timestamp_ms_to_rfc3339(*max, typ),
@@ -2245,6 +2638,7 @@ impl TypedMinMax {
                             u32::max(round_places, 5),
                         ),
                         sort_order.to_string(),
+                        util::round_num(sortiness, round_places),
                     ))
                 } else {
                     None
@@ -2257,10 +2651,10 @@ impl TypedMinMax {
 impl Commute for TypedMinMax {
     #[inline]
     fn merge(&mut self, other: TypedMinMax) {
+        self.floats.merge(other.floats);
+        self.integers.merge(other.integers);
+        self.dates.merge(other.dates);
         self.strings.merge(other.strings);
         self.str_len.merge(other.str_len);
-        self.integers.merge(other.integers);
-        self.floats.merge(other.floats);
-        self.dates.merge(other.dates);
     }
 }

@@ -1,6 +1,6 @@
 use quickcheck::TestResult;
 
-use crate::{qcheck, workdir::Workdir, CsvRecord};
+use crate::{CsvRecord, qcheck, workdir::Workdir};
 
 fn trim_trailing_empty(it: &CsvRecord) -> Vec<String> {
     let mut cloned = it.clone().unwrap();
@@ -27,7 +27,7 @@ fn prop_fixlengths_all_maxlen() {
         let got: Vec<CsvRecord> = wrk.read_stdout(&mut cmd);
         let got_len = got.iter().map(|r| r.len()).max().unwrap();
         for r in &got {
-            assert_eq!(r.len(), got_len)
+            similar_asserts::assert_eq!(r.len(), got_len)
         }
         TestResult::from_bool(rassert_eq!(got_len, expected_len))
     }
@@ -50,7 +50,7 @@ fn fixlengths_all_maxlen_trims() {
 
     let got: Vec<CsvRecord> = wrk.read_stdout(&mut cmd);
     for r in &got {
-        assert_eq!(r.len(), 2)
+        similar_asserts::assert_eq!(r.len(), 2)
     }
 }
 
@@ -71,7 +71,7 @@ fn fixlengths_insert_negative() {
     cmd.arg("in.csv").args(["-i", "-2"]);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-    assert_eq!(
+    similar_asserts::assert_eq!(
         got,
         vec![
             svec!["clothes", "colours", "", "", "size"],
@@ -100,7 +100,7 @@ fn fixlengths_insert_positive() {
     cmd.arg("in.csv").args(["-i", "2"]);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-    assert_eq!(
+    similar_asserts::assert_eq!(
         got,
         vec![
             svec!["clothes", "", "", "colours", "size"],
@@ -131,7 +131,7 @@ fn fixlengths_insert_positive_length_7() {
         .args(["--length", "7"]);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-    assert_eq!(
+    similar_asserts::assert_eq!(
         got,
         vec![
             svec!["clothes", "", "", "", "", "colours", "size"],
@@ -162,7 +162,7 @@ fn fixlengths_insert_negative_length_7() {
         .args(["--length", "7"]);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
-    assert_eq!(
+    similar_asserts::assert_eq!(
         got,
         vec![
             svec!["clothes", "colours", "size", "", "", "", ""],
@@ -186,7 +186,7 @@ fn fixlengths_all_maxlen_trims_at_least_1() {
 
     let got: Vec<CsvRecord> = wrk.read_stdout(&mut cmd);
     for r in &got {
-        assert_eq!(r.len(), 1)
+        similar_asserts::assert_eq!(r.len(), 1)
     }
 }
 
@@ -206,9 +206,161 @@ fn prop_fixlengths_explicit_len() {
         let got: Vec<CsvRecord> = wrk.read_stdout(&mut cmd);
         let got_len = got.iter().map(|r| r.len()).max().unwrap();
         for r in &got {
-            assert_eq!(r.len(), got_len)
+            similar_asserts::assert_eq!(r.len(), got_len)
         }
         TestResult::from_bool(rassert_eq!(got_len, expected_len))
     }
     qcheck(p as fn(Vec<CsvRecord>, usize) -> TestResult);
+}
+
+#[test]
+fn fixlengths_remove_empty_basic() {
+    let rows = vec![
+        svec!["a", "", "c", "", "e"],
+        svec!["f", "", "h", "", "j"],
+        svec!["k", "", "m", "", "o"],
+    ];
+
+    let wrk = Workdir::new("fixlengths_remove_empty_basic").flexible(true);
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("fixlengths");
+    cmd.arg("in.csv").args(["-r"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    similar_asserts::assert_eq!(
+        got,
+        vec![
+            svec!["a", "c", "e"],
+            svec!["f", "h", "j"],
+            svec!["k", "m", "o"],
+        ]
+    );
+}
+
+#[test]
+fn fixlengths_remove_empty_with_length() {
+    let rows = vec![
+        svec!["a", "", "c", "", "e"],
+        svec!["f", "", "h", "", "j"],
+        svec!["k", "", "m", "", "o"],
+    ];
+
+    let wrk = Workdir::new("fixlengths_remove_empty_with_length").flexible(true);
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("fixlengths");
+    cmd.arg("in.csv").args(["-r"]).args(["-l", "4"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    similar_asserts::assert_eq!(
+        got,
+        vec![
+            svec!["a", "c", "e", ""],
+            svec!["f", "h", "j", ""],
+            svec!["k", "m", "o", ""],
+        ]
+    );
+}
+
+#[test]
+fn fixlengths_remove_empty_with_insert() {
+    let rows = vec![
+        svec!["a", "", "c", "", "e"],
+        svec!["f", "", "h", "", "j"],
+        svec!["k", "", "m", "", "o"],
+    ];
+
+    let wrk = Workdir::new("fixlengths_remove_empty_with_insert").flexible(true);
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("fixlengths");
+    cmd.arg("in.csv").args(["-r"]).args(["-i", "2"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    similar_asserts::assert_eq!(
+        got,
+        vec![
+            svec!["a", "c", "e"],
+            svec!["f", "h", "j"],
+            svec!["k", "m", "o"],
+        ]
+    );
+}
+
+#[test]
+fn fixlengths_remove_empty_with_length_and_insert() {
+    let rows = vec![
+        svec!["a", "", "c", "", "e"],
+        svec!["f", "", "h", "", "j"],
+        svec!["k", "", "m", "", "o"],
+    ];
+
+    let wrk = Workdir::new("fixlengths_remove_empty_with_length_and_insert").flexible(true);
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("fixlengths");
+    cmd.arg("in.csv")
+        .args(["-r"])
+        .args(["-l", "5"])
+        .args(["-i", "2"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    similar_asserts::assert_eq!(
+        got,
+        vec![
+            svec!["a", "", "", "c", "e"],
+            svec!["f", "", "", "h", "j"],
+            svec!["k", "", "", "m", "o"],
+        ]
+    );
+}
+
+#[test]
+fn fixlengths_remove_empty_all_empty_columns() {
+    let rows = vec![
+        svec!["a", "", "", "", "e"],
+        svec!["f", "", "", "", "j"],
+        svec!["k", "", "", "", "o"],
+    ];
+
+    let wrk = Workdir::new("fixlengths_remove_empty_all_empty_columns").flexible(true);
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("fixlengths");
+    cmd.arg("in.csv").args(["-r"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    similar_asserts::assert_eq!(
+        got,
+        vec![svec!["a", "e"], svec!["f", "j"], svec!["k", "o"],]
+    );
+}
+
+#[test]
+fn fixlengths_remove_empty_with_negative_insert() {
+    let rows = vec![
+        svec!["a", "", "c", "", "e"],
+        svec!["f", "", "h", "", "j"],
+        svec!["k", "", "m", "", "o"],
+    ];
+
+    let wrk = Workdir::new("fixlengths_remove_empty_with_negative_insert").flexible(true);
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("fixlengths");
+    cmd.arg("in.csv")
+        .args(["-r"])
+        .args(["-l", "5"])
+        .args(["-i", "-2"]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    similar_asserts::assert_eq!(
+        got,
+        vec![
+            svec!["a", "c", "", "", "e"],
+            svec!["f", "h", "", "", "j"],
+            svec!["k", "m", "", "", "o"],
+        ]
+    );
 }

@@ -8,15 +8,16 @@ https://json-schema.org/draft/2020-12/json-schema-validation.html
 Running `validate` command on original input CSV with generated schema 
 should not flag any invalid records.
 
-The intended workflow is to use `schema` command to generate a schema file from
-representative CSV data, fine-tune the schema file as needed, and then use `validate`
-command to validate other CSV data with the same structure using the generated schema.
+The intended workflow is to use the `schema` command to generate a JSON schema file
+from representative CSV data, fine-tune the JSON schema file as needed, and then use
+the `validate` command to validate other CSV data with the same structure using the
+generated JSON schema.
 
-Generated schema file has `.schema.json` suffix appended. For example, 
-for input `mydata.csv`, schema file would be `mydata.csv.schema.json`.
+The generated JSON schema file has `.schema.json` suffix appended. For example, 
+for input `mydata.csv`, the generated JSON schema is `mydata.csv.schema.json`.
 
-If piped from stdin, then schema file would be `stdin.csv.schema.json` and
-a `stdin.csv` file will created with stdin's contents as well.
+If piped from stdin, the schema file will be `stdin.csv.schema.json` and
+a `stdin.csv` file will be created with stdin's contents as well.
 
 Note that `stdin.csv` will be overwritten if it already exists.
 
@@ -79,16 +80,16 @@ Common options:
 
 use std::{fs::File, io::Write, path::Path};
 
-use ahash::{AHashMap, AHashSet};
 use csv::ByteRecord;
+use foldhash::{HashMap, HashMapExt, HashSet};
 use grex::RegExpBuilder;
 use itertools::Itertools;
 use log::{debug, error, info, warn};
 use rayon::slice::ParallelSliceMut;
-use serde_json::{json, value::Number, Map, Value};
+use serde_json::{Map, Value, json, value::Number};
 use stats::Frequencies;
 
-use crate::{cmd::stats::StatsData, config::Config, util, util::StatsMode, CliResult};
+use crate::{CliResult, cmd::stats::StatsData, config::Config, util, util::StatsMode};
 
 const STDIN_CSV: &str = "stdin.csv";
 
@@ -133,7 +134,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     // build schema for each field by their inferred type, min/max value/length, and unique values
     let mut properties_map: Map<String, Value> =
-        match infer_schema_from_stats(&args, &input_filename) {
+        match infer_schema_from_stats(&args, &input_filename, false) {
             Ok(map) => map,
             Err(e) => {
                 return fail_clierror!(
@@ -209,9 +210,10 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 pub fn infer_schema_from_stats(
     args: &util::SchemaArgs,
     input_filename: &str,
+    quiet: bool,
 ) -> CliResult<Map<String, Value>> {
     // invoke cmd::stats
-    let (csv_fields, csv_stats) = util::get_stats_records(args, StatsMode::Schema)?;
+    let (csv_fields, csv_stats, _) = util::get_stats_records(args, StatsMode::Schema)?;
 
     // amortize memory allocation
     let mut low_cardinality_column_indices: Vec<u64> =
@@ -223,7 +225,6 @@ pub fn infer_schema_from_stats(
         &mut low_cardinality_column_indices,
         args.flag_enum_threshold,
         &mut const_column_indices,
-        &csv_fields,
         &csv_stats,
     );
 
@@ -238,7 +239,6 @@ pub fn infer_schema_from_stats(
     let mut type_list: Vec<Value> = Vec::with_capacity(4);
     let mut enum_list: Vec<Value> = Vec::with_capacity(args.flag_enum_threshold as usize);
     let mut const_value: Value;
-    let mut header_byte_slice;
     let mut header_string;
     let mut stats_record;
     let mut col_type;
@@ -246,12 +246,9 @@ pub fn infer_schema_from_stats(
     let empty_string = String::new();
 
     // generate definition for each CSV column/field and add to properties_map
-    #[allow(clippy::needless_range_loop)]
-    for i in 0..csv_fields.len() {
-        header_byte_slice = csv_fields.get(i).unwrap();
-
+    for (i, csv_field) in csv_fields.iter().enumerate() {
         // convert csv header to string
-        header_string = convert_to_string(header_byte_slice)?;
+        header_string = convert_to_string(csv_field)?;
 
         // grab stats record for current column
         stats_record = csv_stats[i].clone();
@@ -404,14 +401,45 @@ pub fn infer_schema_from_stats(
         if enum_list.is_empty() {
             if const_value != Value::Null {
                 field_map.insert("const".to_string(), const_value.clone());
-                winfo!("Const generated for field '{header_string}': {const_value:?}");
+                if !quiet {
+                    winfo!("Const generated for field '{header_string}': {const_value:?}");
+                }
             }
         } else {
+            // sort enum list
+            enum_list.sort_unstable_by(|a, b| {
+                match (a, b) {
+                    (Value::Null, Value::Null) => std::cmp::Ordering::Equal,
+                    (Value::Null, _) => std::cmp::Ordering::Less,
+                    (_, Value::Null) => std::cmp::Ordering::Greater,
+                    (Value::String(a_str), Value::String(b_str)) => a_str.cmp(b_str),
+                    (Value::Number(a_num), Value::Number(b_num)) => a_num
+                        .as_f64()
+                        .unwrap_or_default()
+                        .partial_cmp(&b_num.as_f64().unwrap_or_default())
+                        .unwrap_or(std::cmp::Ordering::Equal),
+                    // Compare types by their "priority"
+                    _ => {
+                        let type_priority = |v: &Value| match v {
+                            Value::Null => 0,
+                            Value::Bool(_) => 1,
+                            Value::Number(_) => 2,
+                            Value::String(_) => 3,
+                            Value::Array(_) => 4,
+                            Value::Object(_) => 5,
+                        };
+                        type_priority(a).cmp(&type_priority(b))
+                    },
+                }
+            });
+
             field_map.insert("enum".to_string(), Value::Array(enum_list.clone()));
-            winfo!(
-                "Enum list generated for field '{header_string}' ({} value/s)",
-                enum_list.len()
-            );
+            if !quiet {
+                winfo!(
+                    "Enum list generated for field '{header_string}' ({} value/s)",
+                    enum_list.len()
+                );
+            }
         }
 
         // add current field definition to properties map
@@ -426,16 +454,14 @@ fn build_low_cardinality_column_selector_arg(
     low_cardinality_column_indices: &mut Vec<u64>,
     enum_cardinality_threshold: u64,
     const_column_indices: &mut Vec<u64>,
-    csv_fields: &ByteRecord,
     csv_stats: &[StatsData],
 ) -> String {
     low_cardinality_column_indices.clear();
 
     // identify low cardinality columns
-    #[allow(clippy::needless_range_loop)]
-    for i in 0..csv_fields.len() {
+    csv_stats.iter().enumerate().for_each(|(i, stat)| {
         // get Cardinality
-        let col_cardinality = csv_stats[i].cardinality;
+        let col_cardinality = stat.cardinality;
 
         if col_cardinality == 1 {
             const_column_indices.push((i + 1) as u64);
@@ -443,7 +469,7 @@ fn build_low_cardinality_column_selector_arg(
             // column selector uses 1-based index
             low_cardinality_column_indices.push((i + 1) as u64);
         }
-    }
+    });
 
     debug!("low cardinality columns: {low_cardinality_column_indices:?}");
 
@@ -460,7 +486,7 @@ fn build_low_cardinality_column_selector_arg(
 fn get_unique_values(
     args: &util::SchemaArgs,
     column_select_arg: &str,
-) -> CliResult<AHashMap<String, Vec<String>>> {
+) -> CliResult<HashMap<String, Vec<String>>> {
     // prepare arg for invoking cmd::frequency
     let freq_args = crate::cmd::frequency::Args {
         arg_input:            args.arg_input.clone(),
@@ -475,20 +501,26 @@ fn get_unique_values(
         flag_no_nulls:        true,
         flag_no_trim:         false,
         flag_ignore_case:     args.flag_ignore_case,
-        // internal mode for getting frequency tables
-        flag_stats_mode:      "_schema".to_string(),
         flag_all_unique_text: "<ALL UNIQUE>".to_string(),
         flag_jobs:            Some(util::njobs(args.flag_jobs)),
         flag_output:          None,
         flag_no_headers:      args.flag_no_headers,
         flag_delimiter:       args.flag_delimiter,
         flag_memcheck:        args.flag_memcheck,
+        flag_vis_whitespace:  false,
     };
 
+    let curr_mode = std::env::var("QSV_STATSCACHE_MODE");
+    // safety: we are in single-threaded code.
+    unsafe { std::env::set_var("QSV_STATSCACHE_MODE", "none") };
     let (headers, ftables) = match freq_args.rconfig().indexed()? {
         Some(ref mut idx) => freq_args.parallel_ftables(idx),
         _ => freq_args.sequential_ftables(),
     }?;
+    if let Ok(orig_mode) = curr_mode {
+        // safety: we are in single-threaded code.
+        unsafe { std::env::set_var("QSV_STATSCACHE_MODE", orig_mode) };
+    }
 
     let unique_values_map = construct_map_of_unique_values(&headers, &ftables)?;
     Ok(unique_values_map)
@@ -498,8 +530,8 @@ fn get_unique_values(
 fn construct_map_of_unique_values(
     freq_csv_fields: &ByteRecord,
     frequency_tables: &[Frequencies<Vec<u8>>],
-) -> CliResult<AHashMap<String, Vec<String>>> {
-    let mut unique_values_map: AHashMap<String, Vec<String>> = AHashMap::new();
+) -> CliResult<HashMap<String, Vec<String>>> {
+    let mut unique_values_map: HashMap<String, Vec<String>> = HashMap::new();
     let mut unique_values = Vec::with_capacity(freq_csv_fields.len());
     // iterate through fields and gather unique values for each field
     for (i, header_byte_slice) in freq_csv_fields.iter().enumerate() {
@@ -560,7 +592,7 @@ fn get_required_fields(properties_map: &Map<String, Value>) -> Vec<Value> {
 fn generate_string_patterns(
     args: &util::SchemaArgs,
     properties_map: &Map<String, Value>,
-) -> CliResult<AHashMap<String, String>> {
+) -> CliResult<HashMap<String, String>> {
     let rconfig = Config::new(args.arg_input.as_ref())
         .delimiter(args.flag_delimiter)
         .no_headers(args.flag_no_headers)
@@ -571,19 +603,19 @@ fn generate_string_patterns(
     let headers = rdr.byte_headers()?.clone();
     let sel = rconfig.selection(&headers)?;
 
-    let mut pattern_map: AHashMap<String, String> = AHashMap::new();
+    let mut pattern_map: HashMap<String, String> = HashMap::new();
 
     // return empty pattern map when:
     //  * no columns are selected
     //  * all columns are selected (by default, all columns are selected when no columns are
     //    explicitly specified)
-    if sel.len() == 0 || sel.len() == headers.len() {
+    if sel.is_empty() || sel.len() == headers.len() {
         debug!("no pattern columns selected");
         return Ok(pattern_map);
     }
 
     // Map each Header to its unique Set of values
-    let mut unique_values_map: AHashMap<String, AHashSet<String>> = AHashMap::new();
+    let mut unique_values_map: HashMap<String, HashSet<String>> = HashMap::new();
 
     #[allow(unused_assignments)]
     let mut record = csv::ByteRecord::new();

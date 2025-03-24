@@ -39,6 +39,8 @@ extdedup options:
                                If more than 50, this is the memory in MB to allocate, capped
                                at 90 percent of total memory.
                                [default: 10]
+    --temp-dir <arg>           Directory to store temporary hash table file.
+                               If not specified, defaults to operating system temp directory.
 
 Common options:
                                CSV MODE ONLY:
@@ -50,12 +52,13 @@ Common options:
                                Must be a single character. (default: ,)
 
     -h, --help                 Display this message
-    -Q, --quiet                Do not print duplicate count to stderr.
+    -q, --quiet                Do not print duplicate count to stderr.
 "#;
 
 use std::{
     fs,
-    io::{self, stdin, stdout, BufRead, Write},
+    io::{self, BufRead, Write, stdin, stdout},
+    path::PathBuf,
 };
 
 use indicatif::HumanCount;
@@ -63,11 +66,11 @@ use serde::Deserialize;
 use sysinfo::System;
 
 use crate::{
-    config,
+    CliResult, config,
     config::{Config, Delimiter},
     odhtcache,
     select::SelectColumns,
-    util, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]
@@ -81,6 +84,7 @@ struct Args {
     flag_dupes_output:   Option<String>,
     flag_human_readable: bool,
     flag_memory_limit:   Option<u64>,
+    flag_temp_dir:       Option<String>,
     flag_quiet:          bool,
 }
 
@@ -138,7 +142,8 @@ fn dedup_csv(args: Args, mem_limited_buffer: u64) -> Result<u64, crate::clitypes
         dupewtr.write_byte_record(&dupe_headers)?;
     }
 
-    let mut dedup_cache = odhtcache::ExtDedupCache::new(mem_limited_buffer);
+    let temp_dir = args.flag_temp_dir.map(PathBuf::from);
+    let mut dedup_cache = odhtcache::ExtDedupCache::new(mem_limited_buffer, temp_dir);
     let mut dupes_count = 0_u64;
     let sel = rconfig.selection(&headers)?;
 
@@ -211,17 +216,18 @@ fn dedup_lines(args: Args, mem_limited_buffer: u64) -> Result<u64, crate::clityp
     };
     let mut write_dupes = false;
     #[cfg(target_family = "unix")]
-    let mut dupes_writer = if let Some(dupes_output) = args.flag_dupes_output {
-        write_dupes = true;
-        io::BufWriter::with_capacity(
-            config::DEFAULT_WTR_BUFFER_CAPACITY,
-            fs::File::create(dupes_output)?,
-        )
-    } else {
-        io::BufWriter::with_capacity(
+    let mut dupes_writer = match args.flag_dupes_output {
+        Some(dupes_output) => {
+            write_dupes = true;
+            io::BufWriter::with_capacity(
+                config::DEFAULT_WTR_BUFFER_CAPACITY,
+                fs::File::create(dupes_output)?,
+            )
+        },
+        _ => io::BufWriter::with_capacity(
             config::DEFAULT_WTR_BUFFER_CAPACITY,
             fs::File::create("/dev/null")?,
-        )
+        ),
     };
     #[cfg(target_family = "windows")]
     let mut dupes_writer = if let Some(dupes_output) = args.flag_dupes_output {
@@ -236,7 +242,8 @@ fn dedup_lines(args: Args, mem_limited_buffer: u64) -> Result<u64, crate::clityp
             fs::File::create("nul")?,
         )
     };
-    let mut dedup_cache = odhtcache::ExtDedupCache::new(mem_limited_buffer);
+    let temp_dir = args.flag_temp_dir.map(PathBuf::from);
+    let mut dedup_cache = odhtcache::ExtDedupCache::new(mem_limited_buffer, temp_dir);
     let mut dupes_count = 0_u64;
     let mut line_work = String::with_capacity(1024);
     for (row_idx, line) in input_reader.lines().enumerate() {

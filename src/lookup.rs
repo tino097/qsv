@@ -10,7 +10,7 @@ use reqwest::blocking::Client;
 use serde_json::Value;
 use util::expand_tilde;
 
-use crate::{util, CliError};
+use crate::{CliError, util};
 
 pub struct LookupTableOptions {
     pub name:           String,
@@ -197,6 +197,8 @@ pub fn load_lookup_table(
         rowcount,
     };
 
+    drop(rdr);
+
     Ok(lur)
 }
 
@@ -333,7 +335,8 @@ fn write_cache_file(
         "Writing lookup CSV to cache file: {}",
         cache_file_path.display()
     );
-    let mut cache_file = std::fs::File::create(cache_file_path)?;
+    let cache_file_handle = std::fs::File::create(cache_file_path)?;
+    let mut cache_file = std::io::BufWriter::new(cache_file_handle);
 
     writeln!(
         cache_file,
@@ -348,6 +351,7 @@ fn write_cache_file(
     )?;
     cache_file.write_all(contents.as_bytes())?;
     cache_file.flush()?;
+    drop(cache_file);
 
     Ok(())
 }

@@ -39,7 +39,7 @@ use docopt::Docopt;
 use serde::Deserialize;
 
 use crate::{
-    clitypes::{CliError, CliResult, QsvExitCode, CURRENT_COMMAND},
+    clitypes::{CURRENT_COMMAND, CliError, CliResult, QsvExitCode},
     config::SPONSOR_MESSAGE,
 };
 
@@ -68,6 +68,7 @@ static COMMAND_LIST: &str = r#"
     input       Read CSVs w/ special quoting, skipping, trimming & transcoding rules
     joinp       Join CSV files using the Pola.rs engine
     luau        Execute Luau script on CSV data
+    pivotp      Pivot CSV data
     pseudo      Pseudonymise the values of a column
     rename      Rename the columns of CSV data efficiently
     replace     Replace patterns in CSV data
@@ -84,6 +85,7 @@ static COMMAND_LIST: &str = r#"
     sortcheck   Check if a CSV is sorted
     sqlp        Run a SQL query against several CSVs using the Pola.rs engine
     stats       Infer data types and compute summary statistics
+    template    Render templates using CSV data
     validate    Validate CSV data for RFC4180-compliance or with JSON Schema
 
     NOTE: qsvdp ignores the --progressbar option for all commands."#;
@@ -124,7 +126,8 @@ fn main() -> QsvExitCode {
     util::qsv_custom_panic();
 
     let now = Instant::now();
-    let (qsv_args, _) = match util::init_logger() {
+    #[allow(unused_variables)]
+    let (qsv_args, logger_handle) = match util::init_logger() {
         Ok((qsv_args, logger_handle)) => (qsv_args, logger_handle),
         Err(e) => {
             eprintln!("{e}");
@@ -256,6 +259,8 @@ enum Command {
     JoinP,
     #[cfg(feature = "luau")]
     Luau,
+    #[cfg(feature = "polars")]
+    PivotP,
     Pseudo,
     Rename,
     Replace,
@@ -273,6 +278,7 @@ enum Command {
     #[cfg(feature = "polars")]
     SqlP,
     Stats,
+    Template,
     Validate,
 }
 
@@ -313,6 +319,8 @@ impl Command {
             Command::JoinP => cmd::joinp::run(argv),
             #[cfg(feature = "luau")]
             Command::Luau => cmd::luau::run(argv),
+            #[cfg(feature = "polars")]
+            Command::PivotP => cmd::pivotp::run(argv),
             Command::Pseudo => cmd::pseudo::run(argv),
             Command::Rename => cmd::rename::run(argv),
             Command::Replace => cmd::replace::run(argv),
@@ -330,6 +338,7 @@ impl Command {
             #[cfg(feature = "polars")]
             Command::SqlP => cmd::sqlp::run(argv),
             Command::Stats => cmd::stats::run(argv),
+            Command::Template => cmd::template::run(argv),
             Command::Validate => cmd::validate::run(argv),
         }
     }

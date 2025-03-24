@@ -29,7 +29,7 @@ use std::io::Read;
 use arboard::Clipboard;
 use serde::Deserialize;
 
-use crate::{util, CliError, CliResult};
+use crate::{CliError, CliResult, util};
 
 #[allow(dead_code)]
 #[derive(Deserialize)]

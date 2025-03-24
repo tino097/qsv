@@ -1,4 +1,5 @@
 # Performance Tuning
+([TLDR Guide](PERFORMANCE_TLDR.md))
 
 ## Index! Index! Index!
 
@@ -29,18 +30,21 @@ export QSV_AUTOINDEX_SIZE=10000000
 ```
 
 ## Stats Cache
-`stats` is the primary reason qsv was created. Several projects we were working on required GUARANTEED data type inferences at speed when we first working on it in 2021. As we iterated and started additional projects, we started needing additional capabilities to enable the ["automagical metadata"](https://dathere.com/2023/11/automagical-metadata/) inferencing workflow we wanted for our data ingestion pipelines.
+`stats` is the primary reason qsv was created. In 2021, several projects we were working on required GUARANTEED data type inferences at speed. As we iterated and started additional projects, we started needing additional capabilities to enable the ["automagical metadata"](https://dathere.com/2023/11/automagical-metadata/) inferencing workflow we wanted for our data ingestion pipelines.
 
-From the original 11 summary statistics in xsv (type, sum, min/max, min/max length, mean, stddev, median, mode & cardinality ), 22 more were added incrementally over time (is_ascii, range, sort_order, sum_length, avg_length, mean_length, sem, variance, cv, nullcount, max_precision, sparsity, mad, lower outer/inner fence, q1, q2_median, q3, iqr, upper inner/outer fence, skewness, mode_count, mode_occurrences, antimode, antimode_count, antimode_occurrences). Check the [Wiki](https://github.com/dathere/qsv/wiki/Supplemental#stats-command-output-explanation) for more info.
+From the original 11 summary statistics in xsv (type, sum, min/max, min/max length, mean, stddev, median, mode & cardinality ), 35 more were added incrementally over time (is_ascii, range, sort_order/sortiness, min/max/sum/avg/stddev/variance/cv lengths, sem, geometric_mean, harmonic_mean, variance, cv, nullcount, max_precision, sparsity, mad, lower outer/inner fence, q1, q2_median, q3, iqr, upper inner/outer fence, skewness, uniqueness_ratio, mode_count, mode_occurrences, antimode, antimode_count, antimode_occurrences) [more info](https://github.com/dathere/qsv/wiki/Supplemental#stats-command-output-explanation).
 
-And some of these stats were relatively expensive to compute, so qsv started caching statistics so it didn't need to recompute them if a file hasn't changed (as most of the files we were working on were historical data).
+And some of these stats were relatively expensive to compute, we added stats caching so it didn't need to recompute them if a file hasn't changed (as most of the files we were working on were historical data).
 
-Slowly, over time, we realized that the cached stats can be used to make other commands faster and smarter - thus the stats cache was born!
+Over time, we realized that the cached stats can be used to make other commands faster and smarter - thus the stats cache was born!
 
-- `frequency` uses the stats cache to short-circuit compiling frequency tables for ID columns (all unique values) by looking at the cardinality of a column.
+- `frequency` uses the stats cache to short-circuit compiling frequency tables for ID columns (all unique values) by looking at the cardinality of a column and fetching rowcounts from the cache.
 - `schema` uses the cache to create a JSON Schema Validation file. It uses the cache to set the data type, enum values, const values, minLength, maxLength, minimum and maximum properties in the JSON Schema file.
 - `tojsonl` uses the cache to set the JSON data type, and to infer boolean JSON properties.
 - `sqlp` and `joinp` uses the cache to create a Polars Schema, short-circuting Polars' schema inferencing - which is not as reliable as it depends on sampling the first N rows of a CSV, which may lead to wrong type inferences if the sample size is not large enough (which if set too large, slows down the Polars engine). As the data type inferences of `stats` are guaranteed, its not only faster, it works all the time!
+- `pivotp` uses the cache extensively to automatically infer the best aggregation function to use based on the attributes of the pivot and value columns.
+- `diff` uses the cache to short-circuit comparison if the files fingerprint hashes are identical. It also uses the rowcount and cardinality of the primary key column to check for uniqueness.
+- `sample` uses the cache to skip unnecessary scanning and to inform its sampling strategies.
 
 For the most part, the default caching behavior works transparently, though you will notice several files with the same file stem will start appearing in the same location as your CSV files. As metadata is tiny by nature and very useful on its own, a conscious decision was made not to hide them.
 
@@ -52,6 +56,8 @@ If you want to fine-tune qsv's caching behavior, use the `--cache-threshold` opt
   As `stats` is much faster with an index. It also controls auto-indexing:
 - when set to a negative number, automatically creates an index when the input file size is greater than the absolute of the provided values in BYTES. The stats cache remains after `stats` finishes.
 - when set to a negative number AND the number ends with 5, it will automatically create an index, compile the stats, AND then delete the index as well as the stats cache files afterwards.
+
+> NOTE: To ensure the stats cache is used by "smart" commands, run `stats` with the `--stats-jsonl` option. This will create the stats cache file in the same directory as the input file.
 
 ## CPU Optimization
 
@@ -194,22 +200,23 @@ The `--version` option shows a lot of information about qsv. It displays:
 
 ```bash
 $ qsv --version
-qsv 0.122.0-mimalloc-apply;fetch;foreach;Luau 0.606;python-3.11.0 (v3.11.0:deaf509e8f, Oct 24 2022, 14:43:23) [Clang 13.0.0 (clang-1300.0.29.30)];to;self_update-8-8;3.66 GiB-913.00 MiB-3.69 GiB-16.00 GiB (aarch64-apple-darwin compiled with Rust 1.75.0) compiled
+qsv 2.0.0-mimalloc-apply;fetch;foreach;geocode;Luau 0.653;prompt;python-3.10.14 (main, Aug  7 2024, 12:09:26) [Clang 16.0.0 (clang-1600.0.23.1)];to;polars-0.45.1:py-1.19.0:72cd66a;self_update-8-8;19.20 GiB-1.59 GiB-510.91 MiB-24.00 GiB (aarch64-apple-darwin compiled with Rust 1.83) compiled
 ```
 
-Shows that I'm running qsv version 0.122.0, with the `mimalloc` allocator (instead of `standard` or `jemalloc`), and I have the `apply`, `fetch`, `foreach`, `luau`, `python`, `to` and `self_update` features enabled, with the exact version of the embedded Luau interpreter, and the python version qsv is dynamically linked against. 
-
-It shows qsv will use 8 logical processors out of 8 detected when running multithreaded commands.
-
-It also shows that I can have a maximum input file size of 3.66 GiB for "non-streaming" commands (see [Memory Management](https://github.com/dathere/qsv#memory-management) for more info), 913.00 MiB of free swap memory, 3.69 GiB of available memory and 16.00 GiB of total memory.
-
-The qsv binary was built to target the aarch64-apple-darwin platform (Apple Silicon), compiled using Rust 1.75.0. The binary was `compiled` using `cargo build`.
+Shows that I'm running qsv version 2.0.0, with the `mimalloc` allocator (instead of `standard` or `jemalloc`), and I have:
+- the `apply`, `fetch`, `foreach`, `geocode`, `luau`, `prompt`, `python`, `to`, `polars` and `self_update` features enabled,
+- the exact version of the embedded Luau interpreter (Luau 0.653),
+- Polars with its version metadata (polars-0.45.1:py-1.19.0:72cd66a),
+- the Python version qsv is dynamically linked against (Python 3.10.14 (main, Aug  7 2024, 12:09:26) [Clang 16.0.0 (clang-1600.0.23.1)]). 
+- qsv will use 8 logical processors out of 8 detected when running multithreaded commands.
+- a maximum input file size of 19.20 GiB for "non-streaming" commands (see [Memory Management](https://github.com/dathere/qsv#memory-management) for more info), 1.59 GiB of free swap memory, 510.91 MiB of available memory and 24.00 GiB of total memory.
+- the qsv binary was built to target the aarch64-apple-darwin platform (Apple Silicon), compiled using Rust 1.83.0. The binary was `compiled` using `cargo build`.
 
 ## Caching
 qsv employs several caching strategies to improve performance:
 
 * qsv has large read and write buffers to minimize disk I/O. The default read buffer size is 128k and the default write buffer size is 512k. These can be fine-tuned with the `QSV_RDR_BUFFER_CAPACITY` and `QSV_WTR_BUFFER_CAPACITY` environment variables.
-* The `stats` command caches its results in both CSV and JSONL formats. It does this to avoid re-computing the same statistics when the same input file/parameters are used, but also, as statistics are used in several other commands (currently - `frequency`, `schema` and `tojsonl`, with [more commands using cached statistics in the future](https://github.com/dathere/qsv/issues/898)).   
+* The `stats` command caches its results in both CSV and JSONL formats. It does this to avoid re-computing the same statistics when the same input file/parameters are used, but also, as statistics are used in several other commands (see [Stats Cache](#stats-cache)).   
 The stats cache are automatically refreshed when the input file is modified the next time the `stats` command is run or when cache-aware commands attempt to use them. The stats cache is stored in the same directory as the input file. The stats cache files are named with the same file stem as the input file with the `stats.csv`, `stats.csv.json` and `stats.csv.data.jsonl` extensions. The CSV contains the cached stats, the JSON file contains metadata about how the stats were compiled, and the JSONL file is the JSONL version of the stats that can be directly loaded into memory by other commands. The JSONL is used by the `frequency`, `schema` and `tojsonl` commands and will only be generated when the `--stats-jsonl` option is set.
 * The `geocode` command [memoizes](https://en.wikipedia.org/wiki/Memoization) otherwise expensive geocoding operations and will report its cache hit rate. `geocode` memoization, however, is not persistent across sessions.
 * The `fetch` and `fetchpost` commands also memoizes expensive REST API calls. When the `--redis` option is enabled, it effectively has a persistent cache as the default time-to-live (TTL) before a Redis cache entry is expired is 28 days and Redis entries are persisted across restarts. Redis cache settings can be fine-tuned with the `QSV_REDIS_CONNSTR`, `QSV_REDIS_TTL_SECONDS`, `QSV_REDIS_TTL_REFRESH` and `QSV_FP_REDIS_CONNSTR` environment variables.
@@ -221,14 +228,14 @@ The stats cache are automatically refreshed when the input file is modified the 
 
 Still, users will attempt to use non UTF-8 encoded files, and for the most part, they will still work! This is because most qsv commands use [ByteRecords](https://docs.rs/csv/latest/csv/struct.ByteRecord.html), where qsv manipulates raw bytes and doesn't care about the encoding.
 
-Where it does matter, qsv will attempt to convert the bytes to UTF-8. But instead of using [std::str::from_utf8](https://doc.rust-lang.org/stable/std/str/fn.from_utf8.html), it makes extensive use of [`simdutf8`](https://github.com/rusticstuff/simdutf8#simdutf8--high-speed-utf-8-validation) for [SIMD](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)-accelerated UTF-8 validation, which is up to 23x faster on x86-64 and 11x faster on aarch64 (Apple Silicon).
+Where it does matter (indicated by the 🔣 emoji), qsv will attempt to convert the bytes to UTF-8. But instead of using [std::str::from_utf8](https://doc.rust-lang.org/stable/std/str/fn.from_utf8.html), it makes extensive use of [`simdutf8`](https://github.com/rusticstuff/simdutf8#simdutf8--high-speed-utf-8-validation) for [SIMD](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)-accelerated UTF-8 validation, which is up to 23x faster on x86-64 and 11x faster on aarch64 (Apple Silicon).
 
 As UTF-8 is the de facto encoding standard, this shouldn't be a problem most of the time. However, should you need to process a CSV file with a different encoding, use the `input` command with the `--output` option first to "[loosely transcode](https://doc.rust-lang.org/std/string/struct.String.html#method.from_utf8_lossy)" it to UTF-8.
 
 ## Nightly Release Builds
 Pre-built binaries compiled using Rust Nightly/Unstable are also [available for download](https://github.com/dathere/qsv/releases/latest). These binaries are optimized for size and speed:
 
-* compiled with the last known Rust nightly/unstable that passes all 1,400+ tests.
+* compiled with the last known Rust nightly/unstable that passes all ~1,800 tests.
 * stdlib is compiled from source, instead of using the pre-built stdlib. This ensures stdlib is compiled with all of qsv's release settings
   (link time optimization, opt-level, codegen-units, panic=abort, etc.), presenting more opportunities for Rust/LLVM to optimize the generated code.
   This is why we only have nightly release builds for select platforms (the platform of GitHub's action runners), as we need access to the "native hardware"

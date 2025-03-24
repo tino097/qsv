@@ -129,7 +129,7 @@ Example queries:
    qsv sqlp SKIP_INPUT "select * from read_csv('data.csv.zst')"
    qsv sqlp SKIP_INPUT "select * from read_csv('data.csv.zlib')"
 
-  Note that sqlp will automatically use this "fast path" read_csv() optimization when there 
+  Note that sqlp will automatically use the "fast path" read_csv() optimization when there 
   is only one input CSV file, no CSV parsing options are used, its not a SQL script and the
   `--no-optimizations` flag is not set.
 
@@ -265,7 +265,7 @@ Common options:
     -o, --output <file>    Write output to <file> instead of stdout.
     -d, --delimiter <arg>  The field delimiter for reading and writing CSV data.
                            Must be a single character. [default: ,]
-    -Q, --quiet            Do not return result shape to stderr.
+    -q, --quiet            Do not return result shape to stderr.
 "#;
 
 use std::{
@@ -294,11 +294,11 @@ use regex::Regex;
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     cmd::joinp::tsvssv_delim,
-    config::{Config, Delimiter, DEFAULT_WTR_BUFFER_CAPACITY},
+    config::{Config, DEFAULT_WTR_BUFFER_CAPACITY, Delimiter},
     util,
     util::{get_stats_records, process_input},
-    CliResult,
 };
 
 static DEFAULT_GZIP_COMPRESSION_LEVEL: u8 = 6;
@@ -598,7 +598,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     if args.flag_wnull_value == "<empty string>" {
         args.flag_wnull_value.clear();
-    };
+    }
 
     let output_mode: OutputMode = args.flag_format.parse().unwrap_or(OutputMode::Csv);
     let no_output: OutputMode = OutputMode::None;
@@ -626,13 +626,13 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             | OptFlags::CLUSTER_WITH_COLUMNS
             | OptFlags::TYPE_COERCION
             | OptFlags::SIMPLIFY_EXPR
-            | OptFlags::FILE_CACHING
             | OptFlags::SLICE_PUSHDOWN
             | OptFlags::COMM_SUBPLAN_ELIM
             | OptFlags::COMM_SUBEXPR_ELIM
             | OptFlags::ROW_ESTIMATE
-            | OptFlags::FAST_PROJECTION;
-    };
+            | OptFlags::FAST_PROJECTION
+            | OptFlags::COLLAPSE_JOINS;
+    }
 
     optflags.set(OptFlags::STREAMING, args.flag_streaming);
 
@@ -804,7 +804,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         arg_input:            Some(table.to_string_lossy().into_owned()),
                         flag_memcheck:        false,
                     };
-                    let (csv_fields, csv_stats) =
+                    let (csv_fields, csv_stats, _) =
                         get_stats_records(&schema_args, util::StatsMode::PolarsSchema)?;
 
                     let mut schema = Schema::with_capacity(csv_stats.len());
@@ -1021,6 +1021,6 @@ pub fn compress_output_if_needed(
                 DEFAULT_WTR_BUFFER_CAPACITY,
             )?;
         }
-    };
+    }
     Ok(())
 }

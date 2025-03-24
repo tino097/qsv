@@ -81,8 +81,9 @@ use serde::Deserialize;
 use strum_macros::EnumString;
 
 use crate::{
-    config::{Config, Delimiter, DEFAULT_WTR_BUFFER_CAPACITY},
-    util, CliResult,
+    CliResult,
+    config::{Config, DEFAULT_WTR_BUFFER_CAPACITY, Delimiter},
+    util,
 };
 
 #[derive(Deserialize)]
@@ -191,9 +192,9 @@ impl Args {
     // this algorithm is largely inspired by https://github.com/vi/csvcatrow by @vi
     // https://github.com/dathere/qsv/issues/527
     fn cat_rowskey(&self) -> CliResult<()> {
-        // ahash is a faster hasher than the default one used by IndexSet and IndexMap
-        type AhashIndexSet<T> = IndexSet<T, ahash::RandomState>;
-        type AhashIndexMap<T, T2> = IndexMap<T, T2, ahash::RandomState>;
+        // foldhash is a faster hasher than the default one used by IndexSet and IndexMap
+        type FhashIndexSet<T> = IndexSet<T, foldhash::fast::RandomState>;
+        type FhashIndexMap<T, T2> = IndexMap<T, T2, foldhash::fast::RandomState>;
 
         let Ok(group_kind) = GroupKind::from_str(&self.flag_group) else {
             return fail_incorrectusage_clierror!(
@@ -203,7 +204,7 @@ impl Args {
             );
         };
 
-        let mut columns_global: AhashIndexSet<Box<[u8]>> = AhashIndexSet::default();
+        let mut columns_global: FhashIndexSet<Box<[u8]>> = FhashIndexSet::default();
 
         if group_kind != GroupKind::None {
             columns_global.insert(self.flag_group_name.as_bytes().to_vec().into_boxed_slice());
@@ -272,7 +273,7 @@ impl Args {
         let mut conf_path;
         let mut rdr;
         let mut header: &csv::ByteRecord;
-        let mut columns_of_this_file: AhashIndexMap<Box<[u8]>, usize> = AhashIndexMap::default();
+        let mut columns_of_this_file: FhashIndexMap<Box<[u8]>, usize> = FhashIndexMap::default();
         columns_of_this_file.reserve(num_columns_global);
         let mut row: csv::ByteRecord = csv::ByteRecord::with_capacity(500, num_columns_global);
 
@@ -341,18 +342,23 @@ impl Args {
             while rdr.read_byte_record(&mut row)? {
                 new_row.clear();
                 for (col_idx, c) in columns_global.iter().enumerate() {
-                    if let Some(idx) = columns_of_this_file.get(c) {
-                        if let Some(d) = row.get(*idx) {
-                            new_row.push_field(d);
-                        } else {
-                            new_row.push_field(b"");
-                        }
-                    } else if group_flag && col_idx == 0 {
-                        // we are in the first column, and --group is set
-                        // so we write the grouping value
-                        new_row.push_field(grouping_value_bytes);
-                    } else {
-                        new_row.push_field(b"");
+                    match columns_of_this_file.get(c) {
+                        Some(idx) => {
+                            if let Some(d) = row.get(*idx) {
+                                new_row.push_field(d);
+                            } else {
+                                new_row.push_field(b"");
+                            }
+                        },
+                        _ => {
+                            if group_flag && col_idx == 0 {
+                                // we are in the first column, and --group is set
+                                // so we write the grouping value
+                                new_row.push_field(grouping_value_bytes);
+                            } else {
+                                new_row.push_field(b"");
+                            }
+                        },
                     }
                 }
                 wtr.write_byte_record(&new_row)?;

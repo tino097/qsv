@@ -1,13 +1,13 @@
 static USAGE: &str = r#"
 Create multiple new computed columns, filter rows or compute aggregations by 
-executing a Luau 0.653 script for every row (SEQUENTIAL MODE) or for
+executing a Luau 0.663 script for every row (SEQUENTIAL MODE) or for
 specified rows (RANDOM ACCESS MODE) of a CSV file.
 
 Luau is not just another qsv command. It is qsv's Domain-Specific Language (DSL)
 for data-wrangling. 👑
 
 The executed Luau has 3 ways to reference row columns (as strings):
-  1. Directly by using column name (e.g. Amount), can be disabled with -g
+  1. Directly by using column name (e.g. Amount), can be disabled with --no-globals
   2. Indexing col variable by column name: col.Amount or col["Total Balance"]
   3. Indexing col variable by column 1-based index: col[1], col[2], etc.
      This is only available with the --colindex or --no-headers options.
@@ -20,7 +20,7 @@ It has two subcommands:
   filter  - Filter rows by executing a Luau script for each row. Rows that return
             true are kept, the rest are filtered out.
 
-Some usage examples:
+Some examples:
 
   Sum numeric columns 'a' and 'b' and call new column 'c'
   $ qsv luau map c "a + b"
@@ -29,7 +29,8 @@ Some usage examples:
 
   There is some magic in the previous example as 'a' and 'b' are passed in
   as strings (not numbers), but Luau still manages to add them up.
-  A more explicit way of doing it, is by using tonumber
+  A more explicit way of doing it, is by using the tonumber() function.
+  See https://luau-lang.org/library for a list of built-in functions.
   $ qsv luau map c "tonumber(a) + tonumber(b)"
 
   Add running total column for Amount
@@ -41,6 +42,11 @@ Some usage examples:
 
   Add running total column for Amount when previous balance was 900
   $ qsv luau map Total "tot = (tot or 900) + Amount; return tot"
+
+  Use the qsv_cumsum() helper function to compute the running total.
+  See https://github.com/dathere/qsv/wiki/Luau-Helper-Functions-Examples for more examples.
+
+  $ qsv luau map Total "qsv_cumsum(Amount)"
 
   Convert Amount to always-positive AbsAmount and Type (debit/credit) columns
   $ qsv luau map Type \
@@ -121,7 +127,7 @@ When developing Luau scripts, be sure to take advantage of the "qsv_log" functio
 debug your script. It will log messages at the level (INFO, WARN, ERROR, DEBUG, TRACE)
 specified by the QSV_LOG_LEVEL environment variable (see docs/Logging.md for details).
 
-At the DEBUG level, the log messages will be more verbose to faciitate debugging.
+At the DEBUG level, the log messages will be more verbose to facilitate debugging.
 It will also skip precompiling the MAIN script to bytecode so you can see more
 detailed error messages with line numbers.
 
@@ -130,14 +136,12 @@ This is done so qsv doesn't falsely trigger on special variables mentioned in co
 When checking line numbers in DEBUG mode, be sure to refer to the comment-stripped
 scripts in the log file, not the original commented scripts.
 
-There are more Luau helper functions in addition to "qsv_log" - "qsv_break", "qsv_skip",
-"qsv_insertrecord", "qsv_autoindex", "qsv_coalesce", "qsv_sleep", "qsv_writefile",
-"qsv_cmd", "qsv_shellcmd", "qsv_setenv", "qsv_getenv" and last but not least -
-the powerful "qsv_register_lookup" which allows you to "lookup" values against other
+There are more Luau helper functions in addition to "qsv_log", notably the powerful
+"qsv_register_lookup" which allows you to "lookup" values against other
 CSVs on the filesystem, a URL, datHere's lookup repo or CKAN instances.
 
 Detailed descriptions of these helpers can be found in the "setup_helpers" section at
-the bottom of this file.
+the bottom of this file and on the Wiki (https://github.com/dathere/qsv/wiki)
 
 For more detailed examples, see https://github.com/dathere/qsv/blob/master/tests/test_luau.rs.
 
@@ -171,16 +175,16 @@ Luau arguments:
     It can contain multiple statements.
 
     <new-columns> is a comma-separated list of new computed columns to add to the CSV
-    when using "luau map". Note that the new columns are added to the CSV after the
-    existing columns.
+    when using "luau map". The new columns are added to the CSV after the existing
+    columns, unless the --remap option is used.
 
 Luau options:
   -g, --no-globals        Don't create Luau global variables for each column,
                           only `col`. Useful when some column names mask standard
-                          Luau globals and a bit more performance.
+                          Luau globals and to increase PERFORMANCE.
                           Note: access to Luau globals thru _G remains even with -g.
   --colindex              Create a 1-based column index. Useful when some column names
-                          mask standard Luau globals. Automatically enabled with--no-headers.
+                          mask standard Luau globals. Automatically enabled with --no-headers.
   -r, --remap             Only the listed new columns are written to the output CSV.
                           Only applies to "map" subcommand.
   -B, --begin <script>    Luau script/file to execute in the BEGINning, before
@@ -202,10 +206,10 @@ Luau options:
                           [default: ?;?.luau;?.lua]
   --max-errors <count>    The maximum number of errors to tolerate before aborting.
                           Set to zero to disable error limit.
-                          [default: 100]
+                          [default: 10]
   --timeout <seconds>     Timeout for downloading lookup_tables using
                           the qsv_register_lookup() helper function.
-                          [default: 30]
+                          [default: 60]
   --ckan-api <url>        The URL of the CKAN API to use for downloading lookup_table
                           resources using the qsv_register_lookup() helper function
                           with the "ckan://" scheme.
@@ -238,7 +242,11 @@ Common options:
 "#;
 
 use std::{
-    env, fs, io,
+    cell::RefCell,
+    collections::HashMap,
+    env,
+    fmt::Write as _,
+    fs, io,
     io::Write,
     path::Path,
     sync::atomic::{AtomicBool, AtomicI8, AtomicU16, Ordering},
@@ -252,8 +260,9 @@ use mlua::{Lua, LuaSerdeExt, Value};
 use serde::Deserialize;
 
 use crate::{
-    config::{Config, Delimiter, DEFAULT_WTR_BUFFER_CAPACITY},
-    lookup, util, CliError, CliResult,
+    CliError, CliResult,
+    config::{Config, DEFAULT_WTR_BUFFER_CAPACITY, Delimiter},
+    lookup, util,
 };
 
 #[allow(dead_code)]
@@ -301,6 +310,9 @@ static QSV_V_ROWCOUNT: &str = "_ROWCOUNT";
 static QSV_V_LASTROW: &str = "_LASTROW";
 static QSV_V_INDEX: &str = "_INDEX";
 
+static SCRIPT_FILE_PREFIX: &str = "file:";
+static LUA_EXTENSION: &str = "lua";
+static LUAU_EXTENSION: &str = "luau";
 // there are 3 stages: 1-BEGIN, 2-MAIN, 3-END
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum Stage {
@@ -342,7 +354,7 @@ impl Stage {
 
 static LUAU_STAGE: AtomicI8 = AtomicI8::new(0);
 
-static TIMEOUT_SECS: AtomicU16 = AtomicU16::new(30);
+static TIMEOUT_SECS: AtomicU16 = AtomicU16::new(60);
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
@@ -357,26 +369,27 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         .delimiter(args.flag_delimiter)
         .no_headers(args.flag_no_headers);
 
-    let mut luau_script = if let Some(script_filepath) = args.arg_main_script.strip_prefix("file:")
-    {
-        match fs::read_to_string(script_filepath) {
-            Ok(file_contents) => file_contents,
-            Err(e) => return fail_clierror!("Cannot load Luau file: {e}"),
-        }
-    } else if std::path::Path::new(&args.arg_main_script)
-        .extension()
-        .is_some_and(|ext| ext.eq_ignore_ascii_case("luau"))
-        || std::path::Path::new(&args.arg_main_script)
+    let mut luau_script =
+        if let Some(script_filepath) = args.arg_main_script.strip_prefix(SCRIPT_FILE_PREFIX) {
+            match fs::read_to_string(script_filepath) {
+                Ok(file_contents) => file_contents,
+                Err(e) => return fail_clierror!("Cannot load Luau file: {e}"),
+            }
+        } else if std::path::Path::new(&args.arg_main_script)
             .extension()
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("lua"))
-    {
-        match fs::read_to_string(args.arg_main_script.clone()) {
-            Ok(file_contents) => file_contents,
-            Err(e) => return fail_clierror!("Cannot load .lua/.luau file: {e}"),
-        }
-    } else {
-        args.arg_main_script.clone()
-    };
+            .is_some_and(|ext| ext.eq_ignore_ascii_case(LUAU_EXTENSION))
+            || std::path::Path::new(&args.arg_main_script)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case(LUA_EXTENSION))
+        {
+            match fs::read_to_string(args.arg_main_script.clone()) {
+                Ok(file_contents) => file_contents,
+                Err(e) => return fail_clierror!("Cannot load .lua/.luau file: {e}"),
+            }
+        } else {
+            #[allow(clippy::redundant_clone)]
+            args.arg_main_script.clone()
+        };
 
     // in Luau, comments begin with two consecutive hyphens
     // let's remove them, so we don't falsely trigger on commented special variables
@@ -415,22 +428,29 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         String::from("return ")
     };
 
+    let debug_enabled = log_enabled!(log::Level::Debug) || log_enabled!(log::Level::Trace);
+
+    // add performance optimizations compiler directives if debug is off
+    if !debug_enabled {
+        main_script = format!("--!optimize 2\n--!native\n{main_script}");
+    }
+
     main_script.push_str(luau_script.trim());
     debug!("MAIN script: {main_script:?}");
 
     // check if a BEGIN script was specified
     let begin_script = if let Some(ref begin) = args.flag_begin {
-        let discrete_begin = if let Some(begin_filepath) = begin.strip_prefix("file:") {
+        let discrete_begin = if let Some(begin_filepath) = begin.strip_prefix(SCRIPT_FILE_PREFIX) {
             match fs::read_to_string(begin_filepath) {
                 Ok(begin) => begin,
                 Err(e) => return fail_clierror!("Cannot load Luau BEGIN script file: {e}"),
             }
         } else if std::path::Path::new(begin)
             .extension()
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("luau"))
+            .is_some_and(|ext| ext.eq_ignore_ascii_case(LUAU_EXTENSION))
             || std::path::Path::new(begin)
                 .extension()
-                .is_some_and(|ext| ext.eq_ignore_ascii_case("lua"))
+                .is_some_and(|ext| ext.eq_ignore_ascii_case(LUA_EXTENSION))
         {
             match fs::read_to_string(begin.clone()) {
                 Ok(file_contents) => file_contents,
@@ -456,17 +476,17 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     // check if an END script was specified
     let end_script = if let Some(ref end) = args.flag_end {
-        let discrete_end = if let Some(end_filepath) = end.strip_prefix("file:") {
+        let discrete_end = if let Some(end_filepath) = end.strip_prefix(SCRIPT_FILE_PREFIX) {
             match fs::read_to_string(end_filepath) {
                 Ok(end) => end,
                 Err(e) => return fail_clierror!("Cannot load Luau END script file: {e}"),
             }
         } else if std::path::Path::new(end)
             .extension()
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("luau"))
+            .is_some_and(|ext| ext.eq_ignore_ascii_case(LUAU_EXTENSION))
             || std::path::Path::new(end)
                 .extension()
-                .is_some_and(|ext| ext.eq_ignore_ascii_case("lua"))
+                .is_some_and(|ext| ext.eq_ignore_ascii_case(LUA_EXTENSION))
         {
             match fs::read_to_string(end.clone()) {
                 Ok(file_contents) => file_contents,
@@ -506,7 +526,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             Err(e) => {
                 return fail_clierror!(
                     "Cannot create temporary directory to copy luadate library to: {e}"
-                )
+                );
             },
         }
     } else {
@@ -524,15 +544,22 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
         // set LUAU_PATH to include the luadate library
         let mut luau_path = args.flag_luau_path.clone();
-        luau_path.push_str(&format!(";{}", luadate_path.as_os_str().to_string_lossy()));
-        env::set_var("LUAU_PATH", luau_path.clone());
+        // safety: safe to unwrap as we're just using it to append to luau_path
+        write!(luau_path, ";{}", luadate_path.as_os_str().to_string_lossy()).unwrap();
+        // safety: we are in single-threaded code.
+        unsafe { env::set_var("LUAU_PATH", luau_path.clone()) };
         info!(r#"set LUAU_PATH to "{luau_path}""#);
     }
 
     // -------- setup Luau environment --------
     let luau = Lua::new();
+
+    // enable sandboxing which enables several optimizations
+    // see: https://docs.rs/mlua/latest/mlua/struct.Lua.html#method.sandbox
+    luau.sandbox(true)?;
+
     // see Compiler settings here: https://docs.rs/mlua/latest/mlua/struct.Compiler.html#
-    let luau_compiler = if log_enabled!(log::Level::Debug) || log_enabled!(log::Level::Trace) {
+    let luau_compiler = if debug_enabled {
         // debugging is on, set more debugging friendly compiler settings
         // so we can see more error details in the logfile
         mlua::Compiler::new()
@@ -545,11 +572,13 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             .set_optimization_level(2)
             .set_debug_level(1)
             .set_coverage_level(0)
+            .set_type_info_level(1)
     };
     // set default Luau compiler
     luau.set_compiler(luau_compiler.clone());
 
     let globals = luau.globals();
+    globals.set_safeenv(true);
 
     // check the QSV_CKAN_API environment variable
     let ckan_api = if let Ok(api) = std::env::var("QSV_CKAN_API") {
@@ -630,7 +659,7 @@ fn sequential_mode(
 
     let mut rdr = rconfig.reader()?;
     let mut wtr = Config::new(args.flag_output.as_ref()).writer()?;
-    let mut headers = rdr.headers()?.clone();
+    let mut headers = rdr.headers()?.to_owned();
     let mut remap_headers = csv::StringRecord::new();
     let mut new_column_count = 0_u8;
     let mut headers_count = headers.len();
@@ -706,6 +735,9 @@ fn sequential_mode(
     // check if _IDX was used in the MAIN script
     let idx_used = main_script.contains(QSV_V_IDX);
 
+    // check if qsv_break() was called in the MAIN script
+    let qsv_break_used = main_script.contains("qsv_break(");
+
     // only precompile main script to bytecode if debug is disabled
     let main_bytecode = if debug_enabled {
         Vec::new()
@@ -713,7 +745,7 @@ fn sequential_mode(
         luau_compiler.compile(main_script)?
     };
 
-    let mut record = csv::StringRecord::new();
+    let mut record = csv::StringRecord::with_capacity(256, headers_count);
     let mut idx = 0_u64;
     let mut error_count = 0_usize;
 
@@ -722,7 +754,8 @@ fn sequential_mode(
 
     let mut computed_value;
     let mut must_keep_row;
-    let col = luau.create_table_with_capacity(record.len(), 1)?;
+    let col = luau.create_table_with_capacity(headers_count, 1)?;
+    col.set_safeenv(true);
 
     let flag_no_globals = args.flag_no_globals;
     let flag_remap = args.flag_remap;
@@ -758,7 +791,7 @@ fn sequential_mode(
                 col.raw_set(h, v)?;
             }
         }
-        globals.raw_set("col", col.clone())?;
+        globals.raw_set("col", &col)?;
 
         // Updating global
         if !flag_no_globals && !no_headers {
@@ -770,7 +803,20 @@ fn sequential_mode(
         // if debug is enabled, we eval the script as string instead of precompiled bytecode
         // so we can get more detailed error messages with line numbers
         computed_result = if debug_enabled {
-            luau.load(main_script).eval()
+            // Enhanced error reporting in debug mode
+            match luau.load(main_script).eval() {
+                Ok(result) => Ok(result),
+                Err(e) => {
+                    // Extract line number if available
+                    let error_msg = match e.to_string().find("line") {
+                        Some(line) => {
+                            format!("Error at {}: {}", &e.to_string()[line..], e)
+                        },
+                        _ => e.to_string(),
+                    };
+                    Err(mlua::Error::RuntimeError(error_msg))
+                },
+            }
         } else {
             luau.load(&main_bytecode).eval()
         };
@@ -787,7 +833,11 @@ fn sequential_mode(
             },
         };
 
-        if QSV_BREAK.load(Ordering::Relaxed) {
+        // check if qsv_break() was called in the MAIN script
+        // this is a performance optimization so we don't need to check
+        // the AtomicBool QSV_BREAK when we short-circuit on the
+        // qsv_break_used flag
+        if qsv_break_used && QSV_BREAK.load(Ordering::Relaxed) {
             let qsv_break_msg: String = globals.raw_get(QSV_BREAK_MSG)?;
             winfo!("{qsv_break_msg}");
             break 'main;
@@ -812,7 +862,7 @@ fn sequential_mode(
                     create_insertrecord(&insertrecord_table, &mut insertrecord, headers_count)?;
 
                     if QSV_SKIP.load(Ordering::Relaxed) {
-                        if log_enabled!(log::Level::Debug) {
+                        if debug_enabled {
                             debug!("Skipping record {idx} because _QSV_SKIP is set to true");
                         }
                         QSV_SKIP.store(false, Ordering::Relaxed);
@@ -911,7 +961,7 @@ fn sequential_mode(
 
     if error_count > 0 {
         return fail_clierror!("Luau errors encountered: {error_count}");
-    };
+    }
     Ok(())
 }
 
@@ -934,8 +984,11 @@ fn random_access_mode(
     // users can create an index file by calling qsv_autoindex() in their BEGIN script
     if begin_script.contains("qsv_autoindex()") {
         let result = create_index(args.arg_input.as_ref());
-        if result.is_err() {
-            return fail_clierror!("Unable to create/update index file");
+        if result.is_err() || !result.unwrap_or(false) {
+            return fail_clierror!(
+                "Unable to create/update index file required for random access mode: {}",
+                args.arg_input.as_ref().unwrap_or(&String::new())
+            );
         }
     }
 
@@ -955,7 +1008,7 @@ fn random_access_mode(
     }
 
     let mut wtr = Config::new(args.flag_output.as_ref()).writer()?;
-    let mut headers = idx_file.headers()?.clone();
+    let mut headers = idx_file.headers()?.to_owned();
     let mut remap_headers = csv::StringRecord::new();
     let mut new_column_count = 0_u8;
     let mut headers_count = headers.len();
@@ -1001,7 +1054,7 @@ fn random_access_mode(
         if let Err(e) = luau.load(begin_script).exec() {
             return fail_clierror!("BEGIN error: Failed to execute \"{begin_script}\".\n{e}");
         }
-        info!("BEGIN executed.");
+        info!("BEGIN script executed.");
     }
 
     let mut insertrecord = csv::StringRecord::new();
@@ -1034,7 +1087,7 @@ fn random_access_mode(
     } else {
         luau_compiler.compile(main_script)?
     };
-    let mut record = csv::StringRecord::new();
+    let mut record = csv::StringRecord::with_capacity(256, headers_count);
     let mut error_count = 0_usize;
     let mut processed_count = 0_usize;
 
@@ -1071,7 +1124,7 @@ fn random_access_mode(
 
     let mut computed_value;
     let mut must_keep_row;
-    let col = luau.create_table_with_capacity(record.len(), 1)?;
+    let col = luau.create_table_with_capacity(headers_count, 1)?;
 
     let flag_no_globals = args.flag_no_globals;
     let flag_remap = args.flag_remap;
@@ -1080,6 +1133,9 @@ fn random_access_mode(
     let cmd_map = args.cmd_map;
     let mut err_msg: String;
     let mut computed_result;
+
+    // check if qsv_break() was called in the MAIN script
+    let qsv_break_used = main_script.contains("qsv_break(");
 
     // main loop - here we use an indexed file reader to implement random access mode,
     // seeking to the next record to read by looking at _INDEX special var
@@ -1105,7 +1161,7 @@ fn random_access_mode(
                 col.raw_set(h, v)?;
             }
         }
-        globals.raw_set("col", col.clone())?;
+        globals.raw_set("col", &col)?;
 
         // Updating global
         if !flag_no_globals && !no_headers {
@@ -1132,7 +1188,7 @@ fn random_access_mode(
             },
         };
 
-        if QSV_BREAK.load(Ordering::Relaxed) {
+        if qsv_break_used && QSV_BREAK.load(Ordering::Relaxed) {
             let qsv_break_msg: String = globals.raw_get(QSV_BREAK_MSG)?;
             winfo!("{qsv_break_msg}");
             break 'main;
@@ -1155,7 +1211,7 @@ fn random_access_mode(
                     create_insertrecord(&insertrecord_table, &mut insertrecord, headers_count)?;
 
                     if QSV_SKIP.load(Ordering::Relaxed) {
-                        if log_enabled!(log::Level::Debug) {
+                        if !debug_enabled {
                             debug!(
                                 "Skipping record {curr_record} because _QSV_SKIP is set to true"
                             );
@@ -1256,7 +1312,7 @@ fn random_access_mode(
 
     if error_count > 0 {
         return fail_clierror!("Luau errors encountered: {error_count}");
-    };
+    }
     Ok(())
 }
 
@@ -1272,12 +1328,13 @@ fn map_computedvalue(
     new_column_count: u8,
 ) -> Result<(), CliError> {
     match computed_value {
-        Value::String(string) => {
-            if let Ok(utf8) = simdutf8::basic::from_utf8(&string.as_bytes()) {
+        Value::String(string) => match simdutf8::basic::from_utf8(&string.as_bytes()) {
+            Ok(utf8) => {
                 record.push_field(utf8);
-            } else {
+            },
+            _ => {
                 record.push_field(&string.to_string_lossy());
-            }
+            },
         },
         Value::Number(number) => {
             record.push_field(ryu::Buffer::new().format_finite(*number));
@@ -1317,7 +1374,7 @@ fn map_computedvalue(
                     _ => {
                         return Err(mlua::Error::RuntimeError(format!(
                             "Unexpected value type returned by provided Luau expression: {v:?}"
-                        )))
+                        )));
                     },
                 }
                 columns_inserted += 1;
@@ -1336,7 +1393,7 @@ fn map_computedvalue(
                 "Unexpected value type returned by provided Luau expression. {computed_value:?}"
             );
         },
-    };
+    }
     Ok(())
 }
 
@@ -1412,9 +1469,11 @@ fn create_index(arg_input: Option<&String>) -> Result<bool, CliError> {
     let mut wtr =
         io::BufWriter::with_capacity(DEFAULT_WTR_BUFFER_CAPACITY, fs::File::create(pidx)?);
     if RandomAccessSimple::create(&mut rdr, &mut wtr).is_err() {
+        drop(wtr);
         return Ok(false);
-    };
-    if wtr.flush().is_err() {
+    }
+    if io::Write::flush(&mut wtr).is_err() {
+        drop(wtr);
         return Ok(false);
     }
 
@@ -1540,7 +1599,7 @@ fn setup_helpers(
             }
             idx += 1;
         }
-        luau.globals().raw_set(QSV_BREAK_MSG, break_msg.clone())?;
+        luau.globals().raw_set(QSV_BREAK_MSG, &*break_msg)?;
         QSV_BREAK.store(true, Ordering::Relaxed);
 
         Ok(break_msg)
@@ -1627,9 +1686,11 @@ fn setup_helpers(
         }
 
         if value.is_empty() {
-            std::env::remove_var(envvar);
+            // safety: we are in single-threaded code.
+            unsafe { std::env::remove_var(envvar) };
         } else {
-            std::env::set_var(envvar, value);
+            // safety: we are in single-threaded code.
+            unsafe { std::env::set_var(envvar, value) };
         }
 
         Ok(())
@@ -1762,6 +1823,148 @@ fn setup_helpers(
     )?;
     luau.globals().set("qsv_loadcsv", qsv_loadcsv)?;
 
+    // this is a helper function to load a JSON file into a Luau table.
+    //
+    //   qsv_loadjson(table_name: string, filepath: string)
+    //      table_name: the name of the Luau table to load the JSON data into.
+    //        filepath: the path of the JSON file to load
+    //         returns: true if successful.
+    //                  A Luau runtime error if the filepath is invalid or JSON parsing fails.
+    //
+    let qsv_loadjson =
+        luau.create_function(move |luau, (table_name, filepath): (String, String)| {
+            if filepath.is_empty() {
+                return helper_err!("qsv_loadjson", "filepath cannot be empty.");
+            }
+
+            let path = Path::new(&filepath);
+            if !path.exists() {
+                return helper_err!("qsv_loadjson", "\"{}\" does not exist.", path.display());
+            }
+
+            // Read the JSON file
+            let json_str = match fs::read_to_string(path) {
+                Ok(content) => content,
+                Err(e) => {
+                    return helper_err!(
+                        "qsv_loadjson",
+                        "Failed to read JSON file \"{}\": {e}",
+                        path.display()
+                    );
+                },
+            };
+
+            // Parse the JSON string
+            let json_value: serde_json::Value = match serde_json::from_str(&json_str) {
+                Ok(v) => v,
+                Err(e) => {
+                    return helper_err!(
+                        "qsv_loadjson",
+                        "Failed to parse JSON from \"{}\": {e}",
+                        path.display()
+                    );
+                },
+            };
+
+            // Convert JSON value to Luau value and store it in the global table
+            let luau_value = match luau.to_value(&json_value) {
+                Ok(v) => v,
+                Err(e) => {
+                    return helper_err!(
+                        "qsv_loadjson",
+                        "Failed to convert JSON to Luau value: {e}"
+                    );
+                },
+            };
+
+            luau.globals().raw_set(&*table_name, luau_value)?;
+
+            info!(
+                "{} successfully loaded JSON into table '{}'.",
+                filepath, table_name
+            );
+
+            Ok(true)
+        })?;
+    luau.globals().set("qsv_loadjson", qsv_loadjson)?;
+
+    // this is a helper function to save a Luau table to a JSON file.
+    //
+    //   qsv_writejson(table_or_value: any, filepath: string, pretty: boolean)
+    //   table_or_value: the Luau table or value to save as JSON
+    //        filepath: the path of the JSON file to save
+    //          pretty: whether to format the JSON with indentation (optional, defaults to false)
+    //         returns: true if successful.
+    //                  A Luau runtime error if the filepath is invalid or JSON conversion fails.
+    //
+    let qsv_writejson = luau.create_function(
+        move |_, (table_or_value, filepath, pretty): (mlua::Value, String, Option<bool>)| {
+            use sanitize_filename::sanitize;
+
+            if filepath.is_empty() {
+                return helper_err!("qsv_writejson", "filepath cannot be empty.");
+            }
+
+            let sanitized_filename = sanitize(filepath);
+
+            // Convert Lua value to serde_json::Value using proper serialization
+            let json_value = if pretty.unwrap_or(false) {
+                match serde_json::to_string_pretty(&table_or_value) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return helper_err!(
+                            "qsv_writejson",
+                            "Failed to convert Luau value to JSON: {e}"
+                        );
+                    },
+                }
+            } else {
+                match serde_json::to_string(&table_or_value) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return helper_err!(
+                            "qsv_writejson",
+                            "Failed to convert Luau value to JSON: {e}"
+                        );
+                    },
+                }
+            };
+
+            // Create file
+            let file = match std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(&sanitized_filename)
+            {
+                Ok(f) => f,
+                Err(e) => {
+                    return helper_err!(
+                        "qsv_writejson",
+                        "Failed to create JSON file \"{sanitized_filename}\": {e}"
+                    );
+                },
+            };
+            let mut file = std::io::BufWriter::with_capacity(DEFAULT_WTR_BUFFER_CAPACITY, file);
+
+            // Write JSON
+            if let Err(e) = file.write_all(json_value.as_bytes()) {
+                return helper_err!(
+                    "qsv_writejson",
+                    "Failed to write JSON to file \"{sanitized_filename}\": {e}"
+                );
+            }
+
+            info!(
+                "qsv_writejson() - saved {} bytes to file: {sanitized_filename}",
+                json_value.to_string().len()
+            );
+
+            Ok(true)
+        },
+    )?;
+    luau.globals().set("qsv_writejson", qsv_writejson)?;
+
     // this is a helper function that can be called from the BEGIN, MAIN & END scripts to write to
     // a file. The file will be created if it does not exist. The file will be appended to if it
     // already exists. The filename will be sanitized and will be written to the current working
@@ -1789,39 +1992,42 @@ fn setup_helpers(
 
         let mut file = if newfile_flag {
             // create a new file. If the file already exists, overwrite it.
-            std::fs::File::create(sanitized_filename.clone()).map_err(|e| {
-                mlua::Error::RuntimeError(format!(
-                    "qsv_writefile() - Error creating a new file: {e}"
-                ))
-            })?
+            match std::fs::File::create(sanitized_filename.clone()) {
+                Ok(f) => f,
+                Err(e) => {
+                    return helper_err!("qsv_writefile", "Error creating a new file: {e}");
+                },
+            }
         } else {
             // append to an existing file. If the file does not exist, create it.
-            OpenOptions::new()
+            match OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(sanitized_filename.clone())
-                .map_err(|e| {
-                    mlua::Error::RuntimeError(format!(
-                        "qsv_writefile() - Error opening existing file: {e}"
-                    ))
-                })?
+            {
+                Ok(f) => f,
+                Err(e) => {
+                    return helper_err!("qsv_writefile", "Error opening existing file: {e}");
+                },
+            }
         };
+
         if newfile_flag {
             log::info!("qsv_writefile() - created file: {sanitized_filename}");
         } else {
             let data_as_bytes = data.as_bytes();
-            file.write_all(data_as_bytes).map_err(|e| {
-                mlua::Error::RuntimeError(format!(
-                    "qsv_writefile() - Error appending to existing file: {e}"
-                ))
-            })?;
+            if let Err(e) = file.write_all(data_as_bytes) {
+                return helper_err!("qsv_writefile", "Error appending to existing file: {e}");
+            }
             log::info!(
                 "qsv_writefile() - appending {} bytes to file: {sanitized_filename}",
                 data_as_bytes.len()
             );
         }
 
-        file.flush()?;
+        if let Err(e) = file.flush() {
+            return helper_err!("qsv_writefile", "Error flushing file: {e}");
+        }
 
         Ok(sanitized_filename)
     })?;
@@ -1856,7 +2062,7 @@ fn setup_helpers(
             }
         }
         luau.globals()
-            .raw_set(QSV_INSERTRECORD_TBL, insertrecord_table.clone())?;
+            .raw_set(QSV_INSERTRECORD_TBL, &insertrecord_table)?;
 
         if log::log_enabled!(log::Level::Debug) {
             log::debug!("qsv_insertrecord() - inserting record: {insertrecord_table:?}");
@@ -2030,6 +2236,420 @@ fn setup_helpers(
     })?;
     luau.globals().set("qsv_shellcmd", qsv_shellcmd)?;
 
+    // this is a helper function that calculates the cumulative sum of a numeric column.
+    // if the input cannot be converted to a number, it returns 0 for that row.
+    //
+    //   qsv_cumsum(value, name)
+    //         value: the numeric value to add to the cumulative sum
+    //         name: (optional) identifier for this cumulative sum
+    //               (allows multiple sums to run in parallel)
+    //       returns: the cumulative sum up to the current row
+    //
+    let qsv_cumsum = luau.create_function(|_, (value, name): (mlua::Value, Option<String>)| {
+        // Get static cumulative sums using thread_local storage
+        thread_local! {
+            static CUMSUMS: RefCell<HashMap<String, f64>> = RefCell::new(HashMap::new());
+        }
+
+        let key = if let Some(name) = name {
+            format!("_qsv_cumsum_{name}")
+        } else {
+            "_qsv_cumsum".to_string()
+        };
+        // Convert input value to number, defaulting to 0.0 if conversion fails
+        let num = match value {
+            Value::Number(n) => n,
+            Value::Integer(i) => i as f64,
+            Value::String(s) => fast_float2::parse(s.as_bytes()).unwrap_or_default(),
+            _ => 0.0,
+        };
+
+        // Update cumulative sum for this name
+        CUMSUMS.with(|cs| {
+            let mut sums = cs.borrow_mut();
+            let sum = sums.entry(key).or_insert(0.0);
+            *sum += num;
+            if !sum.is_finite() {
+                return helper_err!("qsv_cumsum", "cumulative sum underflowed/overflowed");
+            }
+            Ok(*sum)
+        })
+    })?;
+    luau.globals().set("qsv_cumsum", qsv_cumsum)?;
+
+    // this is a helper function that calculates the cumulative product of a numeric column.
+    // if the input cannot be converted to a number, it returns 1 for that row.
+    //
+    //   qsv_cumprod(value, name)
+    //         value: the numeric value to multiply with the cumulative product
+    //         name: (optional) identifier for this cumulative product
+    //               (allows multiple products to run in parallel)
+    //       returns: the cumulative product up to the current row
+    //
+    let qsv_cumprod = luau.create_function(|_, (value, name): (mlua::Value, Option<String>)| {
+        thread_local! {
+            static CUMPRODS: RefCell<HashMap<String, f64>> = RefCell::new(HashMap::new());
+        }
+
+        let key = if let Some(name) = name {
+            format!("_qsv_cumprod_{name}")
+        } else {
+            "_qsv_cumprod".to_string()
+        };
+
+        let num = match value {
+            Value::Number(n) => n,
+            Value::Integer(i) => i as f64,
+            Value::String(s) => fast_float2::parse(s.as_bytes()).unwrap_or(1.0),
+            _ => 1.0,
+        };
+
+        CUMPRODS.with(|cp| {
+            let mut prods = cp.borrow_mut();
+            let prod = prods.entry(key).or_insert(1.0);
+            *prod *= num;
+            if !prod.is_finite() {
+                return helper_err!("qsv_cumprod", "cumulative product is not a finite number");
+            }
+            Ok(*prod)
+        })
+    })?;
+    luau.globals().set("qsv_cumprod", qsv_cumprod)?;
+
+    // this is a helper function that calculates the cumulative maximum of a numeric column.
+    // if the input cannot be converted to a number, it returns negative infinity for that row.
+    //
+    //   qsv_cummax(value, name)
+    //         value: the numeric value to compare with the cumulative maximum
+    //         name: (optional) identifier for this cumulative maximum
+    //               (allows multiple maximums to run in parallel)
+    //       returns: the cumulative maximum up to the current row
+    //
+    let qsv_cummax = luau.create_function(|_, (value, name): (mlua::Value, Option<String>)| {
+        thread_local! {
+            static CUMMAXS: RefCell<HashMap<String, f64>> = RefCell::new(HashMap::new());
+        }
+
+        let key = if let Some(name) = name {
+            format!("_qsv_cummax_{name}")
+        } else {
+            "_qsv_cummax".to_string()
+        };
+
+        let num = match value {
+            Value::Number(n) => n,
+            Value::Integer(i) => i as f64,
+            Value::String(s) => fast_float2::parse(s.as_bytes()).unwrap_or(f64::NEG_INFINITY),
+            _ => f64::NEG_INFINITY,
+        };
+
+        CUMMAXS.with(|cm| {
+            let mut maxs = cm.borrow_mut();
+            let max = maxs.entry(key).or_insert(f64::NEG_INFINITY);
+            *max = max.max(num);
+            Ok(*max)
+        })
+    })?;
+    luau.globals().set("qsv_cummax", qsv_cummax)?;
+
+    // this is a helper function that calculates the cumulative minimum of a numeric column.
+    // if the input cannot be converted to a number, it returns positive infinity for that row.
+    //
+    //   qsv_cummin(value, name)
+    //         value: the numeric value to compare with the cumulative minimum
+    //         name: (optional) identifier for this cumulative minimum
+    //               (allows multiple minimums to run in parallel)
+    //       returns: the cumulative minimum up to the current row
+    //
+    let qsv_cummin = luau.create_function(|_, (value, name): (mlua::Value, Option<String>)| {
+        thread_local! {
+            static CUMMINS: RefCell<HashMap<String, f64>> = RefCell::new(HashMap::new());
+        }
+
+        let key = if let Some(name) = name {
+            format!("_qsv_cummin_{name}")
+        } else {
+            "_qsv_cummin".to_string()
+        };
+
+        let num = match value {
+            Value::Number(n) => n,
+            Value::Integer(i) => i as f64,
+            Value::String(s) => fast_float2::parse(s.as_bytes()).unwrap_or(f64::INFINITY),
+            _ => f64::INFINITY,
+        };
+
+        CUMMINS.with(|cm| {
+            let mut mins = cm.borrow_mut();
+            let min = mins.entry(key).or_insert(f64::INFINITY);
+            *min = min.min(num);
+            Ok(*min)
+        })
+    })?;
+    luau.globals().set("qsv_cummin", qsv_cummin)?;
+
+    // qsv_lag - returns lagged value with optional default
+    //
+    //   qsv_lag(value, name, lag, default)
+    //         value: the value to lag
+    //           lag: (optional) number of rows to lag by (default: 1)
+    //       default: (optional) value to return for rows before lag is available (default: "0")
+    //          name: (optional) identifier for this lag. Note that you need to specify lag and
+    //                default if you want to use a named lag.
+    //                (allows multiple lags to run in parallel)
+    //       returns: the value from 'lag' rows ago, or default if not enough rows seen yet
+    let qsv_lag = luau.create_function(|luau, args: mlua::MultiValue| {
+        let args: Vec<mlua::Value> = args.into_iter().collect();
+
+        if args.is_empty() {
+            return helper_err!("qsv_lag", "requires at least 1 argument: value");
+        }
+
+        let value = args[0].clone();
+        let lag = if args.len() > 1 {
+            args[1].as_i64().unwrap_or(1)
+        } else {
+            1
+        };
+        let default = if args.len() > 2 {
+            args[2].clone()
+        } else {
+            mlua::Value::String(luau.create_string("0")?)
+        };
+        let name = if args.len() > 3 {
+            args[3].to_string()?
+        } else {
+            String::new()
+        };
+
+        thread_local! {
+            static LAGS: RefCell<HashMap<String, Vec<String>>> = RefCell::new(HashMap::new());
+        }
+
+        let key = format!("_qsv_lag_{name}_{lag}");
+
+        // Convert the value to a string to store it
+        let value_str = match &value {
+            Value::String(s) => s.to_string_lossy(),
+            Value::Number(n) => n.to_string(),
+            Value::Integer(i) => i.to_string(),
+            Value::Boolean(b) => b.to_string(),
+            Value::Nil => String::new(),
+            _ => value.to_string().unwrap_or_default(),
+        };
+
+        LAGS.with(|l| {
+            let mut lags = l.borrow_mut();
+            let values = lags.entry(key).or_default();
+            values.push(value_str);
+
+            if values.len() as i64 <= lag {
+                // Return the default value when not enough history
+                Ok(default)
+            } else {
+                let lagged_value = values
+                    .get(values.len().saturating_sub(1 + lag as usize))
+                    .ok_or_else(|| mlua::Error::runtime("Invalid lag index"))?;
+                Ok(mlua::Value::String(luau.create_string(lagged_value)?))
+            }
+        })
+    })?;
+    luau.globals().set("qsv_lag", qsv_lag)?;
+
+    // qsv_cumany - returns true if any value so far has been truthy
+    //
+    //   qsv_cumany(value, name)
+    //         value: the value to check for truthiness
+    //         name: (optional) identifier for this cumulative any
+    //               (allows multiple cumany's to run in parallel)
+    //       returns: true if any value seen so far has been truthy, false otherwise
+    let qsv_cumany = luau.create_function(|_, (value, name): (mlua::Value, Option<String>)| {
+        thread_local! {
+            static CUMANYS: RefCell<HashMap<String, bool>> = RefCell::new(HashMap::new());
+        }
+
+        let key = if let Some(name) = name {
+            format!("_qsv_cumany_{name}")
+        } else {
+            "_qsv_cumany".to_string()
+        };
+
+        let is_truthy = match value {
+            Value::Boolean(b) => b,
+            Value::Number(n) => n != 0.0,
+            Value::Integer(i) => i != 0,
+            Value::String(s) => !s.to_string_lossy().is_empty(),
+            Value::Nil => false,
+            _ => true, // Tables, functions, etc. are considered truthy
+        };
+
+        CUMANYS.with(|ca| {
+            let mut anys = ca.borrow_mut();
+            let any = anys.entry(key).or_insert(false);
+            *any = *any || is_truthy;
+            Ok(*any)
+        })
+    })?;
+    luau.globals().set("qsv_cumany", qsv_cumany)?;
+
+    // qsv_cumall - returns true if all values so far have been truthy
+    //
+    //   qsv_cumall(value, name)
+    //         value: the value to check for truthiness
+    //         name: (optional) identifier for this cumulative all
+    //               (allows multiple cumall's to run in parallel)
+    //       returns: true if all values seen so far have been truthy, false otherwise
+    let qsv_cumall = luau.create_function(|_, (value, name): (mlua::Value, Option<String>)| {
+        thread_local! {
+            static CUMALLS: RefCell<HashMap<String, bool>> = RefCell::new(HashMap::new());
+        }
+
+        let key = if let Some(name) = name {
+            format!("_qsv_cumall_{name}")
+        } else {
+            "_qsv_cumall".to_string()
+        };
+
+        let is_truthy = match value {
+            Value::Boolean(b) => b,
+            Value::Number(n) => n != 0.0,
+            Value::Integer(i) => i != 0,
+            Value::String(s) => !s.to_string_lossy().is_empty(),
+            Value::Nil => false,
+            _ => true, // Tables, functions, etc. are considered truthy
+        };
+
+        CUMALLS.with(|ca| {
+            let mut all_vals = ca.borrow_mut();
+            let all = all_vals.entry(key).or_insert(true);
+            *all = *all && is_truthy;
+            Ok(*all)
+        })
+    })?;
+    luau.globals().set("qsv_cumall", qsv_cumall)?;
+
+    // qsv_accumulate - accumulates values using a custom function
+    //
+    //   qsv_accumulate(value: number, func: function, init: number, name: string)
+    //       value: the numeric value to accumulate over.
+    //              If the value is not a number, 0.0 is used.
+    //        func: function that takes two arguments (prev_acc, curr_val) and returns
+    //              the new accumulated value. prev_acc is the previously accumulated value,
+    //              curr_val is the current value.
+    //        init: (optional) initial value. If not provided, defaults to the first column value.
+    //              If the column value is not a number, 0.0 is used as the initial value.
+    //        name: (optional) identifier for this accumulator.
+    //              Note that you need to specify name if you want to use a named accumulator.
+    //              (allows multiple accumulators to run in parallel)
+    //     returns: the accumulated value for the current row
+    //              or Luau runtime error if invalid arguments
+    let qsv_accumulate = luau.create_function(
+        |luau,
+         (value, func, init, name): (
+            mlua::Value,
+            mlua::Function,
+            Option<mlua::Value>,
+            Option<String>,
+        )| {
+            // Get the current value from the column
+            let curr_value = match value {
+                Value::Number(n) => n,
+                Value::Integer(i) => i as f64,
+                Value::String(s) => fast_float2::parse(s.as_bytes()).unwrap_or(0.0),
+                _ => 0.0,
+            };
+
+            // Generate name for the accumulator state
+            let state_name = format!("_qsv_accumulate_{nm}", nm = name.unwrap_or_default());
+
+            // Get existing accumulator value or use initial value
+            let prev_acc = if let Ok(prev) = luau.globals().raw_get::<f64>(&*state_name) {
+                prev
+            } else {
+                // Get initial value from optional argument or default to the first column value
+                let init_value = match init {
+                    Some(init) => match init {
+                        mlua::Value::Number(n) => n,
+                        mlua::Value::Integer(i) => i as f64,
+                        mlua::Value::String(s) => fast_float2::parse(s.as_bytes()).unwrap_or(0.0),
+                        _ => 0.0,
+                    },
+                    _ => {
+                        // By default, the first column value is used as the initial value
+                        // unless the optional initial value is provided.
+                        curr_value
+                    },
+                };
+                luau.globals().raw_set(&*state_name, init_value)?;
+                init_value
+            };
+
+            // Call the accumulator function
+            let result = match func.call::<mlua::Value>((prev_acc, curr_value)) {
+                Ok(mlua::Value::Number(n)) => n,
+                Ok(mlua::Value::Integer(i)) => i as f64,
+                Ok(mlua::Value::String(s)) => fast_float2::parse(s.as_bytes()).unwrap_or(prev_acc),
+                Ok(_) => prev_acc, // for other types, return the previous accumulated value
+                Err(e) => return Err(e),
+            };
+
+            // Store the new accumulated value
+            luau.globals().raw_set(state_name, result)?;
+
+            Ok(result)
+        },
+    )?;
+    luau.globals().set("qsv_accumulate", qsv_accumulate)?;
+
+    // qsv_diff - returns difference between current and previous value
+    //
+    //   qsv_diff(name, value[, periods])
+    //         value: the value to calculate difference for
+    //       periods: (optional) number of periods to look back (default: 1)
+    //          name: (optional) identifier for this diff
+    //                (allows multiple diffs to run in parallel)
+    //                Note that you need to specify periods if you want to use a named diff.
+    //       returns: difference between current value and value 'periods' rows back
+    //               returns 0 if not enough history available yet
+    let qsv_diff = luau.create_function(
+        |_, (value, periods, name): (mlua::Value, Option<i64>, Option<String>)| {
+            thread_local! {
+                static DIFFS: RefCell<HashMap<String, Vec<f64>>> = RefCell::new(HashMap::new());
+            }
+
+            let periods = periods.unwrap_or(1);
+            // Create a unique key that includes both periods and name
+            let key = if let Some(name) = name {
+                format!("_qsv_diff_{periods}_{name}")
+            } else {
+                format!("_qsv_diff_{periods}")
+            };
+
+            let num = match value {
+                Value::Number(n) => n,
+                Value::Integer(i) => i as f64,
+                Value::String(s) => fast_float2::parse(s.as_bytes()).unwrap_or(0.0),
+                _ => 0.0,
+            };
+
+            DIFFS.with(|d| {
+                let mut diffs = d.borrow_mut();
+                let values = diffs.entry(key).or_default();
+                values.push(num);
+
+                if values.len() as i64 <= periods {
+                    Ok(0.0) // Return 0 when not enough history
+                } else {
+                    let prev_value = values
+                        .get(values.len().saturating_sub(1 + periods as usize))
+                        .ok_or_else(|| mlua::Error::runtime("Invalid periods value"))?;
+                    Ok(num - prev_value)
+                }
+            })
+        },
+    )?;
+    luau.globals().set("qsv_diff", qsv_diff)?;
+
     // this is a helper function that can be called from the BEGIN script to register
     // and load a lookup table. It expects two arguments - the lookup_name & the
     // lookup_table_uri - the URI of the CSV to use as a lookup table.
@@ -2113,8 +2733,9 @@ fn setup_helpers(
                 }
                 lookup_table.raw_set(key, inside_table)?;
             }
+            drop(rdr);
 
-            luau.globals().raw_set(lookup_name.clone(), lookup_table)?;
+            luau.globals().raw_set(&*lookup_name, lookup_table)?;
 
             // Return headers table
             let headers_table = luau.create_table()?;

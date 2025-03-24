@@ -97,11 +97,11 @@ impl Workdir {
     }
 
     /// read the contents of a file into a string
-    pub fn read_to_string(&self, filename: &str) -> String {
-        let mut file = File::open(self.path(filename)).unwrap();
+    pub fn read_to_string(&self, filename: &str) -> io::Result<String> {
+        let mut file = File::open(self.path(filename))?;
         let mut contents = String::new();
-        file.read_to_string(&mut contents).unwrap_or_default();
-        contents
+        file.read_to_string(&mut contents)?;
+        Ok(contents)
     }
 
     /// read stdout of a command
@@ -267,6 +267,19 @@ impl Workdir {
         path.push(name);
         create_dir_all(path)
     }
+
+    /// Read a CSV file and parse it into Vec<Vec<String>>
+    /// Note that this does not return the header row
+    pub fn read_csv(&self, name: &str) -> Vec<Vec<String>> {
+        let path = self.path(name);
+        let mut rdr = csv::ReaderBuilder::new()
+            .flexible(self.flexible)
+            .from_path(&path)
+            .unwrap();
+        rdr.records()
+            .map(|r| r.unwrap().iter().map(|s| s.to_string()).collect())
+            .collect()
+    }
 }
 
 impl fmt::Debug for Workdir {
@@ -281,11 +294,14 @@ impl fmt::Debug for Workdir {
 fn create_dir_all<P: AsRef<Path>>(p: P) -> io::Result<()> {
     let mut last_err = None;
     for _ in 0..10 {
-        if let Err(err) = fs::create_dir_all(&p) {
-            last_err = Some(err);
-            ::std::thread::sleep(Duration::from_millis(500));
-        } else {
-            return Ok(());
+        match fs::create_dir_all(&p) {
+            Err(err) => {
+                last_err = Some(err);
+                ::std::thread::sleep(Duration::from_millis(500));
+            },
+            _ => {
+                return Ok(());
+            },
         }
     }
     Err(last_err.unwrap())

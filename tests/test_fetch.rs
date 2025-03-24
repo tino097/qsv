@@ -31,7 +31,7 @@ fn fetch_simple() {
 {"post code":"94105","country":"United States","country abbreviation":"US","places":[{"place name":"San Francisco","longitude":"-122.3892","state":"California","state abbreviation":"CA","latitude":"37.7864"}]}
 {"post code":"92802","country":"United States","country abbreviation":"US","places":[{"place name":"Anaheim","longitude":"-117.9228","state":"California","state abbreviation":"CA","latitude":"33.8085"}]}"#;
     // {"head":{"vars":["dob"]},"results":{"bindings":[{"dob":{"datatype":"http://www.w3.org/2001/XMLSchema#dateTime","type":"literal","value":"1952-03-11T00:00:00Z"}}]}}"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -104,7 +104,7 @@ https://api.zippopotam.us/us/92802,"{
     }
   ]
 }""#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -157,7 +157,7 @@ fn fetch_simple_new_col() {
         // svec!["https://query.wikidata.org/sparql?query=SELECT%20?dob%20WHERE%20{wd:Q42%20wdt:P569%20?dob.}&format=json", "Scott Adams", "42", r#"{"head":{"vars":["dob"]},"results":{"bindings":[{"dob":{"datatype":"http://www.w3.org/2001/XMLSchema#dateTime","type":"literal","value":"1952-03-11T00:00:00Z"}}]}}"#],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -218,7 +218,7 @@ fn fetch_simple_report() {
         ],
         // svec!["https://query.wikidata.org/sparql?query=SELECT%20?dob%20WHERE%20{wd:Q42%20wdt:P569%20?dob.}&format=json", "200", "0", "0", r#"{"head":{"vars":["dob"]},"results":{"bindings":[{"dob":{"datatype":"http://www.w3.org/2001/XMLSchema#dateTime","type":"literal","value":"1952-03-11T00:00:00Z"}}]}}"#],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -248,7 +248,7 @@ fn fetch_simple_url_template() {
 {"post code":"94105","country":"United States","country abbreviation":"US","places":[{"place name":"San Francisco","longitude":"-122.3892","state":"California","state abbreviation":"CA","latitude":"37.7864"}]}
 {"post code":"92802","country":"United States","country abbreviation":"US","places":[{"place name":"Anaheim","longitude":"-117.9228","state":"California","state abbreviation":"CA","latitude":"33.8085"}]}"#;
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -289,7 +289,7 @@ fn fetch_simple_redis() {
 {"post code":"92802","country":"United States","country abbreviation":"US","places":[{"place name":"Anaheim","longitude":"-117.9228","state":"California","state abbreviation":"CA","latitude":"33.8085"}]}
 {"errors":[{"title":"Invalid URL","detail":"relative URL without a base"}]}"#;
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -332,7 +332,7 @@ fn fetch_simple_diskcache() {
 {"post code":"92802","country":"United States","country abbreviation":"US","places":[{"place name":"Anaheim","longitude":"-117.9228","state":"California","state abbreviation":"CA","latitude":"33.8085"}]}
 {"errors":[{"title":"Invalid URL","detail":"relative URL without a base"}]}"#;
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     wrk.assert_success(&mut cmd);
 
@@ -348,12 +348,12 @@ fn fetch_simple_diskcache() {
         .args(&["--report", "short"]);
 
     let got = wrk.stdout::<String>(&mut cmd_2);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // sleep for a bit to make sure the cache is written to disk
     std::thread::sleep(std::time::Duration::from_secs(2));
 
-    let fetchreport = wrk.read_to_string("data.csv.fetch-report.tsv");
+    let fetchreport = wrk.read_to_string("data.csv.fetch-report.tsv").unwrap();
     wrk.create_from_string("no-elapsed.tsv", &fetchreport);
 
     // remove the elapsed_ms column from the report as this is not deterministic
@@ -362,7 +362,7 @@ fn fetch_simple_diskcache() {
 
     let fetchreport_noelapsed = wrk.stdout::<String>(&mut cmd3);
     // read the output file and compare it with the expected output
-    assert_eq!(
+    similar_asserts::assert_eq!(
         fetchreport_noelapsed,
         r#"url,status,cache_hit,retries,response
 https://api.zippopotam.us/us/99999,404,1,5,"{""errors"":[{""title"":""HTTP ERROR"",""detail"":""HTTP ERROR 404 - Not Found""}]}"
@@ -404,7 +404,7 @@ fn fetch_jaq_single() {
         svec!["https://api.zippopotam.us/us/92802", "\"Anaheim\""],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -438,7 +438,7 @@ fn fetch_jaq_single_file() {
         svec!["https://api.zippopotam.us/us/94105", "\"San Francisco\""],
         svec!["https://api.zippopotam.us/us/92802", "\"Anaheim\""],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -527,7 +527,7 @@ fn fetch_jaq_multiple() {
         ],
         svec!["https://api.zippopotam.us/us/92802", "[\"Anaheim\",\"CA\"]"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -567,7 +567,7 @@ fn fetch_jaq_multiple_file() {
         ],
         svec!["https://api.zippopotam.us/us/92802", "[\"Anaheim\",\"CA\"]"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -588,9 +588,11 @@ fn fetch_custom_header() {
         .arg(r#"[ ."headers"."X-Api-Key", ."headers"."X-Api-Secret" ]"#)
         .arg("data.csv");
 
+    wrk.assert_success(&mut cmd);
+
     let got = wrk.stdout::<String>(&mut cmd);
     let expected = "[\"DEMO_KEY\",\"ABC123XYZ\"]";
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -646,6 +648,8 @@ fn fetch_custom_user_agent() {
         .arg("--user-agent")
         .arg("Mozilla/5.0 (platform; rv:geckoversion) Gecko/geckotrail Firefox/firefoxversion")
         .arg("data.csv");
+
+    wrk.assert_success(&mut cmd);
 
     let got = wrk.stdout::<String>(&mut cmd);
     assert!(got.contains(
@@ -787,6 +791,8 @@ fn fetchpost_custom_user_agent() {
         .arg("Mozilla/5.0 (platform; rv:geckoversion) Gecko/geckotrail Firefox/firefoxversion")
         .arg("data.csv");
 
+    wrk.assert_success(&mut cmd);
+
     let got = wrk.stdout::<String>(&mut cmd);
     assert!(got.contains(
         "Mozilla/5.0 (platform; rv:geckoversion) Gecko/geckotrail Firefox/firefoxversion"
@@ -797,7 +803,7 @@ fn fetchpost_custom_user_agent() {
 use std::{sync::mpsc, thread};
 
 use actix_web::{
-    dev::ServerHandle, middleware, rt, web, App, HttpRequest, HttpServer, Responder, Result,
+    App, HttpRequest, HttpServer, Responder, Result, dev::ServerHandle, middleware, rt, web,
 };
 use serde::Serialize;
 #[derive(Serialize)]
@@ -829,7 +835,7 @@ macro_rules! test_server {
 }
 
 macro_rules! test_url {
-    ($api_param:expr) => {
+    ($api_param:expr_2021) => {
         concat!("http://", test_server!(), "/", $api_param)
     };
 }
@@ -952,7 +958,7 @@ fn fetch_ratelimit() {
             "\"The quick brown fox jumped over the lazy dog by the zigzag quarry site Smurf\""
         ],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // init stop webserver and wait until server gracefully exit
     println!("STOPPING Webserver");
@@ -1041,7 +1047,7 @@ fn fetch_complex_url_template() {
         svec!["Snappy", "blue", "\"Snappy blue Smurf\""],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // init stop webserver and wait until server gracefully exit
     println!("STOPPING Webserver");
@@ -1071,6 +1077,8 @@ fn fetchpost_simple_test() {
         .arg("--new-column")
         .arg("response")
         .arg("data.csv");
+
+    wrk.assert_success(&mut cmd);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
 
@@ -1121,7 +1129,7 @@ fn fetchpost_simple_test() {
         ],
     ];
 
-    assert_eq!(got_parsed, expected);
+    similar_asserts::assert_eq!(got_parsed, expected);
 }
 
 #[test]
@@ -1207,7 +1215,7 @@ fn fetchpost_simple_diskcache() {
         ],
     ];
 
-    assert_eq!(got_parsed, expected);
+    similar_asserts::assert_eq!(got_parsed, expected);
 
     assert!(temp_dir.join("fetchpost_v1/conf").exists());
 
@@ -1239,7 +1247,7 @@ fn fetchpost_simple_diskcache() {
 
     //     got_parsed2.push(record_parsed2.clone());
     // }
-    // assert_eq!(got_parsed2, expected);
+    // similar_asserts::assert_eq!(got_parsed2, expected);
 
     // // sleep for a bit to make sure the cache is written to disk
     // std::thread::sleep(std::time::Duration::from_secs(2));
@@ -1253,7 +1261,7 @@ fn fetchpost_simple_diskcache() {
 
     // let fetchreport_noelapsed = wrk.stdout::<String>(&mut cmd3);
     // // read the output file and compare it with the expected output
-    // assert_eq!(
+    // similar_asserts::assert_eq!(
     //     fetchreport_noelapsed,
     //     r#"url,status,cache_hit,retries,response
     // https://api.zippopotam.us/us/99999,404,1,5,"{""errors"":[{""title"":""HTTP ERROR"",""detail"":""HTTP ERROR 404 - Not Found""}]}"
@@ -1350,7 +1358,7 @@ fn fetchpost_compress_test() {
         ],
     ];
 
-    assert_eq!(got_parsed, expected);
+    similar_asserts::assert_eq!(got_parsed, expected);
 }
 
 #[test]
@@ -1405,6 +1413,8 @@ fn fetchpost_literalurl_test() {
         .arg("response")
         .arg("data.csv");
 
+    wrk.assert_success(&mut cmd);
+
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
 
     let mut got_parsed: Vec<Vec<String>> = Vec::new();
@@ -1442,7 +1452,7 @@ fn fetchpost_literalurl_test() {
         ],
     ];
 
-    assert_eq!(got_parsed, expected);
+    similar_asserts::assert_eq!(got_parsed, expected);
 }
 
 #[test]
@@ -1511,7 +1521,7 @@ fn fetchpost_simple_report() {
         ],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1548,6 +1558,8 @@ fn fetchpost_payload_template() {
         .arg(r#"."data""#)
         .arg("data.csv");
 
+    wrk.assert_success(&mut cmd);
+
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
 
     let expected = vec![
@@ -1575,7 +1587,85 @@ fn fetchpost_payload_template() {
         ],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn fetchpost_payload_template_with_globals() {
+    let wrk = Workdir::new("fetchpost_tpl");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["first_name", "last_name", "age", "city"],
+            svec!["John", "Smith", "35", "New York"],
+            svec!["Jane", "Doe", "28", "Los Angeles"],
+            svec!["Bob", "Jones", "42", "Chicago"],
+        ],
+    );
+
+    // Create template file
+    wrk.create_from_string(
+        "payload.tpl",
+        r#"{
+    "firstName": "{{ first_name }}",
+    "lastName": "{{ last_name }}",
+    "age": {{ age }},
+    "dog_age": {{ age|int * qsv_g.dog_years_multiplier|int }},
+    "cat_age": {{ age|int * qsv_g.cat_years_multiplier|int }},
+    "city": "{{ city }}"
+}"#,
+    );
+
+    // Create globals JSON file
+    wrk.create_from_string(
+        "globals.json",
+        r#"{
+        "dog_years_multiplier": "7",
+        "cat_years_multiplier": "14"
+    }"#,
+    );
+
+    let mut cmd = wrk.command("fetchpost");
+    cmd.arg("https://httpbin.org/post")
+        .arg("--payload-tpl")
+        .arg("payload.tpl")
+        .args(["--globals-json", "globals.json"])
+        .arg("--new-column")
+        .arg("response")
+        .arg("--jaq")
+        .arg(r#"."data""#)
+        .arg("data.csv");
+
+    wrk.assert_success(&mut cmd);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+
+    let expected = vec![
+        svec!["first_name", "last_name", "age", "city", "response"],
+        svec![
+            "John",
+            "Smith",
+            "35",
+            "New York",
+            r#""{"firstName":"John","lastName":"Smith","age":35,"dog_age":245,"cat_age":490,"city":"New York"}""#
+        ],
+        svec![
+            "Jane",
+            "Doe",
+            "28",
+            "Los Angeles",
+            r#""{"firstName":"Jane","lastName":"Doe","age":28,"dog_age":196,"cat_age":392,"city":"Los Angeles"}""#
+        ],
+        svec![
+            "Bob",
+            "Jones",
+            "42",
+            "Chicago",
+            r#""{"firstName":"Bob","lastName":"Jones","age":42,"dog_age":294,"cat_age":588,"city":"Chicago"}""#
+        ],
+    ];
+
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1614,6 +1704,8 @@ fn fetchpost_payload_template_with_report() {
         .arg("short")
         .arg("data.csv");
 
+    wrk.assert_success(&mut cmd);
+
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
 
     let expected = vec![
@@ -1641,9 +1733,9 @@ fn fetchpost_payload_template_with_report() {
         ],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
-    let report = wrk.read_to_string("data.csv.fetchpost-report.tsv");
+    let report = wrk.read_to_string("data.csv.fetchpost-report.tsv").unwrap();
     assert!(!report.is_empty());
 }
 
@@ -1668,6 +1760,8 @@ fn fetchpost_with_headers() {
         .arg("--jaq")
         .arg(r#"."headers""#)
         .arg("data.csv");
+
+    wrk.assert_success(&mut cmd);
 
     let got = wrk.stdout::<String>(&mut cmd);
     assert!(got.contains("X-Test-Header"));
@@ -1711,7 +1805,7 @@ fn fetchpost_disk_cache() {
     // Second request should be cached
     let got2 = wrk.stdout::<String>(&mut cmd);
 
-    assert_eq!(&got1, &got2);
+    similar_asserts::assert_eq!(&got1, &got2);
 
     // Clean up
     fs::remove_dir_all(temp_dir).unwrap();
@@ -1740,6 +1834,8 @@ fn fetchpost_content_type() {
         .arg("text/plain")
         .arg("data.csv");
 
+    wrk.assert_success(&mut cmd);
+
     let got = wrk.stdout::<String>(&mut cmd);
     assert!(got.starts_with(
         r#"{"args":{},"data":"\"Greeting: Hello World\"","files":{},"form":{},"headers":{"#
@@ -1766,7 +1862,7 @@ fn fetchpost_content_type() {
         .arg("data.csv");
 
     let got = wrk.stdout::<String>(&mut cmd);
-    assert_eq!(
+    similar_asserts::assert_eq!(
         got,
         r#"{"Message":"Hello World","URL":"https://httpbin.org/post"}"#
     );
@@ -1780,5 +1876,147 @@ fn fetchpost_content_type() {
         .arg("data.csv");
 
     let got = wrk.stdout::<String>(&mut cmd);
-    assert_eq!(got, r#"{"message":"Hello World"}"#);
+    similar_asserts::assert_eq!(got, r#"{"message":"Hello World"}"#);
+}
+
+#[test]
+fn test_fetchpost_column_list_globals() {
+    let wrk = Workdir::new("fetchpost");
+    wrk.create_from_string(
+        "data.csv",
+        "URL,message\nhttps://httpbin.org/post,Hello World\n",
+    );
+
+    // Create globals JSON file
+    wrk.create_from_string(
+        "globals.json",
+        r#"{
+    "api_key": "secret123",
+    "user_id": "user456"
+}"#,
+    );
+
+    // Test form data with globals
+    let mut cmd = wrk.command("fetchpost");
+    cmd.arg("URL")
+        .arg("message")
+        .arg("--globals-json")
+        .arg("globals.json")
+        .arg("--jaq")
+        .arg(r#"."form""#)
+        .arg("data.csv");
+
+    let got = wrk.stdout::<String>(&mut cmd);
+    similar_asserts::assert_eq!(
+        got,
+        r#"{"api_key":"secret123","message":"Hello World","user_id":"user456"}"#
+    );
+}
+
+#[test]
+fn test_fetch_jaq_invalid_json() {
+    let wrk = Workdir::new("fetch_jaq_invalid");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["URL"],
+            svec![
+                "<!doctype html><html lang=\"en\"><meta charset=utf-8><title>shortest \
+                 html5</title>"
+            ],
+        ],
+    );
+    let mut cmd = wrk.command("fetch");
+    cmd.arg("URL")
+        .arg("--new-column")
+        .arg("result")
+        .arg("--jaq")
+        .arg(r#"."places"[0]."place name""#)
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["URL", "result"],
+        svec![
+            "<!doctype html><html lang=\"en\"><meta charset=utf-8><title>shortest html5</title>",
+            ""
+        ],
+    ];
+
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn test_fetch_jaq_invalid_selector() {
+    let wrk = Workdir::new("fetch_jaq_invalid_selector");
+    wrk.create(
+        "data.csv",
+        vec![svec!["URL"], svec!["https://api.zippopotam.us/us/90210"]],
+    );
+    let mut cmd = wrk.command("fetch");
+    cmd.arg("URL")
+        .arg("--new-column")
+        .arg("result")
+        .arg("--jaq")
+        .arg(r#"."place"[0]."place name""#) // Invalid selector
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["URL", "result"],
+        svec!["https://api.zippopotam.us/us/90210", ""],
+    ];
+
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn test_fetch_jaq_number() {
+    let wrk = Workdir::new("fetch_jaq_number");
+    wrk.create(
+        "data.csv",
+        vec![svec!["URL"], svec!["https://api.zippopotam.us/us/90210"]],
+    );
+    let mut cmd = wrk.command("fetch");
+    cmd.arg("URL")
+        .arg("--new-column")
+        .arg("longitude")
+        .arg("--jaq")
+        .arg(r#"."places"[0]."longitude""#)
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["URL", "longitude"],
+        svec!["https://api.zippopotam.us/us/90210", "\"-118.4065\""],
+    ];
+
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn test_fetch_jaq_array() {
+    let wrk = Workdir::new("fetch_jaq_array");
+    wrk.create(
+        "data.csv",
+        vec![svec!["URL"], svec!["https://api.zippopotam.us/us/90210"]],
+    );
+    let mut cmd = wrk.command("fetch");
+    cmd.arg("URL")
+        .arg("--new-column")
+        .arg("coordinates")
+        .arg("--jaq")
+        .arg(r#"[ ."places"[0]."longitude", ."places"[0]."latitude" ]"#)
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["URL", "coordinates"],
+        svec![
+            "https://api.zippopotam.us/us/90210",
+            "[\"-118.4065\",\"34.0901\"]"
+        ],
+    ];
+
+    similar_asserts::assert_eq!(got, expected);
 }

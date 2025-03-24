@@ -44,7 +44,7 @@ Common options:
     -h, --help             Display this message
     -o, --output <file>    Write output to <file> without showing a save dialog.
                            Mutually exclusive with --fd-output.
-    -Q, --quiet            Do not print --fd-output message to stderr.
+    -q, --quiet            Do not print --fd-output message to stderr.
 
 "#;
 
@@ -56,7 +56,7 @@ use std::{
 
 use rfd::FileDialog;
 
-use crate::{util, CliResult, Deserialize};
+use crate::{CliResult, Deserialize, util};
 
 #[derive(Deserialize)]
 #[allow(clippy::struct_field_names)]

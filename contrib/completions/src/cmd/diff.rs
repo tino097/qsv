@@ -13,5 +13,6 @@ pub fn diff_cmd() -> Command {
         arg!(--"drop-equal-fields"),
         arg!(--jobs),
         arg!(--output),
+        arg!(--delimiter),
     ])
 }

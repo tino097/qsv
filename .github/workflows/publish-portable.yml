@@ -39,7 +39,7 @@ jobs:
             addl-build-args: --features=apply,luau,fetch,foreach,self_update,geocode,polars,to,lens,prompt
             default-features:
             addl-qsvlite-features:
-            addl-qsvdp-features: luau,polars
+            addl-qsvdp-features: luau
             addl-rustflags: 
           - os: ubuntu-22.04
             os-name: linux
@@ -214,10 +214,11 @@ jobs:
         is-executable: false
         working-directory: "."
     - name: Download latest release zip
-      uses: robinraju/release-downloader@v1.11
+      uses: robinraju/release-downloader@v1.12
       with:
         repository: "dathere/qsv"
         latest: true
+        preRelease: true
         token: ${{ secrets.GITHUB_TOKEN }}
         fileName: qsv-${{ needs.analyze-tags.outputs.previous-tag }}-${{ matrix.job.target }}.zip
     - name: remove zipsign signature from zip archive
@@ -234,6 +235,8 @@ jobs:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: qsv-${{ needs.analyze-tags.outputs.previous-tag }}-${{ matrix.job.target }}.zip
         asset_name: qsv-${{ needs.analyze-tags.outputs.previous-tag }}-${{ matrix.job.target }}.zip
+        prerelease: true
+        make_latest: false
         overwrite: true
         tag: ${{ needs.analyze-tags.outputs.previous-tag }}    
  

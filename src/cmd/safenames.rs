@@ -101,12 +101,13 @@ Common options:
 
 use std::collections::HashMap;
 
-use ahash::RandomState;
+use foldhash::fast::RandomState;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
-    util, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]
@@ -213,14 +214,14 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 }
             } else {
                 unsafenames_vec.push(header_name.to_string());
-            };
+            }
 
             temp_string = header_name.to_string();
             if let Some(count) = checkednames_map.get(&temp_string) {
                 checkednames_map.insert(temp_string, count + 1);
             } else {
                 checkednames_map.insert(temp_string, 1);
-            };
+            }
         }
 
         let headers_count = headers.len();
@@ -233,7 +234,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             duplicate_count:   dupe_count,
             duplicate_headers: checkednames_map
                 .iter()
-                .filter(|(_, &v)| v > 1)
+                .filter(|&(_, &v)| v > 1)
                 .map(|(k, v)| format!("{k}:{v}"))
                 .collect(),
             unsafe_headers:    unsafenames_vec.clone(),
@@ -259,7 +260,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                     );
                 } else {
                     println!("{}", serde_json::to_string(&safenames_struct).unwrap());
-                };
+                }
             },
             _ => eprintln!("{unsafe_count}"),
         }

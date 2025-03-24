@@ -53,7 +53,7 @@ jobs:
         submodules: recursive
         ref: ${{ needs.analyze-tags.outputs.previous-tag }}
 
-    - uses: actions/setup-python@v5.3.0
+    - uses: actions/setup-python@v5.4.0
       with:
         python-version: '3.10'
     - name: Build qsvpy310
@@ -75,7 +75,7 @@ jobs:
         mv qsv qsvpy310
         cd ..
 
-    - uses: actions/setup-python@v5.3.0
+    - uses: actions/setup-python@v5.4.0
       with:
             python-version: '3.11'
     - name: Build qsvpy311
@@ -96,7 +96,7 @@ jobs:
             mv qsv qsvpy311
             cd ..
 
-    - uses: actions/setup-python@v5.3.0
+    - uses: actions/setup-python@v5.4.0
       with:
             python-version: '3.12'
     - name: Build qsvpy312
@@ -117,6 +117,27 @@ jobs:
                 mv qsv qsvpy312
                 cd ..
 
+    - uses: actions/setup-python@v5.4.0
+      with:
+            python-version: '3.13'
+    - name: Build qsvpy313
+      env:
+        RUSTFLAGS: --emit=asm -C target-cpu=native
+      uses: actions-rs/cargo@v1
+      with:
+            command: build
+            use-cross: false
+            toolchain: ${{ matrix.rust }}
+            args: --release --locked --bin qsv --target ${{ matrix.job.target }} ${{ matrix.job.addl-build-args }},feature_capable ${{ matrix.job.default-features }}
+    - name: Copy binaries to working dir
+      shell: bash
+      run: |
+                rm target/${{ matrix.job.target }}/release/*.d 
+                cp target/${{ matrix.job.target }}/release/qsv* qsv-${{ needs.analyze-tags.outputs.previous-tag }}
+                cd qsv-${{ needs.analyze-tags.outputs.previous-tag }}
+                mv qsv qsvpy313
+                cd ..
+
     - name: install zipsign
       run: |
         cargo install zipsign
@@ -128,10 +149,11 @@ jobs:
           is-executable: false
           working-directory: "."
     - name: Download latest release zip
-      uses: robinraju/release-downloader@v1.11
+      uses: robinraju/release-downloader@v1.12
       with:
           repository: "dathere/qsv"
           latest: true
+          preRelease: true
           token: ${{ secrets.GITHUB_TOKEN }}
           fileName: qsv-${{ needs.analyze-tags.outputs.previous-tag }}-${{ matrix.job.target }}.zip
     - name: remove zipsign signature from zip archive
@@ -151,6 +173,8 @@ jobs:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: qsv-${{ needs.analyze-tags.outputs.previous-tag }}-${{ matrix.job.target }}.zip
         asset_name: qsv-${{ needs.analyze-tags.outputs.previous-tag }}-${{ matrix.job.target }}.zip
+        prerelease: true
+        make_latest: false
         overwrite: true
         tag: ${{ needs.analyze-tags.outputs.previous-tag }} 
  

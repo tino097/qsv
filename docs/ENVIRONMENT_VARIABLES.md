@@ -7,7 +7,9 @@
 | `QSV_SNIFF_DELIMITER` | if set, the delimiter is automatically detected. Overrides `QSV_DEFAULT_DELIMITER` & `--delimiter` option. Note that this does not work with stdin. |
 | `QSV_NO_HEADERS` | if set, the first row will **NOT** be interpreted as headers. Supersedes `QSV_TOGGLE_HEADERS`. |
 | `QSV_TOGGLE_HEADERS` | if set to `1`, toggles header setting - i.e. inverts qsv header behavior, with no headers being the default, & setting `--no-headers` will actually mean headers will not be ignored. |
+| `QSV_ANTIMODES_LEN` | set to the maximum number of characters when listing "antimodes" in `stats`. Otherwise, the default is 100. Set to 0 to disable length limiting. |
 | `QSV_AUTOINDEX_SIZE` | if set, specifies the minimum file size (in bytes) of a CSV file before an index is automatically created. Note that stale indices are automatically updated regardless of this setting. |
+| `QSV_STATSCACHE_MODE` | Specifies how the stats cache is used by "smart" commands. Valid values are:<br />  * auto - use the stats cache if it's valid (the stats-jsonl file exists and is current) - default.<br />  * force - if the cache does not exist, create it by running stats.<br />  * none - do not use the stats cache, even if it exists. |
 | `QSV_CACHE_DIR` | The directory to use for caching downloaded lookup_table resources using the `luau` qsv_register_lookup() helper function. |
 | `QSV_CKAN_API` | The CKAN Action API endpoint to use with the `luau` qsv_register_lookup() helper function when using the "ckan://" scheme. |
 | `QSV_CKAN_TOKEN`| The CKAN token to use with the `luau` qsv_register_lookup() helper function when using the "ckan://" scheme. Only required to access private resources. |
@@ -20,8 +22,9 @@
 | `QSV_REGEX_UNICODE` | if set, makes `search`, `searchset` & `replace` commands unicode-aware. For increased performance, these commands are not unicode-aware by default & will ignore unicode values when matching & will abort when unicode characters are used in the regex. Note that the `apply operations regex_replace` operation is always unicode-aware. |
 | `QSV_RDR_BUFFER_CAPACITY` | reader buffer size (default - 128k (bytes): 131072) |
 | `QSV_SKIP_FORMAT_CHECK` | if set, skips mime-type checking of input files. Set this when optimizing for performance and when encountering false positives as a format check involves scanning the input file to infer the mime-type/format. |
+| `QSV_STATS_SEPARATOR` | the separator to use to delimit multiple MODE/ANTIMODE and PERCENTILE values. |
 | `QSV_WTR_BUFFER_CAPACITY` | writer buffer size (default - 512k (bytes): 524288) |
-| `QSV_FREEMEMORY_HEADROOM_PCT` | the percentage of free available memory required when running qsv in "non-streaming" mode (i.e. the entire file needs to be loaded into memory). If the incoming file is greater than the available memory after the headroom is subtracted, qsv will not proceed. See [Memory Management](#memory-management) for more info. (default: (percent) 20 ) |
+| `QSV_FREEMEMORY_HEADROOM_PCT` | the percentage of free available memory required when running qsv in "non-streaming" mode (i.e. the entire file needs to be loaded into memory). If the incoming file is greater than the available memory after the headroom is subtracted, qsv will not proceed. Set to 0 to skip memory check. See [Memory Management](#memory-management) for more info. (default: (percent) 20 ) |
 | `QSV_MEMORY_CHECK` | if set, check if input file size < AVAILABLE memory - HEADROOM (CONSERVATIVE mode) when running in "non-streaming" mode. Otherwise, qsv will only check if the input file size < TOTAL memory - HEADROOM (NORMAL mode). This is done to prevent Out-of-Memory errors. See [Memory Management](#memory-management) for more info. |
 | `QSV_LOG_LEVEL` | desired level (default - off; `error`, `warn`, `info`, `trace`, `debug`). |
 | `QSV_LOG_DIR` | when logging is enabled, the directory where the log files will be stored. If the specified directory does not exist, qsv will attempt to create it. If not set, the log files are created in the directory where qsv was started. See [Logging](docs/Logging.md#logging) for more info. |
@@ -50,7 +53,7 @@ Several dependencies also have environment variables that influence qsv's perfor
   qsv uses reqwest and will honor [proxy settings](https://docs.rs/reqwest/latest/reqwest/index.html#proxies) set through the `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` & `NO_PROXY` environment variables.
 
 * Polars   
-  qsv uses [polars](https://github.com/pola.rs/polars) for several commands - currently `count`, `joinp` and `sqlp`. Polars has its own set of environment variables that can be set to influence its behavior (see [here](https://github.com/pola-rs/polars/blob/dd1fc86b65ae39b741f46edc6da01d024bed50b6/crates/polars/src/lib.rs#L366-L408)). The most relevant ones are:
+  qsv uses [polars](https://github.com/pola.rs/polars) for several commands - currently `count`, `joinp`, `pivotp` and `sqlp`. Polars has its own set of environment variables that can be set to influence its behavior (see [here](https://github.com/pola-rs/polars/blob/dd1fc86b65ae39b741f46edc6da01d024bed50b6/crates/polars/src/lib.rs#L366-L408)). The most relevant ones are:
 
   * `POLARS_VERBOSE` - if set to 1, polars will output logging messages to stderr.
   * `POLARS_PANIC_ON_ERR` - if set to 1, panics on polars-related errors, instead of returning an error.

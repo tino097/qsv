@@ -40,10 +40,21 @@ QSV_NO_HEADERS = False
 # mean headers will not be ignored.
 # QSV_TOGGLE_HEADERS = False
 
+# set to the maximum number of characters when listing "antimodes" in `stats`. Otherwise, the default is 100.
+# set to 0 to disable length limiting
+# QSV_ANTIMODES_LEN = 100
+
 # if set, specifies the minimum file size (in bytes) of a CSV file before an 
 # index is automatically created. Note that stale indices are automatically 
 # updated regardless of this setting.
 # QSV_AUTOINDEX_SIZE = 1000000
+
+# Specifies how the stats cache is used by "smart" commands.
+# Valid values are:
+#   auto - use the stats cache if it's valid (the stats-jsonl file exists and is current) - default.
+#   force - if the cache does not exist, create it by running stats.
+#   none - do not use the stats cache, even if it exists.
+# QSV_STATSCACHE_MODE = auto
 
 # if set, add a BOM (Byte Order Mark) to the beginning of the output.
 # Note that this will also set the BOM for qsv's output to stdout.
@@ -109,7 +120,8 @@ QSV_WTR_BUFFER_CAPACITY = 524288
 # the percentage of free available memory required when running qsv in
 # "non-streaming" mode (i.e. the entire file needs to be loaded into memory).
 # If the incoming file is greater than the available memory after the headroom
-# is subtracted, qsv will not proceed. See Memory Management for more info.
+# is subtracted, qsv will not proceed. Set to 0 to skip memory check.
+# See Memory Management for more info.
 # (default: (percent) 20 )
 QSV_FREEMEMORY_HEADROOM_PCT = 20
 

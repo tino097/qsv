@@ -41,8 +41,9 @@ Common options:
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
-    util, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]
@@ -90,11 +91,17 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 }
 
 pub fn rename_headers_all_generic(num_of_cols: usize) -> String {
-    let mut generic_headers = String::new();
+    use std::fmt::Write;
+
+    // we pre-allocate a string with a capacity of 7 characters per column name
+    // this is a rough estimate, and should be more than enough
+    let mut result = String::with_capacity(num_of_cols * 7);
     for i in 1..=num_of_cols {
-        generic_headers.push_str(&format!("_col_{i},"));
+        if i > 1 {
+            result.push(',');
+        }
+        // safety: safe to unwrap as we're just using it to append to result string
+        write!(result, "_col_{i}").unwrap();
     }
-    // remove the trailing comma
-    generic_headers.pop();
-    generic_headers
+    result
 }

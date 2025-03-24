@@ -11,8 +11,8 @@ Since this command computes an exact frequency table, memory proportional to the
 cardinality of each column would be normally required.
 
 However, this is problematic for columns with ALL unique values (e.g. an ID column),
-as the command will need to load all the column's values into memory, potentially
-causing Out-of-Memory (OOM) errors for larger-than-memory datasets.
+as the command will need to allocate memory proportional to the column's cardinality,
+potentially causing Out-of-Memory (OOM) errors for larger-than-memory datasets.
 
 To overcome this, the frequency command can use the stats cache if it exists to get
 column cardinalities. This short-circuits frequency compilation for columns with
@@ -21,12 +21,19 @@ maintain an in-memory hashmap for ID columns. This allows `frequency` to handle
 larger-than-memory datasets with the added benefit of also making it faster when
 working with datasets with ID columns.
 
-STATS_MODE "none" NOTES:
+NOTE: "Complete" Frequency Tables:
 
-    If --stats mode is set to "none", the frequency command will compute frequencies
-    for all columns regardless of cardinality, even for columns with all unique values.
-    In this case, the unique limit (--unq-limit) is particularly useful when a column
-    has all unique values  and --limit is set to 0.
+    By default, ID columns will have an "<ALL UNIQUE>" value with count equal to
+    rowcount and percentage set to 100. This is done by using the stats cache to
+    fetch each column's cardinality - allowing qsv to short-circuit frequency
+    compilation and eliminate the need to maintain a hashmap for ID columns.
+
+    If you wish to compile a "complete" frequency table even for ID columns, set
+    QSV_STATSCACHE_MODE to "none". This will force the frequency command to compute
+    frequencies for all columns regardless of cardinality, even for ID columns.
+
+    In this case, the unique limit (--unq-limit) option is particularly useful when
+    a column has all unique values  and --limit is set to 0.
     Without a unique limit, the frequency table for that column will be the same as
     the number of rows in the data.
     With a unique limit, the frequency table will be a sample of N unique values,
@@ -59,7 +66,6 @@ frequency options:
     -u, --unq-limit <arg>   If a column has all unique values, limit the
                             frequency table to a sample of N unique items.
                             Set to '0' to disable a unique_limit.
-                            Only works when --stats-mode is set to "none".
                             [default: 10]
     --lmt-threshold <arg>   The threshold for which --limit and --unq-limit
                             will be applied. If the number of unique items
@@ -85,20 +91,11 @@ frequency options:
                             The default is to trim leading and trailing whitespaces.
     --no-nulls              Don't include NULLs in the frequency table.
     -i, --ignore-case       Ignore case when computing frequencies.
-    --stats-mode <arg>      The stats mode to use when computing frequencies with cardinalities.
-                            Having column cardinalities short-circuits frequency compilation and
-                            eliminates memory usage for columns with all unique values.
-                            There are three modes:
-                              auto: use stats cache if it already exists to get column cardinalities.
-                                    For columns with all unique values, "<ALL_UNIQUE>" will be used.
-                              force: force stats calculation to get cardinalities. If the stats cache
-                                    does not exist, it will be created.
-                              none: don't use cardinality information.
-                                    For columns with all unique values, the first N sorted unique
-                                    values (based on the --limit and --unq-limit options) will be used.
-                            [default: auto]
    --all-unique-text <arg>  The text to use for the "<ALL_UNIQUE>" category.
                             [default: <ALL_UNIQUE>]
+    --vis-whitespace        Visualize whitespace characters in the output.
+                            See https://github.com/dathere/qsv/wiki/Supplemental#whitespace-markers
+                            for the list of whitespace markers.
     -j, --jobs <arg>        The number of jobs to run in parallel.
                             This works much faster when the given CSV data has
                             an index already created. Note that a file handle
@@ -125,16 +122,16 @@ use crossbeam_channel;
 use indicatif::HumanCount;
 use rust_decimal::prelude::*;
 use serde::Deserialize;
-use stats::{merge_all, Frequencies};
+use stats::{Frequencies, merge_all};
 use threadpool::ThreadPool;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
     index::Indexed,
     select::{SelectColumns, Selection},
     util,
-    util::{get_stats_records, ByteString, StatsMode},
-    CliResult,
+    util::{ByteString, StatsMode, get_stats_records},
 };
 
 #[allow(clippy::unsafe_derive_deserialize)]
@@ -152,13 +149,13 @@ pub struct Args {
     pub flag_no_trim:         bool,
     pub flag_no_nulls:        bool,
     pub flag_ignore_case:     bool,
-    pub flag_stats_mode:      String,
     pub flag_all_unique_text: String,
     pub flag_jobs:            Option<usize>,
     pub flag_output:          Option<String>,
     pub flag_no_headers:      bool,
     pub flag_delimiter:       Option<Delimiter>,
     pub flag_memcheck:        bool,
+    pub flag_vis_whitespace:  bool,
 }
 
 const NULL_VAL: &[u8] = b"(NULL)";
@@ -187,7 +184,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let mut itoa_buffer = itoa::Buffer::new();
     let mut pct_decimal: Decimal;
     let mut final_pct_decimal: Decimal;
-    let mut pct_string: String;
+    // most percentages are less than 10 characters, so pre-allocate 10 characters
+    #[allow(unused_assignments)]
+    let mut pct_string = String::with_capacity(10);
     let mut pct_scale: u32;
     let mut current_scale: u32;
     let abs_dec_places = args.flag_pct_dec_places.unsigned_abs() as u32;
@@ -228,8 +227,10 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             {
                 sorted_counts.rotate_left(1);
             }
-        };
+        }
 
+        #[allow(unused_assignments)]
+        let mut value_str = String::with_capacity(100);
         for (value, count, percentage) in sorted_counts {
             pct_decimal = Decimal::from_f64(percentage).unwrap_or_default();
             pct_scale = if args.flag_pct_dec_places < 0 {
@@ -258,7 +259,12 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             };
             row = vec![
                 &*header_vec,
-                &*value,
+                if args.flag_vis_whitespace {
+                    value_str = util::visualize_whitespace(&String::from_utf8_lossy(&value));
+                    value_str.as_bytes()
+                } else {
+                    &value
+                },
                 itoa_buffer.format(count).as_bytes(),
                 pct_string.as_bytes(),
             ];
@@ -392,7 +398,7 @@ impl Args {
         let nchunks = util::num_of_chunks(idx_count, chunk_size);
 
         let pool = ThreadPool::new(njobs);
-        let (send, recv) = crossbeam_channel::bounded(0);
+        let (send, recv) = crossbeam_channel::bounded(nchunks);
         for i in 0..nchunks {
             let (send, args, sel) = (send.clone(), self.clone(), sel.clone());
             pool.execute(move || {
@@ -419,7 +425,7 @@ impl Args {
 
         #[allow(unused_assignments)]
         // amortize allocations
-        let mut field_buffer: Vec<u8> = Vec::with_capacity(nsel_len);
+        let mut field_buffer: Vec<u8> = Vec::with_capacity(1024);
         let mut row_buffer: csv::ByteRecord = csv::ByteRecord::with_capacity(200, nsel_len);
 
         let all_unique_headers = UNIQUE_COLUMNS.get().unwrap();
@@ -435,128 +441,59 @@ impl Args {
             .map(|i| all_unique_headers.contains(&i))
             .collect();
 
-        if flag_ignore_case {
-            // case insensitive when computing frequencies
-            let mut buf = String::new();
-
+        // Pre-compute function pointers for the hot path
+        // instead of doing if chains repeatedly in the hot loop
+        let process_field = if flag_ignore_case {
             if flag_no_trim {
-                // case-insensitive, don't trim whitespace
-                for row in it {
-                    // safety: we know the row is not empty
-                    row_buffer.clone_from(&row.unwrap());
-                    for (i, field) in nsel.select(row_buffer.into_iter()).enumerate() {
-                        // safety: all_unique_flag_vec.len() is the same as nsel.len()
-                        if unsafe { *all_unique_flag_vec.get_unchecked(i) } {
-                            // if the column has all unique values,
-                            // we don't need to compute frequencies
-                            continue;
-                        }
-
-                        // safety: we do get_unchecked_mut on freq_tables
-                        // as we know that nsel_len is the same as freq_tables.len()
-                        // so we can skip the bounds check
-                        if !field.is_empty() {
-                            field_buffer = {
-                                if let Ok(s) = simdutf8::basic::from_utf8(field) {
-                                    util::to_lowercase_into(s, &mut buf);
-                                    buf.as_bytes().to_vec()
-                                } else {
-                                    field.to_vec()
-                                }
-                            };
-                            unsafe {
-                                freq_tables.get_unchecked_mut(i).add(field_buffer);
-                            }
-                        } else if !flag_no_nulls {
-                            unsafe {
-                                freq_tables.get_unchecked_mut(i).add(null.clone());
-                            }
-                        }
+                |field: &[u8], buf: &mut String| {
+                    if let Ok(s) = simdutf8::basic::from_utf8(field) {
+                        util::to_lowercase_into(s, buf);
+                        buf.as_bytes().to_vec()
+                    } else {
+                        field.to_vec()
                     }
                 }
             } else {
-                // case-insensitive, trim whitespace
-                for row in it {
-                    // safety: we know the row is not empty
-                    row_buffer.clone_from(&row.unwrap());
-                    for (i, field) in nsel.select(row_buffer.into_iter()).enumerate() {
-                        if unsafe { *all_unique_flag_vec.get_unchecked(i) } {
-                            continue;
-                        }
-
-                        // safety: we do get_unchecked_mut on freq_tables
-                        // as we know that nsel_len is the same as freq_tables.len()
-                        // so we can skip the bounds check
-                        if !field.is_empty() {
-                            field_buffer = {
-                                if let Ok(s) = simdutf8::basic::from_utf8(field) {
-                                    util::to_lowercase_into(s.trim(), &mut buf);
-                                    buf.as_bytes().to_vec()
-                                } else {
-                                    util::trim_bs_whitespace(field).to_vec()
-                                }
-                            };
-                            unsafe {
-                                freq_tables.get_unchecked_mut(i).add(field_buffer);
-                            }
-                        } else if !flag_no_nulls {
-                            unsafe {
-                                freq_tables.get_unchecked_mut(i).add(null.clone());
-                            }
-                        }
+                |field: &[u8], buf: &mut String| {
+                    if let Ok(s) = simdutf8::basic::from_utf8(field) {
+                        util::to_lowercase_into(s.trim(), buf);
+                        buf.as_bytes().to_vec()
+                    } else {
+                        trim_bs_whitespace(field).to_vec()
                     }
                 }
             }
+        } else if flag_no_trim {
+            |field: &[u8], _buf: &mut String| field.to_vec()
         } else {
-            // case sensitive by default when computing frequencies
-            for row in it {
-                // safety: we know the row is not empty
-                row_buffer.clone_from(&row.unwrap());
+            // this is the default hot path, so inline it
+            #[inline]
+            |field: &[u8], _buf: &mut String| trim_bs_whitespace(field).to_vec()
+        };
 
-                if flag_no_trim {
-                    // case-sensitive, don't trim whitespace
-                    for (i, field) in nsel.select(row_buffer.into_iter()).enumerate() {
-                        if unsafe { *all_unique_flag_vec.get_unchecked(i) } {
-                            continue;
-                        }
+        let mut string_buf = String::with_capacity(100);
+        for row in it {
+            row_buffer.clone_from(&row.unwrap());
+            for (i, field) in nsel.select(row_buffer.into_iter()).enumerate() {
+                // safety: all_unique_flag_vec is pre-computed to have exactly nsel_len elements,
+                // which matches the number of selected columns that we iterate over.
+                // i will always be < nsel_len since it comes from enumerate() over the selected
+                // columns
+                if unsafe { *all_unique_flag_vec.get_unchecked(i) } {
+                    continue;
+                }
 
-                        // safety: get_unchecked_mut on freq_tables for same safety reason above
-                        if !field.is_empty() {
-                            // no need to convert to string and back to bytes for a "case-sensitive"
-                            // comparison we can just use the field directly
-                            unsafe {
-                                freq_tables.get_unchecked_mut(i).add(field.to_vec());
-                            }
-                        } else if !flag_no_nulls {
-                            unsafe {
-                                freq_tables.get_unchecked_mut(i).add(null.clone());
-                            }
-                        }
+                // safety: freq_tables is pre-allocated with nsel_len elements.
+                // i will always be < nsel_len since it comes from enumerate() over the selected
+                // columns
+                if !field.is_empty() {
+                    field_buffer = process_field(field, &mut string_buf);
+                    unsafe {
+                        freq_tables.get_unchecked_mut(i).add(field_buffer);
                     }
-                } else {
-                    // case-sensitive, trim whitespace
-                    for (i, field) in nsel.select(row_buffer.into_iter()).enumerate() {
-                        if unsafe { *all_unique_flag_vec.get_unchecked(i) } {
-                            continue;
-                        }
-
-                        // safety: get_unchecked_mut on freq_tables for same safety reason above
-                        if !field.is_empty() {
-                            field_buffer = {
-                                if let Ok(s) = simdutf8::basic::from_utf8(field) {
-                                    s.trim().as_bytes().to_vec()
-                                } else {
-                                    util::trim_bs_whitespace(field).to_vec()
-                                }
-                            };
-                            unsafe {
-                                freq_tables.get_unchecked_mut(i).add(field_buffer);
-                            }
-                        } else if !flag_no_nulls {
-                            unsafe {
-                                freq_tables.get_unchecked_mut(i).add(null.clone());
-                            }
-                        }
+                } else if !flag_no_nulls {
+                    unsafe {
+                        freq_tables.get_unchecked_mut(i).add(null.clone());
                     }
                 }
             }
@@ -584,17 +521,11 @@ impl Args {
             arg_input:            self.arg_input.clone(),
             flag_memcheck:        false,
         };
-        let stats_mode = match self.flag_stats_mode.as_str() {
-            "auto" => StatsMode::Frequency,
-            "force" => StatsMode::FrequencyForceStats,
-            "none" => StatsMode::None,
-            "_schema" => StatsMode::Schema, // only meant for internal use by schema command
-            _ => return fail_incorrectusage_clierror!("Invalid stats mode"),
-        };
-        let (csv_fields, csv_stats) = get_stats_records(&schema_args, stats_mode)?;
 
-        if stats_mode == StatsMode::None || stats_mode == StatsMode::Schema || csv_fields.is_empty()
-        {
+        let (csv_fields, csv_stats, dataset_stats) =
+            get_stats_records(&schema_args, StatsMode::Frequency)?;
+
+        if csv_fields.is_empty() {
             // the stats cache does not exist, just return an empty vector
             // we're not going to be able to get the cardinalities, so
             // this signals that we just compute frequencies for all columns
@@ -606,8 +537,11 @@ impl Args {
         // in the following hot iterator loop
         assert!(
             csv_fields.len() == csv_stats.len(),
-            "Mismatch between the number of fields and stats records"
+            "Mismatch between the number of fields: {} and stats records: {}",
+            csv_fields.len(),
+            csv_stats.len()
         );
+
         let col_cardinality_vec: Vec<(String, u64)> = csv_stats
             .iter()
             .enumerate()
@@ -625,12 +559,19 @@ impl Args {
             .collect();
 
         // now, get the unique headers, where cardinality == rowcount
-        let row_count = util::count_rows(&self.rconfig())?;
-        FREQ_ROW_COUNT.set(row_count as u64).unwrap();
+        let row_count = dataset_stats
+            .get("qsv__rowcount")
+            .and_then(|count| count.parse::<u64>().ok())
+            .unwrap_or_else(|| util::count_rows(&self.rconfig()).unwrap_or_default());
+        FREQ_ROW_COUNT.set(row_count).unwrap();
 
+        // Most datasets have relatively few columns with all unique values (e.g. ID columns)
+        // so pre-allocate space for 5 as a reasonable default capacity
         let mut all_unique_headers_vec: Vec<usize> = Vec::with_capacity(5);
         for (i, _header) in headers.iter().enumerate() {
-            let cardinality = col_cardinality_vec[i].1;
+            // safety: we know that col_cardinality_vec has the same length as headers
+            // as it was constructed from csv_fields which has the same length as headers
+            let cardinality = unsafe { col_cardinality_vec.get_unchecked(i).1 };
 
             if cardinality == row_count {
                 all_unique_headers_vec.push(i);
@@ -654,4 +595,34 @@ impl Args {
         let sel = self.rconfig().selection(headers)?;
         Ok((sel.select(headers).map(<[u8]>::to_vec).collect(), sel))
     }
+}
+
+/// trim leading and trailing whitespace from a byte slice
+#[allow(clippy::inline_always)]
+#[inline(always)]
+fn trim_bs_whitespace(bytes: &[u8]) -> &[u8] {
+    let mut start = 0;
+    let mut end = bytes.len();
+
+    // safety: use unchecked indexing since we're bounds checking with the while condition
+    // Find start by scanning forward
+    while start < end {
+        let b = unsafe { *bytes.get_unchecked(start) };
+        if !b.is_ascii_whitespace() {
+            break;
+        }
+        start += 1;
+    }
+
+    // Find end by scanning backward
+    while end > start {
+        let b = unsafe { *bytes.get_unchecked(end - 1) };
+        if !b.is_ascii_whitespace() {
+            break;
+        }
+        end -= 1;
+    }
+
+    // safety: This slice is guaranteed to be in bounds due to our index calculations
+    unsafe { bytes.get_unchecked(start..end) }
 }

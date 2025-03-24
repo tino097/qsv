@@ -25,7 +25,7 @@ External sort option:
                            If less than 50, this is a percentage of total memory.
                            If more than 50, this is the memory in MB to allocate, capped
                            at 90 percent of total memory.
-                           [default: 10]
+                           [default: 20]
     --tmp-dir <arg>        The directory to use for externally sorting file segments.
                            [default: ./]
     -j, --jobs <arg>       The number of jobs to run in parallel.
@@ -46,19 +46,20 @@ Common options:
 
 use std::{
     fs,
-    io::{self, stdin, stdout, BufRead, Write},
+    io::{self, BufRead, Write, stdin, stdout},
     path,
 };
 
-use ext_sort::{buffer::mem::MemoryLimitedBufferBuilder, ExternalSorter, ExternalSorterBuilder};
+use ext_sort::{ExternalSorter, ExternalSorterBuilder, LimitedBufferBuilder};
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     cmd::extdedup::calculate_memory_limit,
     config,
     config::{Config, Delimiter},
     select::SelectColumns,
-    util, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]
@@ -95,10 +96,13 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let mem_limited_buffer_bytes = calculate_memory_limit(args.flag_memory_limit);
     log::info!("{mem_limited_buffer_bytes} bytes used for in memory mergesort buffer...");
 
-    let sorter: ExternalSorter<String, io::Error, MemoryLimitedBufferBuilder> =
+    let sorter: ExternalSorter<String, io::Error, LimitedBufferBuilder> =
         match ExternalSorterBuilder::new()
             .with_tmp_dir(path::Path::new(&tmp_dir))
-            .with_buffer(MemoryLimitedBufferBuilder::new(mem_limited_buffer_bytes))
+            .with_buffer(LimitedBufferBuilder::new(
+                mem_limited_buffer_bytes as usize,
+                true,
+            ))
             .with_rw_buf_size(RW_BUFFER_CAPACITY)
             .with_threads_number(util::njobs(args.flag_jobs))
             .build()
@@ -119,20 +123,23 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 fn sort_csv(
     args: &Args,
     tmp_dir: &str,
-    sorter: &ExternalSorter<String, io::Error, MemoryLimitedBufferBuilder>,
+    sorter: &ExternalSorter<String, io::Error, LimitedBufferBuilder>,
 ) -> Result<(), crate::clitypes::CliError> {
     let rconfig = Config::new(args.arg_input.as_ref())
         .delimiter(args.flag_delimiter)
         .no_headers(args.flag_no_headers)
         .select(args.flag_select.clone().unwrap());
 
-    let mut idxfile = if let Ok(idx) = rconfig.indexed() {
-        if idx.is_none() {
+    let mut idxfile = match rconfig.indexed() {
+        Ok(idx) => {
+            if idx.is_none() {
+                return fail_incorrectusage_clierror!("extsort CSV mode requires an index");
+            }
+            idx.unwrap()
+        },
+        _ => {
             return fail_incorrectusage_clierror!("extsort CSV mode requires an index");
-        }
-        idx.unwrap()
-    } else {
-        return fail_incorrectusage_clierror!("extsort CSV mode requires an index");
+        },
     };
 
     let mut input_rdr = rconfig.reader()?;
@@ -167,9 +174,7 @@ fn sort_csv(
         }
         let idx_position = curr_row.position().unwrap();
 
-        sort_key.push_str(&format!("|{:01$}", idx_position.line(), width));
-
-        writeln!(line_wtr, "{sort_key}")?;
+        writeln!(line_wtr, "{sort_key}|{:01$}", idx_position.line(), width)?;
     }
     line_wtr.flush()?;
 
@@ -230,11 +235,11 @@ fn sort_csv(
 
     for l in sorted_line_rdr.lines() {
         line.clone_from(&l?);
-        let Ok(position) = atoi_simd::parse::<u64>(line[line.len() - width..].as_bytes()) else {
+        let Ok(position) = atoi_simd::parse::<u64>(&line.as_bytes()[line.len() - width..]) else {
             return fail!("Failed to retrieve position: invalid integer");
         };
 
-        idxfile.seek(position - position_delta)?;
+        idxfile.seek(position.saturating_sub(position_delta))?;
         idxfile.read_byte_record(&mut record_wrk)?;
         sorted_csv_wtr.write_byte_record(&record_wrk)?;
     }
@@ -247,7 +252,7 @@ fn sort_csv(
 
 fn sort_lines(
     args: &Args,
-    sorter: &ExternalSorter<String, io::Error, MemoryLimitedBufferBuilder>,
+    sorter: &ExternalSorter<String, io::Error, LimitedBufferBuilder>,
 ) -> Result<(), crate::clitypes::CliError> {
     let mut input_rdr: Box<dyn BufRead> = match &args.arg_input {
         Some(input_path) => {

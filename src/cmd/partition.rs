@@ -57,20 +57,20 @@ Common options:
 "#;
 
 use std::{
-    collections::{hash_map::Entry, HashSet},
+    collections::{HashSet, hash_map::Entry},
     fs, io,
     path::Path,
 };
 
-use ahash::AHashMap;
+use foldhash::{HashMap, HashMapExt};
 use regex::Regex;
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
     select::SelectColumns,
     util::{self, FilenameTemplate},
-    CliResult,
 };
 
 #[derive(Clone, Deserialize)]
@@ -122,9 +122,9 @@ impl Args {
         let mut rdr = rconfig.reader()?;
         let headers = rdr.byte_headers()?.clone();
         let key_col = self.key_column(&rconfig, &headers)?;
-        let mut gen = WriterGenerator::new(self.flag_filename.clone());
+        let mut r#gen = WriterGenerator::new(self.flag_filename.clone());
 
-        let mut writers: AHashMap<Vec<u8>, BoxedWriter> = AHashMap::new();
+        let mut writers: HashMap<Vec<u8>, BoxedWriter> = HashMap::new();
         let mut row = csv::ByteRecord::new();
         while rdr.read_byte_record(&mut row)? {
             // Decide what file to put this in.
@@ -140,7 +140,7 @@ impl Args {
                     Entry::Occupied(ref mut occupied) => occupied.get_mut(),
                     Entry::Vacant(vacant) => {
                         // We have a new key, so make a new writer.
-                        let mut wtr = gen.writer(&*self.arg_outdir, key)?;
+                        let mut wtr = r#gen.writer(&*self.arg_outdir, key)?;
                         if !rconfig.no_headers {
                             if self.flag_drop {
                                 wtr.write_record(headers.iter().enumerate().filter_map(
@@ -154,13 +154,13 @@ impl Args {
                     },
                 };
             if self.flag_drop {
-                wtr.write_record(row.iter().enumerate().filter_map(|(i, e)| {
-                    if i == key_col {
-                        None
-                    } else {
-                        Some(e)
-                    }
-                }))?;
+                wtr.write_record(
+                    row.iter().enumerate().filter_map(
+                        |(i, e)| {
+                            if i == key_col { None } else { Some(e) }
+                        },
+                    ),
+                )?;
             } else {
                 wtr.write_byte_record(&row)?;
             }

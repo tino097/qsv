@@ -29,7 +29,6 @@ input arguments:
     e.g. 'qsv frequency -s Agency nyc311.csv | qsv join value - id nycagencyinfo.csv'
 
 join options:
-    -i, --ignore-case      When set, joins are done case insensitively.
     --left                 Do a 'left outer' join. This returns all rows in
                            first CSV data set, including rows with no
                            corresponding row in the second data set. When no
@@ -46,6 +45,13 @@ join options:
                            corresponding row in the first data set. When no
                            corresponding row exists, it is padded out with
                            empty fields. (This is the reverse of 'outer left'.)
+    --right-anti           This returns only the rows in the second CSV data set
+                           that do not have a corresponding row in the first
+                           data set. The output schema is the same as the
+                           second dataset.
+    --right-semi           This returns only the rows in the second CSV data set
+                           that have a corresponding row in the first data set.
+                           The output schema is the same as the second data set.
     --full                 Do a 'full outer' join. This returns all rows in
                            both data sets with matching records joined. If
                            there is no match, the missing side will be padded
@@ -60,6 +66,19 @@ join options:
                            Otherwise, empty fields are completely ignored.
                            (In fact, any row that has an empty field in the
                            key specified is ignored.)
+    --keys-output <file>   Write successfully joined keys to <file>.
+                           This means that the keys are written to the output
+                           file when a match is found, with the exception of
+                           anti joins, where keys are written when NO match
+                           is found.
+                           Cross joins do not write keys.
+
+                           JOIN KEY TRANSFORMATION OPTIONS:
+                           Note that transformations are applied to TEMPORARY
+                           join key columns. The original columns are not modified
+                           and the TEMPORARY columns are removed after the join.
+-i, --ignore-case           When set, joins are done case insensitively.
+-z, --ignore-leading-zeros  When set, leading zeros are ignored in join keys.
 
 Common options:
     -h, --help             Display this message
@@ -71,38 +90,42 @@ Common options:
                            Must be a single character. (default: ,)
 "#;
 
-use std::{collections::hash_map::Entry, fmt, io, iter::repeat, str};
+use std::{collections::hash_map::Entry, fmt, io, iter::repeat_n, mem::swap, str};
 
-use ahash::AHashMap;
 use byteorder::{BigEndian, WriteBytesExt};
+use foldhash::{HashMap, HashMapExt};
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter, SeekRead},
     index::Indexed,
     select::{SelectColumns, Selection},
     util,
     util::ByteString,
-    CliResult,
 };
 
 #[derive(Deserialize)]
 struct Args {
-    arg_columns1:     SelectColumns,
-    arg_input1:       String,
-    arg_columns2:     SelectColumns,
-    arg_input2:       String,
-    flag_left:        bool,
-    flag_left_anti:   bool,
-    flag_left_semi:   bool,
-    flag_right:       bool,
-    flag_full:        bool,
-    flag_cross:       bool,
-    flag_output:      Option<String>,
-    flag_no_headers:  bool,
-    flag_ignore_case: bool,
-    flag_nulls:       bool,
-    flag_delimiter:   Option<Delimiter>,
+    arg_columns1:              SelectColumns,
+    arg_input1:                String,
+    arg_columns2:              SelectColumns,
+    arg_input2:                String,
+    flag_left:                 bool,
+    flag_left_anti:            bool,
+    flag_left_semi:            bool,
+    flag_right:                bool,
+    flag_right_anti:           bool,
+    flag_right_semi:           bool,
+    flag_full:                 bool,
+    flag_cross:                bool,
+    flag_output:               Option<String>,
+    flag_no_headers:           bool,
+    flag_nulls:                bool,
+    flag_delimiter:            Option<Delimiter>,
+    flag_keys_output:          Option<String>,
+    flag_ignore_case:          bool,
+    flag_ignore_leading_zeros: bool,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -113,36 +136,63 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         args.flag_left_anti,
         args.flag_left_semi,
         args.flag_right,
+        args.flag_right_anti,
+        args.flag_right_semi,
         args.flag_full,
         args.flag_cross,
     ) {
-        (true, false, false, false, false, false) => {
+        // default inner join
+        (false, false, false, false, false, false, false, false) => {
+            state.write_headers()?;
+            state.inner_join()
+        },
+        // left join
+        (true, false, false, false, false, false, false, false) => {
             state.write_headers()?;
             state.outer_join(false)
         },
-        (false, true, false, false, false, false) => {
+        // left anti join
+        (false, true, false, false, false, false, false, false) => {
             state.write_headers1()?;
             state.left_join(true)
         },
-        (false, false, true, false, false, false) => {
+        // left semi join
+        (false, false, true, false, false, false, false, false) => {
             state.write_headers1()?;
             state.left_join(false)
         },
-        (false, false, false, true, false, false) => {
+        // right join
+        (false, false, false, true, false, false, false, false) => {
             state.write_headers()?;
             state.outer_join(true)
         },
-        (false, false, false, false, true, false) => {
+        // right anti join
+        // swap left and right data sets and run left anti join
+        (false, false, false, false, true, false, false, false) => {
+            let mut swapped_join = state;
+            swap(&mut swapped_join.rdr1, &mut swapped_join.rdr2);
+            swap(&mut swapped_join.sel1, &mut swapped_join.sel2);
+            swapped_join.write_headers1()?;
+            swapped_join.left_join(true)
+        },
+        // right semi join
+        // swap left and right data sets and run left semi join
+        (false, false, false, false, false, true, false, false) => {
+            let mut swapped_join = state;
+            swap(&mut swapped_join.rdr1, &mut swapped_join.rdr2);
+            swap(&mut swapped_join.sel1, &mut swapped_join.sel2);
+            swapped_join.write_headers1()?;
+            swapped_join.left_join(false)
+        },
+        // full outer join
+        (false, false, false, false, false, false, true, false) => {
             state.write_headers()?;
             state.full_outer_join()
         },
-        (false, false, false, false, false, true) => {
+        // cross join
+        (false, false, false, false, false, false, false, true) => {
             state.write_headers()?;
             state.cross_join()
-        },
-        (false, false, false, false, false, false) => {
-            state.write_headers()?;
-            state.inner_join()
         },
         _ => fail_incorrectusage_clierror!("Please pick exactly one join operation."),
     }
@@ -156,7 +206,9 @@ struct IoState<R, W: io::Write> {
     sel2:       Selection,
     no_headers: bool,
     casei:      bool,
+    zerosi:     bool,
     nulls:      bool,
+    keys_wtr:   KeysWriter,
 }
 
 impl<R: io::Read + io::Seek, W: io::Write> IoState<R, W> {
@@ -179,95 +231,126 @@ impl<R: io::Read + io::Seek, W: io::Write> IoState<R, W> {
 
     fn inner_join(mut self) -> CliResult<()> {
         let mut scratch = csv::ByteRecord::new();
-        let mut validx = ValueIndex::new(self.rdr2, &self.sel2, self.casei, self.nulls)?;
+        let mut validx =
+            ValueIndex::new(self.rdr2, &self.sel2, self.casei, self.zerosi, self.nulls)?;
         let mut row = csv::ByteRecord::new();
         let mut key;
+
         while self.rdr1.read_byte_record(&mut row)? {
-            key = get_row_key(&self.sel1, &row, self.casei);
+            key = get_row_key(&self.sel1, &row, self.casei, self.zerosi);
             if let Some(rows) = validx.values.get(&key) {
+                self.keys_wtr.write_key(&key)?;
+
                 for &rowi in rows {
                     validx.idx.seek(rowi as u64)?;
 
                     validx.idx.read_byte_record(&mut scratch)?;
+
                     let combined = row.iter().chain(scratch.iter());
                     self.wtr.write_record(combined)?;
                 }
             }
         }
-        Ok(self.wtr.flush()?)
+        self.wtr.flush()?;
+        self.keys_wtr.flush()?;
+        Ok(())
     }
 
     fn outer_join(mut self, right: bool) -> CliResult<()> {
         if right {
-            ::std::mem::swap(&mut self.rdr1, &mut self.rdr2);
-            ::std::mem::swap(&mut self.sel1, &mut self.sel2);
+            swap(&mut self.rdr1, &mut self.rdr2);
+            swap(&mut self.sel1, &mut self.sel2);
         }
 
         let mut scratch = csv::ByteRecord::new();
         let (_, pad2) = self.get_padding()?;
-        let mut validx = ValueIndex::new(self.rdr2, &self.sel2, self.casei, self.nulls)?;
+        let mut validx =
+            ValueIndex::new(self.rdr2, &self.sel2, self.casei, self.zerosi, self.nulls)?;
         let mut row = csv::ByteRecord::new();
         let mut key;
+
         while self.rdr1.read_byte_record(&mut row)? {
-            key = get_row_key(&self.sel1, &row, self.casei);
-            if let Some(rows) = validx.values.get(&key) {
-                for &rowi in rows {
-                    validx.idx.seek(rowi as u64)?;
-                    let row1 = row.iter();
-                    validx.idx.read_byte_record(&mut scratch)?;
-                    if right {
-                        self.wtr.write_record(scratch.iter().chain(row1))?;
-                    } else {
-                        self.wtr.write_record(row1.chain(&scratch))?;
+            key = get_row_key(&self.sel1, &row, self.casei, self.zerosi);
+            match validx.values.get(&key) {
+                Some(rows) => {
+                    self.keys_wtr.write_key(&key)?;
+
+                    for &rowi in rows {
+                        validx.idx.seek(rowi as u64)?;
+                        let row1 = row.iter();
+                        validx.idx.read_byte_record(&mut scratch)?;
+                        if right {
+                            self.wtr.write_record(scratch.iter().chain(row1))?;
+                        } else {
+                            self.wtr.write_record(row1.chain(&scratch))?;
+                        }
                     }
-                }
-            } else if right {
-                self.wtr.write_record(pad2.iter().chain(&row))?;
-            } else {
-                self.wtr.write_record(row.iter().chain(&pad2))?;
+                },
+                _ => {
+                    if right {
+                        self.wtr.write_record(pad2.iter().chain(&row))?;
+                    } else {
+                        self.wtr.write_record(row.iter().chain(&pad2))?;
+                    }
+                },
             }
         }
-        Ok(self.wtr.flush()?)
+        self.wtr.flush()?;
+        self.keys_wtr.flush()?;
+        Ok(())
     }
 
     fn left_join(mut self, anti: bool) -> CliResult<()> {
-        let validx = ValueIndex::new(self.rdr2, &self.sel2, self.casei, self.nulls)?;
+        let validx = ValueIndex::new(self.rdr2, &self.sel2, self.casei, self.zerosi, self.nulls)?;
         let mut row = csv::ByteRecord::new();
         let mut key;
+
         while self.rdr1.read_byte_record(&mut row)? {
-            key = get_row_key(&self.sel1, &row, self.casei);
-            if validx.values.get(&key).is_none() {
+            key = get_row_key(&self.sel1, &row, self.casei, self.zerosi);
+            #[allow(clippy::map_entry)]
+            if !validx.values.contains_key(&key) {
                 if anti {
+                    self.keys_wtr.write_key(&key)?;
                     self.wtr.write_record(&row)?;
                 }
             } else if !anti {
+                self.keys_wtr.write_key(&key)?;
                 self.wtr.write_record(&row)?;
             }
         }
-        Ok(self.wtr.flush()?)
+        self.wtr.flush()?;
+        self.keys_wtr.flush()?;
+        Ok(())
     }
 
     fn full_outer_join(mut self) -> CliResult<()> {
         let mut scratch = csv::ByteRecord::new();
         let (pad1, pad2) = self.get_padding()?;
-        let mut validx = ValueIndex::new(self.rdr2, &self.sel2, self.casei, self.nulls)?;
+        let mut validx =
+            ValueIndex::new(self.rdr2, &self.sel2, self.casei, self.zerosi, self.nulls)?;
 
         // Keep track of which rows we've written from rdr2.
-        let mut rdr2_written: Vec<_> = repeat(false).take(validx.num_rows).collect();
+        let mut rdr2_written: Vec<_> = repeat_n(false, validx.num_rows).collect();
         let mut row1 = csv::ByteRecord::new();
         let mut key;
-        while self.rdr1.read_byte_record(&mut row1)? {
-            key = get_row_key(&self.sel1, &row1, self.casei);
-            if let Some(rows) = validx.values.get(&key) {
-                for &rowi in rows {
-                    rdr2_written[rowi] = true;
 
-                    validx.idx.seek(rowi as u64)?;
-                    validx.idx.read_byte_record(&mut scratch)?;
-                    self.wtr.write_record(row1.iter().chain(&scratch))?;
-                }
-            } else {
-                self.wtr.write_record(row1.iter().chain(&pad2))?;
+        while self.rdr1.read_byte_record(&mut row1)? {
+            key = get_row_key(&self.sel1, &row1, self.casei, self.zerosi);
+            match validx.values.get(&key) {
+                Some(rows) => {
+                    self.keys_wtr.write_key(&key)?;
+
+                    for &rowi in rows {
+                        rdr2_written[rowi] = true;
+
+                        validx.idx.seek(rowi as u64)?;
+                        validx.idx.read_byte_record(&mut scratch)?;
+                        self.wtr.write_record(row1.iter().chain(&scratch))?;
+                    }
+                },
+                _ => {
+                    self.wtr.write_record(row1.iter().chain(&pad2))?;
+                },
             }
         }
 
@@ -280,7 +363,9 @@ impl<R: io::Read + io::Seek, W: io::Write> IoState<R, W> {
                 self.wtr.write_record(pad1.iter().chain(&scratch))?;
             }
         }
-        Ok(self.wtr.flush()?)
+        self.wtr.flush()?;
+        self.keys_wtr.flush()?;
+        Ok(())
     }
 
     fn cross_join(mut self) -> CliResult<()> {
@@ -306,10 +391,7 @@ impl<R: io::Read + io::Seek, W: io::Write> IoState<R, W> {
     fn get_padding(&mut self) -> CliResult<(csv::ByteRecord, csv::ByteRecord)> {
         let len1 = self.rdr1.byte_headers()?.len();
         let len2 = self.rdr2.byte_headers()?.len();
-        Ok((
-            repeat(b"").take(len1).collect(),
-            repeat(b"").take(len2).collect(),
-        ))
+        Ok((repeat_n(b"", len1).collect(), repeat_n(b"", len2).collect()))
     }
 }
 
@@ -326,9 +408,22 @@ impl Args {
             .no_headers(self.flag_no_headers)
             .select(self.arg_columns2.clone());
 
-        let mut rdr1 = rconf1.reader_file_stdin()?;
-        let mut rdr2 = rconf2.reader_file_stdin()?;
+        let mut rdr1 = match rconf1.reader_file_stdin() {
+            Ok(rdr1) => rdr1,
+            Err(e) => return fail_clierror!("Failed to read input1: {e}"),
+        };
+        let mut rdr2 = match rconf2.reader_file_stdin() {
+            Ok(rdr2) => rdr2,
+            Err(e) => return fail_clierror!("Failed to read input2: {e}"),
+        };
         let (sel1, sel2) = self.get_selections(&rconf1, &mut rdr1, &rconf2, &mut rdr2)?;
+
+        let keys_wtr = if self.flag_cross {
+            KeysWriter::new(None)?
+        } else {
+            KeysWriter::new(self.flag_keys_output.as_ref())?
+        };
+
         Ok(IoState {
             wtr: Config::new(self.flag_output.as_ref()).writer()?,
             rdr1,
@@ -337,7 +432,9 @@ impl Args {
             sel2,
             no_headers: rconf1.no_headers,
             casei: self.flag_ignore_case,
+            zerosi: self.flag_ignore_leading_zeros,
             nulls: self.flag_nulls,
+            keys_wtr,
         })
     }
 
@@ -367,20 +464,48 @@ impl Args {
 
 struct ValueIndex<R> {
     // This maps tuples of values to corresponding rows.
-    values:   AHashMap<Vec<ByteString>, Vec<usize>>,
+    values:   HashMap<Vec<ByteString>, Vec<usize>>,
     idx:      Indexed<R, io::Cursor<Vec<u8>>>,
     num_rows: usize,
 }
 
 impl<R: io::Read + io::Seek> ValueIndex<R> {
+    /// Creates a new ValueIndex by reading a CSV and building indexes for
+    /// both row positions and values.
+    ///
+    /// This function reads through a CSV file once to build two indexes:
+    /// 1. A mapping of selected column values to the row numbers where they appear
+    /// 2. A byte offset index for random access to rows in the CSV
+    ///
+    /// # Arguments
+    ///
+    /// * `rdr` - A CSV reader that implements Read + Seek
+    /// * `sel` - A Selection that specifies which columns to index
+    /// * `casei` - If true, indexed values are compared case-insensitively
+    /// * `zerosi` - If true, indexed values are compared without leading zeros
+    /// * `nulls` - If true, indexed rows with empty values are included
+    ///
+    /// # Returns
+    ///
+    /// Returns a ValueIndex containing:
+    /// * `values` - HashMap mapping column values to row numbers
+    /// * `idx` - Indexed CSV reader for random access
+    /// * `num_rows` - Total number of data rows processed
+    ///
+    /// # Notes
+    ///
+    /// - Header rows are included in the byte offset index but not the value index
+    /// - Values are trimmed and optionally converted to lowercase before indexing
+    /// - Rows with empty indexed values are skipped unless nulls=true
     fn new(
         mut rdr: csv::Reader<R>,
         sel: &Selection,
         casei: bool,
+        zerosi: bool,
         nulls: bool,
     ) -> CliResult<ValueIndex<R>> {
-        let mut val_idx = AHashMap::with_capacity(10000);
-        let mut row_idx = io::Cursor::new(Vec::with_capacity(8 * 10000));
+        let mut val_idx = HashMap::with_capacity(20_000);
+        let mut row_idx = io::Cursor::new(Vec::with_capacity(8 * 20_000));
         let (mut rowi, mut count) = (0_usize, 0_usize);
 
         // This logic is kind of tricky. Basically, we want to include
@@ -409,7 +534,32 @@ impl<R: io::Read + io::Seek> ValueIndex<R> {
 
             let fields: Vec<_> = sel
                 .select(&row)
-                .map(|v| util::transform(v, casei))
+                .map(|v| {
+                    if let Ok(s) = simdutf8::basic::from_utf8(v) {
+                        let cased_bytes_vec = if casei {
+                            s.trim().to_lowercase().into_bytes()
+                        } else {
+                            s.trim().as_bytes().to_vec()
+                        };
+                        if zerosi {
+                            if cased_bytes_vec.iter().all(|&b| b == b'0')
+                                && !cased_bytes_vec.is_empty()
+                            {
+                                vec![b'0']
+                            } else {
+                                cased_bytes_vec
+                                    .iter()
+                                    .skip_while(|&b| *b == b'0')
+                                    .copied()
+                                    .collect()
+                            }
+                        } else {
+                            cased_bytes_vec
+                        }
+                    } else {
+                        v.to_vec()
+                    }
+                })
                 .collect();
             if nulls || !fields.iter().any(std::vec::Vec::is_empty) {
                 match val_idx.entry(fields) {
@@ -455,6 +605,96 @@ impl<R> fmt::Debug for ValueIndex<R> {
 }
 
 #[inline]
-fn get_row_key(sel: &Selection, row: &csv::ByteRecord, casei: bool) -> Vec<ByteString> {
-    sel.select(row).map(|v| util::transform(v, casei)).collect()
+/// Extracts key values from a CSV row based on the given selection and options.
+///
+/// # Arguments
+///
+/// * `sel` - The selection that specifies which fields to extract from the row
+/// * `row` - The CSV row to extract values from
+/// * `casei` - If true, converts extracted values to lowercase for case-insensitive comparison
+/// * `zerosi` - If true, removes leading zeros from numeric values
+///
+/// # Returns
+///
+/// A vector of ByteStrings containing the extracted and processed key values.
+///
+/// # Processing
+///
+/// For each selected field:
+/// 1. Attempts to convert the bytes to a UTF-8 string
+/// 2. If successful:
+///    - Trims leading/trailing whitespace
+///    - Optionally converts to lowercase if `casei` is true
+///    - If `zerosi` is true:
+///      * For all-zero values, returns a single "0" byte
+///      * Otherwise, strips leading zeros
+///    - Converts back to bytes
+/// 3. If not valid UTF-8, returns the original bytes unchanged
+fn get_row_key(
+    sel: &Selection,
+    row: &csv::ByteRecord,
+    casei: bool,
+    zerosi: bool,
+) -> Vec<ByteString> {
+    let key: Vec<_> = sel
+        .select(row)
+        .map(|v| {
+            if let Ok(s) = simdutf8::basic::from_utf8(v) {
+                let cased_bytes_vec = if casei {
+                    s.trim().to_lowercase().into_bytes()
+                } else {
+                    s.trim().as_bytes().to_vec()
+                };
+                if zerosi {
+                    if cased_bytes_vec.iter().all(|&b| b == b'0') && !cased_bytes_vec.is_empty() {
+                        vec![b'0']
+                    } else {
+                        cased_bytes_vec
+                            .iter()
+                            .skip_while(|&b| *b == b'0')
+                            .copied()
+                            .collect()
+                    }
+                } else {
+                    cased_bytes_vec
+                }
+            } else {
+                v.to_vec()
+            }
+        })
+        .collect();
+    key
+}
+
+struct KeysWriter {
+    writer:  csv::Writer<Box<dyn io::Write>>,
+    enabled: bool,
+}
+
+impl KeysWriter {
+    fn new(keys_path: Option<&String>) -> CliResult<Self> {
+        let (writer, enabled) = if let Some(path) = keys_path {
+            (Config::new(Some(path)).writer()?, true)
+        } else {
+            let sink: Box<dyn io::Write> = Box::new(std::io::sink());
+            (csv::WriterBuilder::new().from_writer(sink), false)
+        };
+
+        Ok(Self { writer, enabled })
+    }
+
+    #[inline]
+    fn write_key(&mut self, key: &[ByteString]) -> CliResult<()> {
+        if self.enabled {
+            self.writer.write_record(key)?;
+        }
+        Ok(())
+    }
+
+    fn flush(&mut self) -> CliResult<()> {
+        if self.enabled {
+            self.writer.flush()?;
+        }
+        Ok(())
+    }
 }

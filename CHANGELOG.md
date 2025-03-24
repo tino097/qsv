@@ -6,6 +6,420 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0] - 2025-03-23
+
+## Highlights:
+* `stats` got another round of improvements:
+  * __boolean inferencing is now configurable!__<br />Before, it was limited to a simple, English-centric heuristic:
+    - When a column's cardinality is 2; and the 2 values's first characters are `0/1`. `t/f` or `y/n` case-insensitive, the data type of the column is inferred as boolean
+    - With the new `--boolean-patterns <arg>` option, we can now specify arbitrary `true_pattern:false_pattern` pattern pairs. Each pattern can be a string of length > 1 and are case-insensitive. If a pattern ends with "*", it is treated as a prefix.<br />For example, `t*:f*` matches "true", "Truthy", "T" as boolean true so long as the corresponding false pattern (e.g. "Fake, False, f") is also matched and the cardinality is 2.<br />
+    For backwards compatibility, the default true/false pairs are `1:0,t*:f*,y*:n*`
+  * __percentiles can now be computed!__<br />By enabling the `--percentiles` flag, `stats` will now return the 5th, 10th, 40th, 60th, 90th and 95th percentile by default using the [nearest-rank method](https://en.wikipedia.org/wiki/Percentile#The_nearest-rank_method) for all numeric and date/datetime columns. The returned percentiles can be configured to return different percentiles using the `--percentile-list <arg>` option.<br />
+  Note that [Method 3 for computing quartiles](https://en.wikipedia.org/wiki/Quartile#Method_3), is basically a specialized implementation of the nearest rank method for q1 (25th), q2 (50th or median) and q3 (75th percentile), thus the choice of defaults for `--percentile-list`.
+* `frequency`: got a performance boost now that we're using `qsv-stats` 0.32.0, which now uses the faster `foldhash` crate
+* in the same vein, by replacing `ahash` with `foldhash` suite-wide, qsv got a tad faster when doing hash lookups
+* `sample`: "streaming" bernoulli sampling now works for any remotely hosted CSVs with servers that support chunked downloads, without requiring range request support.
+* we're now using the [latest Polars engine - v0.46.0 at the py-1.26.0 tag](https://github.com/pola-rs/polars/releases/tag/py-1.26.0).
+
+### Added
+* `stats`: add configurable boolean inferencing https://github.com/dathere/qsv/pull/2595
+* `stats`: add `--percentiles` option https://github.com/dathere/qsv/pull/2617
+
+### Changed
+* refactor: replace ahash with faster foldhash https://github.com/dathere/qsv/pull/2619
+* replace std `assert_eq!` macro with `similar_asserts::assert_eq!` macro for easier debugging https://github.com/dathere/qsv/pull/2605
+* deps: bump polars to 0.46.0 at py-1.25.2 tag https://github.com/dathere/qsv/pull/2604
+* deps: bump Polars to v0.46.0 at py-1.26.0 tag https://github.com/dathere/qsv/pull/2621
+* build(deps): bump actix-web from 4.9.0 to 4.10.2 by @dependabot in https://github.com/dathere/qsv/pull/2591
+* build(deps): bump indexmap from 2.7.1 to 2.8.0 by @dependabot in https://github.com/dathere/qsv/pull/2592
+* build(deps): bump mimalloc from 0.1.43 to 0.1.44 by @dependabot in https://github.com/dathere/qsv/pull/2608
+* build(deps): bump qsv-stats from 0.30.0 to 0.31.0 by @dependabot in https://github.com/dathere/qsv/pull/2603
+* build(deps): bump qsv-stats from 0.31.0 to 0.32.0 by @dependabot in https://github.com/dathere/qsv/pull/2620
+* build(deps): bump reqwest from 0.12.12 to 0.12.13 by @dependabot in https://github.com/dathere/qsv/pull/2593
+* build(deps): bump reqwest from 0.12.13 to 0.12.14 by @dependabot in https://github.com/dathere/qsv/pull/2596
+* build(deps): bump reqwest from 0.12.14 to 0.12.15 by @dependabot in https://github.com/dathere/qsv/pull/2609
+* build(deps): bump rfd from 0.15.2 to 0.15.3 by @dependabot in https://github.com/dathere/qsv/pull/2597
+* build(deps): bump rust_decimal from 1.37.0 to 1.37.1 by @dependabot in https://github.com/dathere/qsv/pull/2616
+* build(deps): bump simd-json from 0.14.3 to 0.15.0 by @dependabot in https://github.com/dathere/qsv/pull/2615
+* build(deps): bump tempfile from 3.18.0 to 3.19.0 by @dependabot in https://github.com/dathere/qsv/pull/2602
+* build(deps): bump tempfile from 3.19.0 to 3.19.1 by @dependabot in https://github.com/dathere/qsv/pull/2612
+* build(deps): bump uuid from 1.15.1 to 1.16.0 by @dependabot in https://github.com/dathere/qsv/pull/2601
+* build(deps): bump zip from 2.2.3 to 2.4.1 by @dependabot in https://github.com/dathere/qsv/pull/2607
+* apply select clippy lint suggestions
+* bumped indirect dependencies to latest version
+* set Rust nightly to 2025-03-07, the same version Polars uses https://github.com/dathere/qsv/commit/17f6bdb3f80c5798d154a133428f0ca6ff59fc79
+
+### Fixed
+* updated lock file, primarily to fix [CVE-2025-29787](https://github.com/advisories/GHSA-94vh-gphv-8pm8) https://github.com/dathere/qsv/commit/e44e5df3fd296fcf85293d46a7afe08f40b86693
+* `luau`: fix flaky register_lookup_table CI test that only intermittently fails in Windows by using buffered writer in lookup `write_cache_file` helper https://github.com/dathere/qsv/commit/f494b46d334259d370c92cd8cc6b211bc81c244a
+* `sample`: refactor "streaming" Bernoulli sampling, so it actually works without requiring range requests support https://github.com/dathere/qsv/pull/2600
+
+**Full Changelog**: https://github.com/dathere/qsv/compare/3.2.0...3.3.0
+
+## [3.2.0] - 2025-03-09
+
+### Added
+* `sample`: "streaming" bernoulli sampling of remote files when hosted on servers with range requests support  https://github.com/dathere/qsv/pull/2588
+
+### Changed
+* Updated benchmarks.sh to add Homebrew installation prompt by @ondohotola in https://github.com/dathere/qsv/pull/2575
+* feat: migrate to Rust 2024 edition https://github.com/dathere/qsv/pull/2587
+* deps: bump `luau` from 0.660 to 0.663 https://github.com/dathere/qsv/pull/2567
+* deps: bump polars to 0.46.0 at py-1.24.0 tag https://github.com/dathere/qsv/commit/f70ce71ffa2d822aaa511e66bd11a2789786c82e
+* deps: replace deprecated `simple-home-dir` with `directories` crate https://github.com/dathere/qsv/commit/6768cd59baa20b23ac9152cc8a9ce176d9e2c362
+* deps: bump arrow from 54.2.0 to 54.2.1 https://github.com/dathere/qsv/commit/fc479b2b87843a370e072248e9b6331de690f0a2
+* build(deps): bump bytemuck from 1.21.0 to 1.22.0 by @dependabot in https://github.com/dathere/qsv/pull/2570
+* build(deps): bump console from 0.15.10 to 0.15.11 by @dependabot in https://github.com/dathere/qsv/pull/2569
+* build(deps): bump governor from 0.8.0 to 0.8.1 by @dependabot in https://github.com/dathere/qsv/pull/2562
+* build(deps): bump minijinja from 2.7.0 to 2.8.0 by @dependabot in https://github.com/dathere/qsv/pull/2573
+* build(deps): bump minijinja-contrib from 2.7.0 to 2.8.0 by @dependabot in https://github.com/dathere/qsv/pull/2571
+* build(deps): bump pyo3 from 0.23.4 to 0.23.5 by @dependabot in https://github.com/dathere/qsv/pull/2558
+* build(deps): bump pyo3 from 0.23.5 to 0.24.0 by @dependabot in https://github.com/dathere/qsv/pull/2590
+* build(deps): bump redis from 0.29.0 to 0.29.1 by @dependabot in https://github.com/dathere/qsv/pull/2568
+* build(deps): bump robinraju/release-downloader from 1.11 to 1.12 by @dependabot in https://github.com/dathere/qsv/pull/2580
+* build(deps): bump serde_json from 1.0.139 to 1.0.140 by @dependabot in https://github.com/dathere/qsv/pull/2572
+* build(deps): bump tempfile from 3.17.1 to 3.18.0 by @dependabot in https://github.com/dathere/qsv/pull/2581
+* build(deps): bump uuid from 1.14.0 to 1.15.0 by @dependabot in https://github.com/dathere/qsv/pull/2563
+* build(deps): bump uuid from 1.15.0 to 1.15.1 by @dependabot in https://github.com/dathere/qsv/pull/2566
+* applied select clippy lint suggestions
+* bumped indirect dependencies to latest versions
+
+### Fixed
+* `apply`: fix `currencytonum` handling of "0.00" value by adding parsing strictness control with  `--formatstr` option https://github.com/dathere/qsv/pull/2586
+* `describegpt`: fix panic by adding error handling when LLM API response format is not in expected format https://github.com/dathere/qsv/pull/2577
+* `tojsonl`: fix display of floats as per the JSON spec https://github.com/dathere/qsv/pull/2583
+
+## New Contributors
+* @ondohotola made their first contribution in https://github.com/dathere/qsv/pull/2575
+
+**Full Changelog**: https://github.com/dathere/qsv/compare/3.1.1...3.2.0
+
+## [3.1.1] - 2025-02-24
+
+## Highlights:
+* `sample`: is now a "smart" command now uses the stats cache to validate and make sampling faster.
+* With the QSV_STATSCACHE_MODE env var, you can now control the stats cache behavior suite-wide, making sure "smart" commands use it when appropriate.
+* `luau` command's capabilities have been significantly expanded with:
+  - New accumulate helper function for aggregating values across rows
+  - Optional naming for cumulative helper functions
+  - More robust error handling and improved docstrings
+  - Enhanced scripting performance with fast-float parsing
+  - new [Wiki section](https://github.com/dathere/qsv/wiki/Luau-Helper-Functions-Examples) with examples of using its helper functions
+* `schema`: now does type-aware sorting of enum lists, making JSON Schema enum list customization easier when fine-tuning it for JSON Schema validation with `validate`.
+* `lens`: adds `--freeze-columns` option with a default of 1, improving navigation of wide CSVs
+* `stats`: adds `--dataset-stats` option to explicitly compute dataset-level statistics. Starting with qsv 2.0.0, it was computed automatically to support Datapusher+ and the DRUF workflow, but it was causing confusion with some command-line users.
+
+---
+
+### Added
+* `lens`: added `--freeze-columns` option https://github.com/dathere/qsv/pull/2552
+* `luau`: added accumulate helper function https://github.com/dathere/qsv/pull/2537 https://github.com/dathere/qsv/pull/2539
+* `luau`: added a new section in the Wiki with examples of using the new helper functions https://github.com/dathere/qsv/wiki/Luau-Helper-Functions-Examples
+* `sample`: is now "smart" - using the stats cache to validate and make sampling faster https://github.com/dathere/qsv/pull/2529 https://github.com/dathere/qsv/pull/2530 https://github.com/dathere/qsv/commit/71ec7ede121ef1e09fb19af9bac3f52aa67a7f54
+* `schema`: added type-aware sort of JSON Schema enum list https://github.com/dathere/qsv/pull/2551
+* `stats`: added `--dataset-stats` option https://github.com/dathere/qsv/pull/2555
+* `python`: added precompiled qsvpy binary for Python 3.13 https://github.com/dathere/qsv/commit/c4087788b6fee64f358047ea8ef44a5450604ec1
+* added QSV_STATSCACHE_MODE env var to control stats cache suite-wide https://github.com/dathere/qsv/commit/4afb98d8729fa4c3c5f61e0a26347dad5aa1e9f8 https://github.com/dathere/qsv/commit/2adc313937ec8aa292976f8e5acf3a4e7756fd93 https://github.com/dathere/qsv/commit/ba75f0897e5a7e6579380a8a4c073a1af436648a
+* docs: updated PERFORMANCE docs and added a TLDR version https://github.com/dathere/qsv/commit/77ed167aef8f7307ec295616a8b96af2f3bb81fd https://github.com/dathere/qsv/commit/c61c249a8354ee7f4ab0d03464624f3dd3249d2b https://github.com/dathere/qsv/commit/db0bb3f147599ece48ca2e8ad1d54db83d7b897c
+* chore: added *.tab & *.ssv to typos config https://github.com/dathere/qsv/commits/523667520ac06a1c96942897aa9288fe7a9d1f5d/
+
+### Changed
+* `frequency`: made error handling more robust https://github.com/dathere/qsv/commit/b195519ec04efcba7cfa7f99e153818d03f419d0
+* `luau`: refactored all cumulative helper functions (cum_) now have name as an optional argument https://github.com/dathere/qsv/pull/2540
+* `schema`: refactored to use QSV_STATSCACHE_MODE env var https://github.com/dathere/qsv/commit/5771ff4892ab89f8ca7d6940aa02baaa0c9b1fa5
+* `select`: refactored select helper https://github.com/dathere/qsv/commit/bfbe64cc64a20006e4c93d8a3f6be3f326411fec
+* `stats`: optimized memory layout of central Stats struct https://github.com/dathere/qsv/commit/52f697e5828a5c3e059d7f25254e4aef840d8598
+* `stats`: optimized record_count functionality https://github.com/dathere/qsv/commit/0e3114a54a8340639c381a19251d03ab94496b04 https://github.com/dathere/qsv/commit/18791da0cc2972de2f5909fe1556d83c8b7e8f9f
+* `contrib(completions)`: update qsv completions for qsv 3.1 by @rzmk in https://github.com/dathere/qsv/pull/2556
+* deps: bump arrow and tempfile https://github.com/dathere/qsv/commit/4cc267972622dfb703779b3d18b084006369b449
+* deps: bump cached and redis crates https://github.com/dathere/qsv/commit/e622d1447a9a8ff4ecdb22d000335fb2d129683a
+* deps: bump csvlens from 0.11 to 0.12 https://github.com/dathere/qsv/commit/b2fd985bf51fac4ec224b4664cc2fe91d8676101
+* deps: use our patched fork of csvlens with ability to freeze columns https://github.com/dathere/qsv/commit/d66ec6df0e768f29b1102108152f28028da0ec8b
+* deps: bump polars to 0.46.0 at py-1.23.0 tag https://github.com/dathere/qsv/commit/6072aa22bed211cafa2fe90be58386acd8869415
+* deps: bump flate2 from 1.0.35 to 1.1.0 https://github.com/dathere/qsv/commit/eed471a441f031d0311849a13ac3efb116baa33d
+* deps: bump gzp from 0.11 to 1.0.0 https://github.com/dathere/qsv/commit/43c8a4a414484b9a3d573cb41a713ce838a2d425
+* build(deps): bump jaq-json from 1.1.0 to 1.1.1 by @dependabot in https://github.com/dathere/qsv/pull/2547
+* build(deps): bump jaq-core from 2.1.0 to 2.1.1 by @dependabot in https://github.com/dathere/qsv/pull/2546
+* build(deps): bump log from 0.4.25 to 0.4.26 by @dependabot in https://github.com/dathere/qsv/pull/2545
+* build(deps): bump tempfile from 3.16.0 to 3.17.0 by @dependabot in https://github.com/dathere/qsv/pull/2532
+* build(deps): bump tempfile from 3.17.0 to 3.17.1 by @dependabot in https://github.com/dathere/qsv/pull/2535
+* build(deps): bump serde_json from 1.0.138 to 1.0.139 by @dependabot in https://github.com/dathere/qsv/pull/2541
+* build(deps): bump serde from 1.0.217 to 1.0.218 by @dependabot in https://github.com/dathere/qsv/pull/2542
+* build(deps): bump smallvec from 1.13.2 to 1.14.0 by @dependabot in https://github.com/dathere/qsv/pull/2528
+* build(deps): bump strum from 0.27.0 to 0.27.1 by @dependabot in https://github.com/dathere/qsv/pull/2533
+* build(deps): bump strum_macros from 0.27.0 to 0.27.1 by @dependabot in https://github.com/dathere/qsv/pull/2534
+* build(deps): bump uuid from 1.13.1 to 1.13.2 by @dependabot in https://github.com/dathere/qsv/pull/2538
+* build(deps): bump uuid from 1.13.2 to 1.14.0 by @dependabot in https://github.com/dathere/qsv/pull/2544
+* chore: we now have ~1,800 tests! https://github.com/dathere/qsv/commit/f5d09ed76d8e0acb9052f89b6688a047c756b053
+* applied select clippy lint suggestions
+* bumped indirect dependencies to latest versions
+* bumped MSRV to latest Rust stable - v1.85
+
+### Fixed
+* `count`: refactored to fall back to "regular" CSV reader when Polars counting returns a zero count https://github.com/dathere/qsv/commit/fd39bcbd9574d8d5ef1ddc5025eda4748f2a8652
+* `schema`: fixed off-by-one error https://github.com/dathere/qsv/commit/60de090bdf727dd0eaf79ba7058745fdacef07ef
+* ensured get_stats_record helper returns field/stats correctly https://github.com/dathere/qsv/commit/ad86a373d01ea45902d764a46c19f26ad5b01029
+* Fixed RUSTSEC-2025-0007: *ring* is unmaintained https://github.com/dathere/qsv/issues/2548
+* `stats`: only add `qsv__value` column when `--dataset-stats` is enabled https://github.com/dathere/qsv/commit/64267d38c4161b8591a6f81e36bea6c7fdbddc70
+* skip format check when path starts with temp dir or is a snappy file https://github.com/dathere/qsv/commit/ff8957e77ae4c28a24f323328c58a2549ff43c0c
+
+### Removed
+* `frequency`: removed `--stats-mode` option now that we have a suite-wide QSV_STATSCACHE_MODE env var https://github.com/dathere/qsv/commit/ba75f0897e5a7e6579380a8a4c073a1af436648a https://github.com/dathere/qsv/commit/416abb7ce73f406c2a605cdca87d50c12723698a
+* chore: removed simdutf8 conditional directive for aarch64 architecture, now that its no longer needed https://github.com/dathere/qsv/commit/ec1e16c7a20a7458b560e3c78dfbd83fba82de29
+* removed publish-linux-qsvpy-glibc-231-musl-123.yml workflow as it was getting cross compilation errors and we have another musl workflow that works https://github.com/dathere/qsv/commit/7c08617132e8d7df069b7b3be160d3b348f44d53
+
+**Full Changelog**: https://github.com/dathere/qsv/compare/3.0.0...3.1.1
+
+## [3.0.0] - 2025-02-13
+
+## Highlights:
+* `sample`: Four new sampling methods! In addition to [reservoir](https://en.wikipedia.org/wiki/Reservoir_sampling) & [indexed](https://en.wikipedia.org/wiki/Random_access) - added [bernoulli](https://en.wikipedia.org/wiki/Bernoulli_sampling), [systematic](https://en.wikipedia.org/wiki/Systematic_sampling), [stratified](https://en.wikipedia.org/wiki/Stratified_sampling), [weighted](https://doi.org/10.1016/j.ipl.2005.11.003) & [cluster](https://en.wikipedia.org/wiki/Cluster_sampling) sampling. And they're all memory efficient so you should be able to sample arbitrarily large datasets!
+* `stats`: Added "sortiness" (-1 (Descending) to 1 (Ascending)) and "uniqueness_ratio" (0 (many repeated values) to 1 (All unique values)) stats. The [qsv-stats](https://github.com/dathere/qsv-stats) engine has also been optimized to squeeze out more performance.
+* `diff`: make it a "smart" command, so that it uses the stats cache to short-circuit the diff if the files are identical per their fingerprint hashes, and to validate that the diff key column is all unique.
+
+### Added
+* `joinp`: additional `joinp` `asof` join sort and match options https://github.com/dathere/qsv/pull/2486
+* `stats`: add "sortiness" statistic https://github.com/dathere/qsv/pull/2499
+* `stats` add uniqueness_ratio https://github.com/dathere/qsv/pull/2521
+* `stats` & `frequency`: add `--vis-whitespace` option. Fulfills #2501 https://github.com/dathere/qsv/pull/2503
+* `sample`: add more sampling methods (in addition to indexed and reservoir - added bernoulli, systematic, stratified, weighted & cluster sampling) and made them all memory efficient so we can sample arbitrarily large datasets: https://github.com/dathere/qsv/pull/2507 & https://github.com/dathere/qsv/pull/2511
+* `diff`: make `diff` a "smart" command. Fulfills #2493 and #2509 https://github.com/dathere/qsv/pull/2518
+* `benchmarks` : added new benchmarks for `sample` for new sampling methods https://github.com/dathere/qsv/commit/d758c54effcef31dbc1c1eb40e0c1789050eeb34
+
+### Changed
+* `luau`: bump from 0.653 to 0.657 and optimize for performance https://github.com/dathere/qsv/commit/4402df6788205341552b4f4e43220ea49924a28e https://github.com/dathere/qsv/commit/de429b4bb858a7872e30eccbdb3e526ad0ea322b https://github.com/dathere/qsv/commit/07ff8b8458a042987c9d11cae5b5b1dfaa934097 https://github.com/dathere/qsv/commit/3211f5c84fc23b652e4d7da83098e7db46829081
+* `stats`: compute string len stats only for string columns https://github.com/dathere/qsv/pull/2495
+* `contrib(completions)`: update qsv completions for qsv 2.2.1 by @rzmk in https://github.com/dathere/qsv/pull/2494
+* deps: bump polars to latest upstream after its py-1.22.0 release
+* deps: backported csv-core 0.1.12 fix to our qsv-optimized csv-core fork https://github.com/dathere/rust-csv/commit/5d0916e243f365a377b1b0e7c84bcf9585e83f2d
+* build(deps): bump actions/setup-python from 5.3.0 to 5.4.0 by @dependabot in https://github.com/dathere/qsv/pull/2488
+* build(deps): bump bytes from 1.9.0 to 1.10.0 by @dependabot in https://github.com/dathere/qsv/pull/2497
+* build(deps): bump data-encoding from 2.7.0 to 2.8.0 by @dependabot in https://github.com/dathere/qsv/pull/2512
+* build(deps): bump geosuggest-core from 0.6.5 to 0.6.6 by @dependabot in https://github.com/dathere/qsv/pull/2520
+* build(deps): bump geosuggest-utils from 0.6.5 to 0.6.6 by @dependabot in https://github.com/dathere/qsv/pull/2519
+* build(deps): bump jsonschema from 0.28.3 to 0.29.0 by @dependabot in https://github.com/dathere/qsv/pull/2510
+* build(deps): bump minijinja from 2.6.0 to 2.7.0 by @dependabot in https://github.com/dathere/qsv/pull/2489
+* build(deps): bump mlua from 0.10.2 to 0.10.3 by @dependabot in https://github.com/dathere/qsv/pull/2485
+* build(deps): bump qsv-stats from 0.27.0 to 0.28.0 by @dependabot in https://github.com/dathere/qsv/pull/2496
+* build(deps): bump qsv-stats from 0.28.0 to 0.29.0 by @dependabot in https://github.com/dathere/qsv/pull/2498
+* build(deps): bump qsv-stats from 0.29.0 to 0.30.0 by @dependabot in https://github.com/dathere/qsv/pull/2505
+* chore: Bump rand to 0.9 https://github.com/dathere/qsv/pull/2504
+* build(deps): bump simple-home-dir from 0.4.6 to 0.4.7 by @dependabot in https://github.com/dathere/qsv/pull/2515
+* build(deps): bump uuid from 1.12.1 to 1.13.1 by @dependabot in https://github.com/dathere/qsv/pull/2500
+* bumped numerous indirect dependencies to latest versions
+* applied select clippy lint suggestions
+* bumped MSRV to latest Rust stable - v1.84.1
+
+### Fixed
+* docs: QSV_AUTOINDEX => QSV_AUTOINDEX_SIZE typo. Fixes #2479 https://github.com/dathere/qsv/pull/2484
+* fix: `search` & `searchset` off by 1 when using `--flag` option. Fixes #2508 https://github.com/dathere/qsv/pull/2513
+
+
+**Full Changelog**: https://github.com/dathere/qsv/compare/2.2.1...3.0.0
+
+## [2.2.1] - 2025-01-26
+
+### Changed
+* deps: bumped polars to 0.46.0. This will allow us to publish qsv to crates.io as qsv was using features that were not enabled in polars 0.45.1 https://github.com/dathere/qsv/commit/275b2b8bd3cb41d9ddf30ba721d393d446bd2b48
+
+### Fixed
+* `stats`: fix cache json processing bug. Fixes #2476  https://github.com/dathere/qsv/pull/2477
+* benchmarks: v6.1.0 - ensured all `stats` cache benchmarks actually used the stats cache even if the `--cache-threshold` is 5 seconds - too high to trigger stats cache creation https://github.com/dathere/qsv/commit/ac33010260bf55c3424f8baa195f359f10ffe088
+
+**Full Changelog**: https://github.com/dathere/qsv/compare/2.2.0...2.2.1
+
+## [2.2.0] - 2025-01-26
+
+## Highlights:
+* `stats` - the :heart: of qsv, got a little tune-up:
+  * It got a tad faster now that we only compute string length stats for string types. Previously, we were also computing length for numbers, thinking it'll be useful for storage sizing purposes (as everything is stored as string with CSV). But as [performance is goal number 1](https://github.com/dathere/qsv?tab=readme-ov-file#goals--non-goals), we're no longer doing so. Besides, this sizing info can be derived using other stats.
+  * Fixed the problem with the stats cache being deleted/ignored even when not necessary.<br/>This bug snuck in while implementing the `--cache-threshold` cache suppression option. With `stats` getting its cache mojo back - expect near-instant cache-backed response not only for `stats` but also other ["automagical" smart commands 🪄](https://github.com/dathere/qsv?tab=readme-ov-file#legend_deeplink).
+* `diff` - @janriemer squashed some bugs without sacrificing `diff`'s _ludicrous speed_! :wink:
+* `validate`: The `dynamicEnum` custom JSON Schema keyword column specifier support.<br/>You can now specify which column to validate against (by name or by 0-based column index), instead of always using the first column. This works for local & remote lookup files using the `http/s://`, `ckan://` and `dathere://` URL schemes.
+* `extdedup` now actually uses a proper memory-mapped backed on-disk hash table.<br/>Previously, it was only deduping in-memory as the odht crate was not properly wired to a memory mapped file :facepalm: (I took the name of the odht crate literally and thought it was handling it :shrug:). Thanks for the [detailed bug report](https://github.com/dathere/qsv/issues/2462) @Svenskunganka!
+* JSON query parsing overhaul.<br/>The `fetch`, `fetchpost` & `json` commands now use the latest [`jaq`](https://github.com/01mf02/jaq?tab=readme-ov-file#jaq) engine, making for faster performance especially now that we're precompiling and caching the jaq filter.
+* Polars engine upgraded. :polar_bear:<br/>By two versions - py-polars [1.20.0](https://github.com/pola-rs/polars/releases/tag/py-1.20.0) and [1.21.0](https://github.com/pola-rs/polars/releases/tag/py-1.21.0) - giving the `sqlp`, `joinp`, `pivotp` and `count` commands a little boost. :rocket:
+
+---
+
+### Added
+* `diff`: add `--delimiter` "convenience" option. Fulfills #2447 https://github.com/dathere/qsv/pull/2464
+* `slice`: add stdin and snappy compressed file support https://github.com/dathere/qsv/commit/ab34a623f32bd25d9ff761972f66faa85f510a5d
+* `validate`: add dynamicEnum column specifier support. Fulfills #2470 https://github.com/dathere/qsv/pull/2472
+
+### What's Changed
+* `fetch`, `fetchpost` & `json`: `jaq` dependency upgrade - from `jaq-interpret` & `jaq-parse` to `jaq-core`/`jaq-json`/`jaq-std` https://github.com/dathere/qsv/pull/2458
+* `fetch` & `fetchpost`: cache compiled jaq filter https://github.com/dathere/qsv/pull/2467
+* `joinp`: adjust asofby test to reflect Polars py-1.20.0 behavior https://github.com/dathere/qsv/commit/853a266c866aa54598b6b1a3faa253d151a6b472
+* `stats`: compute string length stats for string type only https://github.com/dathere/qsv/pull/2471
+* `sqlp`: wordsmith fastpath explanation https://github.com/dathere/qsv/commit/4e3f85397f67cbe20562e8a84c228b7dc61e4bd7
+* refactor: standardize -q and -Q shortcut options. Fulfills #2466 https://github.com/dathere/qsv/pull/2468
+* deps: bump polars to 0.45.1 at py-polars-1.20.0 tag https://github.com/dathere/qsv/pull/2448
+* deps: bump polars to 0.45.1 at py-polars-1.21.0 tag https://github.com/dathere/qsv/commit/4525d00ecd4845feaac2062d40bb7bc64c13688f
+* deps: Bump csv-diff to 0.1.1 by @janriemer in https://github.com/dathere/qsv/pull/2456
+* deps: Bump csvlens to latest upstream https://github.com/dathere/qsv/commit/27a723eee4af046920a022605ad6c3476c0962e4
+* deps: use latest strum upstream https://github.com/dathere/qsv/commit/2ca1b0d476a20b93c786d0839cc5077e26fd6d88
+* build(deps): bump base62 from 2.2.0 to 2.2.1 by @dependabot in https://github.com/dathere/qsv/pull/2440
+* build(deps): bump chrono-tz from 0.10.0 to 0.10.1 by @dependabot in https://github.com/dathere/qsv/pull/2449
+* build(deps): bump data-encoding from 2.6.0 to 2.7.0 by @dependabot in https://github.com/dathere/qsv/pull/2444
+* build(deps): bump indexmap from 2.7.0 to 2.7.1 by @dependabot in https://github.com/dathere/qsv/pull/2461
+* build(deps): bump jsonschema from 0.28.1 to 0.28.2 by @dependabot in https://github.com/dathere/qsv/pull/2469
+* build(deps): bump jsonschema from 0.28.2 to 0.28.3 by @dependabot in https://github.com/dathere/qsv/pull/2473
+* build(deps): bump log from 0.4.22 to 0.4.25 by @dependabot in https://github.com/dathere/qsv/pull/2439
+* build(deps): bump semver from 1.0.24 to 1.0.25 by @dependabot in https://github.com/dathere/qsv/pull/2459
+* build(deps): bump serde_json from 1.0.135 to 1.0.136 by @dependabot in https://github.com/dathere/qsv/pull/2455
+* build(deps): bump serde_json from 1.0.136 to 1.0.137 by @dependabot in https://github.com/dathere/qsv/pull/2460
+* build(deps): bump simple-home-dir from 0.4.5 to 0.4.6 by @dependabot in https://github.com/dathere/qsv/pull/2445
+* build(deps): bump uuid from 1.11.1 to 1.12.0 by @dependabot in https://github.com/dathere/qsv/pull/2441
+* build(deps): bump uuid from 1.12.0 to 1.12.1 by @dependabot in https://github.com/dathere/qsv/pull/2465
+* tests: enabled Windows CI caching for faster CI tests 
+* bumped numerous indirect dependencies to latest versions
+* applied select clippy lint suggestions
+
+### Fixed
+* `count`: Sometimes, polars count returns zero even if there are rows. Fixed by doing a regular csv reader count when polars count returns zero https://github.com/dathere/qsv/commit/abcd36524d6c26a17a2ecfac54498ecab58fe87c 
+* `diff`: Fix name to index conversion by @janriemer. Fixes #2443 https://github.com/dathere/qsv/pull/2457
+* `extdedup`: refactor/fix to actually have on-disk hash table backed by a mem-mapped file. Fixes #2462 https://github.com/dathere/qsv/pull/2475
+* `stats`: fix stats caching as it was inadvertently deleting the stats cache even when not necessary https://github.com/dathere/qsv/commit/96e6d289d31a2b22345524fb5cc71eca0d6ffae9
+
+### Removed
+* `foreach`: refactored to remove unmaintained `local-encoding` dependency https://github.com/dathere/qsv/pull/2454
+* remove `polars` feature from qsvdp binary variant. We'll use py-polars from DP+ directly.
+
+**Full Changelog**: https://github.com/dathere/qsv/compare/2.1.0...2.2.0
+
+## [2.1.0] - 2025-01-12
+
+### Added
+* `join`: add `--ignore-leading-zeros` option https://github.com/dathere/qsv/pull/2430
+* `joinp` add `--norm-unicode` option to unicode normalize join keys https://github.com/dathere/qsv/pull/2436
+* `pivotp` added more smart aggregation suggestions https://github.com/dathere/qsv/pull/2428
+* `template`: added to qsvdp binary variant https://github.com/dathere/qsv/commit/9df85e65dedf130981ab430764b4a4cdc9382dc8
+* `benchmarks`: added `pivotp` benchmark https://github.com/dathere/qsv/commit/92e4c51cb17e5511f668b4a2cc96d9cab28a4758
+
+### Changed
+* `joinp`: refactored `--ignore-leading-zeros` handling https://github.com/dathere/qsv/pull/2433
+* Migrate from unmaintained dynfmt to dynfmt2 https://github.com/dathere/qsv/pull/2421
+* deps: bump csvlens to latest upstream https://github.com/dathere/qsv/commit/52c766da43642c2eef6f35819d8e9fb0966700a3
+* deps: bump to latest csv qsv-optimized fork https://github.com/dathere/qsv/commit/58ac650abfa51b7b8deb23d1a8917b3983515755
+* deps: bumped MiniJinja to 2.6.0 https://github.com/dathere/qsv/commit/8176368434982ba6bd206762c524a3dc47370039
+* deps: bump to latest Polars upstream
+* deps: bump qsv-stats to 0.26.0
+* build(deps): bump azure/trusted-signing-action from 0.5.0 to 0.5.1 by @dependabot in https://github.com/dathere/qsv/pull/2420
+* build(deps): bump base62 from 2.0.3 to 2.1.0 by @dependabot in https://github.com/dathere/qsv/pull/2419
+* build(deps): bump base62 from 2.1.0 to 2.2.0 by @dependabot in https://github.com/dathere/qsv/pull/2426
+* build(deps): bump phf from 0.11.2 to 0.11.3 by @dependabot in https://github.com/dathere/qsv/pull/2417
+* build(deps): bump pyo3 from 0.23.3 to 0.23.4 by @dependabot in https://github.com/dathere/qsv/pull/2431
+* build(deps): bump serde_json from 1.0.134 to 1.0.135 by @dependabot in https://github.com/dathere/qsv/pull/2416
+* build(deps): bump tokio from 1.42.0 to 1.43.0 by @dependabot in https://github.com/dathere/qsv/pull/2423
+* build(deps): bump uuid from 1.11.0 to 1.11.1 by @dependabot in https://github.com/dathere/qsv/pull/2427
+* apply several clippy suggestions
+* bumped numerous indirect dependencies to latest versions
+* bumped Rust nightly from 2024-12-19 to 2025-01-05 (same version used by Polars)
+* bump MSRV to latest Rust stable - v1.84.0
+
+### Fixed
+* `join`: revert optimization that actually resulted in a performance regression https://github.com/dathere/qsv/commit/e42af2b4e9ab9ef4eed43b97e343e253c50a35a1
+* `join`: `--right-anti` and `--right-semi` joins didn't swap headers properly https://github.com/dathere/qsv/pull/2435
+* `count`: polars-powered `count` didn't use the right data type SQL count(*) https://github.com/dathere/qsv/commit/d8c1524ca0dff4ac19164ccb8090b01fd740b571
+
+**Full Changelog**: https://github.com/dathere/qsv/compare/2.0.0...2.1.0
+
+## [2.0.0] - 2025-01-06
+
+## qsv v2.0.0 is here! 🎉
+It took 193 releases to get to v1.0.0, and we're already at v2.0.0 a month later!?!
+
+Yes! We wanted a running start for 2025, and qsv 2.0.0 marks qsv's biggest release yet!
+
+* It fully enables the "Data Resource Upload First (DRUF)" workflow, allowing Datapusher+ to infer ["automagical metadata"](https://dathere.com/2023/11/automagical-metadata/) from the data itself. It exposes two Domain Specific Language (DSL) options - [Luau](https://luau.org) and [MiniJinja](https://docs.rs/minijinja/latest/minijinja/) - to enable powerful data transformation and validation capabilities. This allows data stewards to upload data first, then use qsv's DSL capabilities inside DP+ to automatically generate rich metadata - including data dictionaries, field descriptions, data quality rules, and data validation schemas. This "automagical metadata" approach dramatically reduces the friction in compiling high-quality, high-resolution metadata (using the [DCAT-US 3.0 specification](https://doi-do.github.io/dcat-us/) as a reference) that would otherwise be a manual, laborious, and error-prone process.  
+Under the hood, the `fetchpost`, `template`, `stats`, and `luau` commands now have the necessary scaffolding to fully support this workflow inside Datapusher+ and ckanext-scheming.
+* It adds a new `pivotp` command, powered by Polars, to enable fast pivot operations on large datasets. You can now pivot your data in seconds by simply specifying the columns to pivot on while blowing past [Excel's PivotTable limitations](https://support.microsoft.com/en-us/office/excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3).
+* `stats` now computes geometric mean and harmonic mean and adds string length stats, all while getting a performance boost.
+* `join` and `joinp` got a lot of love in this release, with several new options:
+  * `joinp`: non-equi join support! 🎉💯🥳<br/> See ["Lightning Fast and Space Efficient Inequality Joins" paper](https://vldb.org/pvldb/vol8/p2074-khayyat.pdf) and this [Polars non-equi join tracking issue](https://github.com/pola-rs/polars/issues/10068).
+  * `join` & `joinp`: `--right-anti` and `--right-semi` joins
+  * `joinp`: `--ignore-leading-zeros` option for join keys
+  * `joinp`: `--maintain-order` option to maintain the order of the either the left or right dataset in the output
+  * `joinp`: expanded `--cache-schema` options to make `joinp` smarter/faster by leveraging the stats cache
+  * `join`: `--keys-output` option to write successfully joined keys to a separate output file.
+
+This release lays the groundwork for the [`outliers` "smart" command](https://github.com/dathere/qsv/issues/107) to quickly identify outliers using stats/frequency info.
+
+It also sets the stage for an initial implementation of our ["Data Concierge"](https://dathere.com/2024/12/the-golden-rule-of-pragmatic-data-governance/) that leverages all the high-quality, high-res metadata we automagically compile with DRUF to enable *Metadata Gardening Agents* to proactively link seemingly unrelated data and glean insights as it constantly grooms the Data Catalog - effectively making it a ___[FAIR Data](https://www.go-fair.org/fair-principles/) Factory___.
+
+---
+
+### Added
+* `fetchpost`: add `--globals-json` option  https://github.com/dathere/qsv/pull/2357
+* `fixlengths`: add `--remove-empty` option; refactored for performance. Fulfills #2391. https://github.com/dathere/qsv/pull/2411
+* `join`: add `--keys-output` option. Fulfills #2407. https://github.com/dathere/qsv/pull/2408
+* `join`: add `--right-anti` and `--right-semi` options. Fulfills #2379. https://github.com/dathere/qsv/pull/2380
+* `joinp`: add non-equi join support! 🎉💯🥳   https://github.com/dathere/qsv/pull/2409
+* `joinp`: add `--ignore-leading-zeros` option. Fulfills #2398.  https://github.com/dathere/qsv/pull/2400
+* `joinp`: add `--maintain-order` option  https://github.com/dathere/qsv/pull/2338
+* `joinp`: add `--right-anti` and `--right-semi` options. Fulfills #2377. https://github.com/dathere/qsv/pull/2378
+* `luau`: addl helper functions. Fulfills #1782. https://github.com/dathere/qsv/pull/2362
+* `luau`: add `qsv_writejson` helper  https://github.com/dathere/qsv/pull/2375
+* `pivotp`: new polars polars-powered command. Fulfills #799.  https://github.com/dathere/qsv/pull/2364
+* `pivotp`: "smart" pivotp. https://github.com/dathere/qsv/pull/2367
+* `stats`: add geometric mean and harmonic mean. Fulfills #2227. https://github.com/dathere/qsv/pull/2342
+* `stats`: add string length stats to set stage for upcoming `outliers` "smart"  command to quickly identify outliers using stats/frequency info  https://github.com/dathere/qsv/pull/2390
+* `template`: add `--globals-json` option  https://github.com/dathere/qsv/pull/2356
+* `tojsonl`: add `--quiet` option. Fulfills #2335. https://github.com/dathere/qsv/pull/2336
+* `validate`: add `--validate-schema` option to check if the JSON Schema itself is valid  https://github.com/dathere/qsv/pull/2393
+* `contrib(completions)`: add joinp `--ignore-case` and slice `--invert` by @rzmk in https://github.com/dathere/qsv/pull/2322
+* `contrib(completions)`: add `--quiet` to `tojsonl` by @rzmk in https://github.com/dathere/qsv/pull/2337
+* `ci`: add qsv_glibc_2.31-headless to action by @rzmk in https://github.com/dathere/qsv/pull/2330
+* Add license to MSI installer by @rzmk in https://github.com/dathere/qsv/pull/2321
+
+### Changed
+* `lens`: optimized csvlens library usage, dropping clap dependency  https://github.com/dathere/qsv/pull/2403
+* `pivotp`: an even smarter `pivotp`  https://github.com/dathere/qsv/pull/2368
+* `stats`: performance boost https://github.com/dathere/qsv/commit/51349ba8f0121804a1a6766371f1e17c0da800b6
+* Update deb package by @tino097 in https://github.com/dathere/qsv/pull/2226
+* `ci`: attempt using files-folder instead of files by @rzmk in https://github.com/dathere/qsv/pull/2320
+* Setting QSV_FREEMEMORY_HEADROOM_PCT to 0 disables memory availability check  https://github.com/dathere/qsv/pull/2353
+* build(deps): bump actix-governor from 0.7.0 to 0.8.0 by @dependabot in https://github.com/dathere/qsv/pull/2351
+* build(deps): bump bytemuck from 1.20.0 to 1.21.0 by @dependabot in https://github.com/dathere/qsv/pull/2361
+* build(deps): bump chrono from 0.4.38 to 0.4.39 by @dependabot in https://github.com/dathere/qsv/pull/2345
+* build(deps): bump crossbeam-channel from 0.5.13 to 0.5.14 by @dependabot in https://github.com/dathere/qsv/pull/2354
+* build(deps): bump flexi_logger from 0.29.6 to 0.29.7 by @dependabot in https://github.com/dathere/qsv/pull/2348
+* build(deps): bump governor from 0.7.0 to 0.8.0 by @dependabot in https://github.com/dathere/qsv/pull/2347
+* build(deps): bump itertools from 0.13.0 to 0.14.0 by @dependabot in https://github.com/dathere/qsv/pull/2413
+* build(deps): bump jsonschema from 0.26.1 to 0.26.2 by @dependabot in https://github.com/dathere/qsv/pull/2355
+* build(deps): bump jsonschema from 0.26.2 to 0.27.0 by @dependabot in https://github.com/dathere/qsv/pull/2371
+* build(deps): bump jsonschema from 0.27.1 to 0.28.0 by @dependabot in https://github.com/dathere/qsv/pull/2389
+* build(deps): bump jsonschema from 0.28.0 to 0.28.1 by @dependabot in https://github.com/dathere/qsv/pull/2396
+* bump polars from 0.44.2 to 0.45  https://github.com/dathere/qsv/pull/2340
+* build(deps): bump polars from 0.45.0 to 0.45.1 by @dependabot in https://github.com/dathere/qsv/pull/2344
+* bump pyo3 from 0.22 to 0.23 now that Polars supports it  https://github.com/dathere/qsv/pull/2352
+* build(deps): bump redis from 0.27.5 to 0.27.6 by @dependabot in https://github.com/dathere/qsv/pull/2331
+* build(deps): bump reqwest from 0.12.9 to 0.12.11 by @dependabot in https://github.com/dathere/qsv/pull/2385
+* build(deps): bump reqwest from 0.12.11 to 0.12.12 by @dependabot in https://github.com/dathere/qsv/pull/2395
+* build(deps): bump rfd from 0.15.1 to 0.15.2 by @dependabot in https://github.com/dathere/qsv/pull/2404
+* build(deps): bump serde from 1.0.215 to 1.0.216 by @dependabot in https://github.com/dathere/qsv/pull/2349
+* build(deps): bump serde from 1.0.216 to 1.0.217 by @dependabot in https://github.com/dathere/qsv/pull/2384
+* build(deps): bump serde_json from 1.0.133 to 1.0.134 by @dependabot in https://github.com/dathere/qsv/pull/2365
+* build(deps): bump sysinfo from 0.32.1 to 0.33.0 by @dependabot in https://github.com/dathere/qsv/pull/2334
+* build(deps): bump sysinfo from 0.33.0 to 0.33.1 by @dependabot in https://github.com/dathere/qsv/pull/2383
+* deps: bump tabwriter to 1.4.1  https://github.com/dathere/qsv/commit/bbcbeba193b7b1808bcd359c460fb688b49107f0
+* build(deps): bump tokio from 1.41.1 to 1.42.0 by @dependabot in https://github.com/dathere/qsv/pull/2333
+* build(deps): bump xxhash-rust from 0.8.12 to 0.8.13 by @dependabot in https://github.com/dathere/qsv/pull/2359
+* build(deps): bump xxhash-rust from 0.8.13 to 0.8.14 by @dependabot in https://github.com/dathere/qsv/pull/2372
+* build(deps): bump xxhash-rust from 0.8.14 to 0.8.15 by @dependabot in https://github.com/dathere/qsv/pull/2392
+* apply several clippy suggestions
+* bumped numerous indirect dependencies to latest versions
+* bumped Rust nightly from 2024-11-28 to 2024-12-19 (same version used by Polars)
+
+### Fixed
+* `joinp`: refactor `--cache-schema` option. Resolves #2369. https://github.com/dathere/qsv/pull/2370
+* `extsort` underflow in CSV mode. Resolves #2391. https://github.com/dathere/qsv/pull/2412
+* instantiate logger properly https://github.com/dathere/qsv/commit/9c0c1a7a63ef3773e599f6fa91e6fa3b734936df
+* fix `util::get_stats_records()`  to no longer infer boolean in `StatsMode::PolarsSchema`. Resolves #2369. https://github.com/dathere/qsv/commit/cebb6642daf8b528ed8c95be9fc47709abe1c50a
+
+**Full Changelog**: https://github.com/dathere/qsv/compare/1.0.0...2.0.0
+
 ## [1.0.0] - 2024-12-02
 
 ## qsv v1.0.0 is here! 🎉
@@ -139,7 +553,7 @@ These core crates underpin much of qsv's functionality. Using the latest version
 * `deps`: bump jsonschema from 0.25 to 0.26 https://github.com/jqnatividad/qsv/pull/2251
 * `deps`: bump embedded Luau from 0.640 to 0.650 https://github.com/jqnatividad/qsv/commit/8c54b875bf8768849b128ab15d96c33b02be180b https://github.com/jqnatividad/qsv/commit/aca30b072ecb6bb22d7edbe8ddef348649a5d699
 * `deps`: bump mlua from 0.9 to 0.10  https://github.com/jqnatividad/qsv/pull/2249
-* `deps`: bump Polars from 0.43.1 at py-1.11.0 tag to latest 0.44.2 upstream by @jqnatividad in https://github.com/jqnatividad/qsv/pull/2255 https://github.com/jqnatividad/qsv/commit/0e40a4429b4ef219ab7a11c91767e95778470ef2
+* `deps`: bump Polars from 0.43.1 at py-1.11.0 tag to latest 0.44.2 upstream  https://github.com/jqnatividad/qsv/pull/2255 https://github.com/jqnatividad/qsv/commit/0e40a4429b4ef219ab7a11c91767e95778470ef2
 * apply select clippy lint suggestions
 * updated indirect dependencies
 * aligned Rust nightly to Polars nightly - 2024-10-28 - https://github.com/jqnatividad/qsv/commit/245bcb55af416960aa603c05de960289f6125c5c

@@ -51,7 +51,7 @@ describegpt options:
 Common options:
     -h, --help             Display this message
     -o, --output <file>    Write output to <file> instead of stdout.
-    -Q, --quiet            Do not print status messages to stderr.
+    -q, --quiet            Do not print status messages to stderr.
 "#;
 
 use std::{env, fs, io::Write, path::PathBuf, process::Command, time::Duration};
@@ -61,7 +61,7 @@ use reqwest::blocking::Client;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::{util, util::process_input, CliResult};
+use crate::{CliResult, util, util::process_input};
 
 #[derive(Deserialize)]
 struct Args {
@@ -235,7 +235,12 @@ fn is_valid_model(
     } else {
         args.flag_model.clone().unwrap()
     };
-    let models = response_json["data"].as_array().unwrap();
+    let Some(models) = response_json["data"].as_array() else {
+        return fail_clierror!(
+            "Invalid response: 'data' field is not an array or is missing\n\n{}",
+            serde_json::to_string_pretty(&response_json).unwrap_or_default()
+        );
+    };
     for model in models {
         if model["id"].as_str().unwrap() == given_model {
             return Ok(true);
@@ -315,6 +320,8 @@ fn get_prompt(
         },
     };
     // Replace variable data in prompt
+    #[allow(clippy::to_string_in_format_args)]
+    #[allow(clippy::literal_string_with_formatting_args)]
     let prompt = prompt
         .replace("{stats}", stats.unwrap_or(""))
         .replace("{frequency}", frequency.unwrap_or(""))

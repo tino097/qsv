@@ -26,7 +26,39 @@ fn tojsonl_simple() {
     let expected = r#"{"id":1,"father":"Mark","mother":"Charlotte","oldest_child":"Tom","boy":true,"weight":150.2}
 {"id":2,"father":"John","mother":"Ann","oldest_child":"Jessika","boy":false,"weight":175.5}
 {"id":3,"father":"Bob","mother":"Monika","oldest_child":"Jerry","boy":true,"weight":199.5}"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+#[serial]
+fn tojsonl_2579() {
+    let wrk = Workdir::new("tojsonl_2579");
+    wrk.create(
+        "in.csv",
+        vec![
+            svec!["Date", "Product", "Unit", "Price"],
+            svec!["1937-01-01", "Milk", "1 gallon", ".1"],
+            svec!["1937-01-01", "Bread", "1 loaf", ".09"],
+            svec!["1937-01-01", "Movie ticket", "1 ticket", ".25"],
+            svec!["1937-01-01", "Milk", "10 gallons", "1.00000"],
+            svec!["1937-01-01", "Milk", "100 gallons", "10"],
+            svec!["1937-01-01", "Taxi", "1 mile", "0.90000"],
+        ],
+    );
+
+    let mut cmd = wrk.command("tojsonl");
+    cmd.arg("in.csv");
+
+    wrk.assert_success(&mut cmd);
+
+    let got: String = wrk.stdout(&mut cmd);
+    let expected = r#"{"Date":"1937-01-01","Product":"Milk","Unit":"1 gallon","Price":0.1}
+{"Date":"1937-01-01","Product":"Bread","Unit":"1 loaf","Price":0.09}
+{"Date":"1937-01-01","Product":"Movie ticket","Unit":"1 ticket","Price":0.25}
+{"Date":"1937-01-01","Product":"Milk","Unit":"10 gallons","Price":1.0}
+{"Date":"1937-01-01","Product":"Milk","Unit":"100 gallons","Price":10.0}
+{"Date":"1937-01-01","Product":"Taxi","Unit":"1 mile","Price":0.9}"#;
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -51,7 +83,7 @@ fn tojsonl_2294() {
     let got: String = wrk.stdout(&mut cmd);
     let expected = r#"{"col1":"a","col2":"b","col3":"c"}
 {"col1":"d","col2":"e","col3":"f"}"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -75,7 +107,7 @@ fn tojsonl_boolean() {
     let expected = r#"{"col1":true,"col2":"Mark"}
 {"col1":false,"col2":"John"}
 {"col1":false,"col2":"Bob"}"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -99,7 +131,7 @@ fn tojsonl_boolean_tf() {
     let expected = r#"{"col1":true,"col2":"Mark"}
 {"col1":false,"col2":"John"}
 {"col1":false,"col2":"Bob"}"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -123,7 +155,7 @@ fn tojsonl_boolean_upper_tf() {
     let expected = r#"{"col1":true,"col2":"Mark"}
 {"col1":false,"col2":"John"}
 {"col1":false,"col2":"Bob"}"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -147,7 +179,7 @@ fn tojsonl_boolean_1or0() {
     let expected = r#"{"col1":true,"col2":"Mark"}
 {"col1":false,"col2":"John"}
 {"col1":false,"col2":"Bob"}"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 #[test]
 #[serial]
@@ -170,7 +202,7 @@ fn tojsonl_noboolean_1or0() {
     let expected = r#"{"col1":1,"col2":"Mark"}
 {"col1":0,"col2":"John"}
 {"col1":0,"col2":"Bob"}"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -192,7 +224,7 @@ fn tojsonl_noboolean_tworecords() {
     let got: String = wrk.stdout(&mut cmd);
     let expected = r#"{"col1":1,"col2":"Mark"}
 {"col1":0,"col2":"John"}"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -218,7 +250,7 @@ fn tojsonl_boolean_1or0_false_positive_handling() {
 {"col1":"02","col2":"John"}
 {"col1":"02","col2":"Bob"}
 {"col1":"15","col2":"Mary"}"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -247,7 +279,7 @@ fn tojsonl_not_boolean_case_sensitive() {
 {"col1":false,"col2":"John"}
 {"col1":false,"col2":"Bob"}
 {"col1":true,"col2":"Mary"}"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -273,7 +305,7 @@ fn tojsonl_is_boolean_case_sensitive() {
     let expected = r#"{"col1":true,"col2":"Mark"}
 {"col1":false,"col2":"John"}
 {"col1":false,"col2":"Bob"}"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -297,7 +329,7 @@ fn tojsonl_boolean_yes() {
     let expected = r#"{"col1":true,"col2":"Mark"}
 {"col1":false,"col2":"John"}
 {"col1":false,"col2":"Bob"}"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -321,7 +353,7 @@ fn tojsonl_boolean_null() {
     let expected = r#"{"col1":true,"col2":"Mark"}
 {"col1":false,"col2":"John"}
 {"col1":false,"col2":"Bob"}"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -347,7 +379,7 @@ fn tojsonl_boolean_y_null() {
 {"col1":false,"col2":"John"}
 {"col1":false,"col2":"Bob"}
 {"col1":true,"col2":"Mary"}"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -379,7 +411,7 @@ fn tojsonl_nested() {
 {"id":3,"father":"Bob","mother":"Monika","children":"\"Jerry\",\"Karol\""}
 {"id":4,"father":"John\nSmith","mother":"Jane \"Smiley\" Doe","children":"\"Jack\",\"Jill\r\n \"Climber\""}"#;
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -395,7 +427,7 @@ fn tojsonl_boston() {
 
     let expected = wrk.load_test_resource("boston311-100-untrimmed.jsonl");
 
-    assert_eq!(dos2unix(&got), dos2unix(&expected).trim_end());
+    similar_asserts::assert_eq!(dos2unix(&got), dos2unix(&expected).trim_end());
 }
 
 #[test]
@@ -411,7 +443,7 @@ fn tojsonl_boston_snappy() {
 
     let expected = wrk.load_test_resource("boston311-100-untrimmed.jsonl");
 
-    assert_eq!(dos2unix(&got), dos2unix(&expected).trim_end());
+    similar_asserts::assert_eq!(dos2unix(&got), dos2unix(&expected).trim_end());
 }
 
 #[test]
@@ -427,7 +459,7 @@ fn tojsonl_boston_trim() {
 
     let expected = wrk.load_test_resource("boston311-100.jsonl");
 
-    assert_eq!(dos2unix(&got), dos2unix(&expected).trim_end());
+    similar_asserts::assert_eq!(dos2unix(&got), dos2unix(&expected).trim_end());
 }
 
 #[test]
@@ -449,7 +481,7 @@ fn tojsonl_issue_1649_false_positive_tf() {
     let expected = r#"{"id":1,"name":"François Hollande"}
 {"id":2,"name":"Tarja Halonen"}"#;
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -473,5 +505,5 @@ fn tojsonl_issue_1649_false_positive_tf_3recs() {
 {"id":2,"name":"Travis"}
 {"id":3,"name":"Travis"}"#;
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }

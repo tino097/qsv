@@ -25,5 +25,5 @@ fn clipboard_success() {
     let mut clipboard_cmd = wrk.command("clipboard");
     let clipboard_output: String = wrk.stdout(&mut clipboard_cmd);
 
-    assert_eq!(clipboard_output, expected);
+    similar_asserts::assert_eq!(clipboard_output, expected);
 }

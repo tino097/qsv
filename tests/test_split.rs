@@ -3,10 +3,10 @@ use std::borrow::ToOwned;
 use crate::workdir::Workdir;
 
 macro_rules! split_eq {
-    ($wrk:expr, $path:expr, $expected:expr) => {
-        // assert_eq!($wrk.path($path).into_os_string().into_string().unwrap(),
+    ($wrk:expr_2021, $path:expr_2021, $expected:expr_2021) => {
+        // similar_asserts::assert_eq!($wrk.path($path).into_os_string().into_string().unwrap(),
         // $expected.to_owned());
-        assert_eq!(
+        similar_asserts::assert_eq!(
             $wrk.from_str::<String>(&$wrk.path($path)),
             $expected.to_owned()
         );
@@ -776,7 +776,7 @@ fn split_nooutdir() {
     wrk.assert_err(&mut cmd);
     let got = wrk.output_stderr(&mut cmd);
     let expected = "usage error: <outdir> is not specified or is a file.\n";
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]

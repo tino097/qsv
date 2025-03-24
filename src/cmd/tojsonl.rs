@@ -41,6 +41,7 @@ Common options:
     -o, --output <file>    Write output to <file> instead of stdout.
     --memcheck             Check if there is enough memory to load the entire
                            CSV into memory using CONSERVATIVE heuristics.
+    -q, --quiet            Do not display enum/const list inferencing messages.
 "#;
 
 use std::{fmt::Write, path::PathBuf, str::FromStr};
@@ -55,8 +56,9 @@ use strum_macros::EnumString;
 
 use super::schema::infer_schema_from_stats;
 use crate::{
+    CliError, CliResult,
     config::{Config, Delimiter},
-    util, CliError, CliResult,
+    util,
 };
 
 #[derive(Deserialize, Clone)]
@@ -69,6 +71,7 @@ struct Args {
     flag_delimiter:  Option<Delimiter>,
     flag_output:     Option<String>,
     flag_memcheck:   bool,
+    flag_quiet:      bool,
 }
 
 impl From<std::fmt::Error> for CliError {
@@ -115,6 +118,13 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         args.flag_memcheck,
     )?;
 
+    // use regular CSV reader count on Windows
+    // as the polars-powered count_rows is failing CI tests on Windows
+    // I suspect there is an optimization in Polars that is causing this
+    // CI test flakiness
+    #[cfg(windows)]
+    let record_count = util::count_rows_regular(&conf)?;
+    #[cfg(not(windows))]
     let record_count = util::count_rows(&conf)?;
 
     // we're calling the schema command to infer data types and enums
@@ -144,7 +154,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     };
     // build schema for each field by their inferred type, min/max value/length, and unique values
     let properties_map: Map<String, Value> =
-        match infer_schema_from_stats(&schema_args, &input_filename) {
+        match infer_schema_from_stats(&schema_args, &input_filename, args.flag_quiet) {
             Ok(map) => map,
             Err(e) => {
                 return fail_clierror!("Failed to infer field types: {e}");
@@ -195,32 +205,41 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         } else {
                             // check the first domain value, if its an integer
                             // see if its 1 or 0
-                            if let Some(int_val) = vals[0].as_u64() {
-                                match int_val {
-                                    1 => '1',
-                                    0 => '0',
-                                    _ => '*', // its something else
-                                }
-                            } else if let Some(str_val) = vals[0].as_str() {
-                                // else, if its a string, get the first character of val1 lowercase
-                                boolcheck(str_val, &mut lowercase_buffer)
-                            } else {
-                                '*'
+                            match vals[0].as_u64() {
+                                Some(int_val) => {
+                                    match int_val {
+                                        1 => '1',
+                                        0 => '0',
+                                        _ => '*', // its something else
+                                    }
+                                },
+                                _ => {
+                                    match vals[0].as_str() {
+                                        Some(str_val) => {
+                                            // else, if its a string, get the first character of
+                                            // val1 lowercase
+                                            boolcheck(str_val, &mut lowercase_buffer)
+                                        },
+                                        _ => '*',
+                                    }
+                                },
                             }
                         };
                         // same as above, but for the 2nd domain value
                         let val2 = if vals[1].is_null() {
                             '_'
-                        } else if let Some(int_val) = vals[1].as_u64() {
-                            match int_val {
-                                1 => '1',
-                                0 => '0',
-                                _ => '*',
-                            }
-                        } else if let Some(str_val) = vals[1].as_str() {
-                            boolcheck(str_val, &mut lowercase_buffer)
                         } else {
-                            '*'
+                            match vals[1].as_u64() {
+                                Some(int_val) => match int_val {
+                                    1 => '1',
+                                    0 => '0',
+                                    _ => '*',
+                                },
+                                _ => match vals[1].as_str() {
+                                    Some(str_val) => boolcheck(str_val, &mut lowercase_buffer),
+                                    _ => '*',
+                                },
+                            }
                         };
                         // log::debug!("val1: {val1} val2: {val2}");
 
@@ -295,6 +314,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
                 let mut header_key = Value::String(String::new());
                 let mut temp_val = Value::String(String::new());
+                let mut temp_numval: serde_json::Number;
 
                 if args.flag_trim {
                     record.trim();
@@ -315,7 +335,19 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                                 }
                             },
                             JsonlType::Null => "null",
-                            JsonlType::Integer | JsonlType::Number => field,
+                            JsonlType::Integer => field,
+                            JsonlType::Number => {
+                                // round-trip thru serde_json to parse the number per the json spec
+                                // safety: we know the number is a valid f64 and the inner
+                                // unwrap_or(0.0) covers the bare
+                                // outer unwrap()
+                                temp_numval = serde_json::Number::from_f64(
+                                    fast_float2::parse(field).unwrap_or(0.0),
+                                )
+                                .unwrap();
+                                temp_string2 = temp_numval.to_string();
+                                &temp_string2
+                            },
                             JsonlType::Boolean => {
                                 if let 't' | 'y' | '1' = boolcheck(field, &mut temp_string2) {
                                     "true"

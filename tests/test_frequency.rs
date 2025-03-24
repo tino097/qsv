@@ -1,10 +1,10 @@
 use std::{borrow::ToOwned, collections::hash_map::Entry, process};
 
-use ahash::AHashMap;
+use foldhash::{HashMap, HashMapExt};
 use serde::Deserialize;
 use stats::Frequencies;
 
-use crate::{qcheck_sized, workdir::Workdir, Csv, CsvData};
+use crate::{Csv, CsvData, qcheck_sized, workdir::Workdir};
 
 fn setup(name: &str) -> (Workdir, process::Command) {
     let rows = vec![
@@ -44,7 +44,7 @@ fn frequency_no_headers() {
         svec!["1", "b", "1", "12.5"],
         svec!["1", "h1", "1", "12.5"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -61,7 +61,7 @@ fn frequency_casesensitive() {
         svec!["h2", "y", "2", "28.57143"],
         svec!["h2", "z", "3", "42.85714"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -79,7 +79,7 @@ fn frequency_ignorecase() {
         svec!["h2", "y", "3", "42.85714"],
         svec!["h2", "z", "3", "42.85714"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -123,7 +123,7 @@ fn frequency_trim() {
         svec!["h2", "y", "5", "35.71429"],
         svec!["h2", "z", "4", "28.57143"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -169,7 +169,7 @@ fn frequency_no_trim() {
         svec!["h2", "y ", "3", "21.42857"],
         svec!["h2", "z", "3", "21.42857"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -187,7 +187,7 @@ fn frequency_no_nulls() {
         svec!["h1", "a", "4", "66.66667"],
         svec!["h1", "b", "1", "16.66667"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -204,7 +204,7 @@ fn frequency_nulls() {
         svec!["h1", "a", "4", "57.14286"],
         svec!["h1", "b", "1", "14.28571"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -221,7 +221,7 @@ fn frequency_limit() {
         svec!["h2", "Other (3)", "4", "57.14286"],
         svec!["h2", "z", "3", "42.85714"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -238,7 +238,7 @@ fn frequency_pct_dec_places() {
         svec!["h2", "Other (3)", "4", "57.143"],
         svec!["h2", "z", "3", "42.857"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -255,7 +255,7 @@ fn frequency_neg_pct_dec_places() {
         svec!["h2", "Other (3)", "4", "57.1429"],
         svec!["h2", "z", "3", "42.8571"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -270,7 +270,7 @@ fn frequency_limit_no_other() {
         svec!["h1", "a", "4", "57.14286"],
         svec!["h2", "z", "3", "42.85714"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -286,7 +286,7 @@ fn frequency_negative_limit() {
         svec!["h1", "a", "4", "57.14286"],
         svec!["h2", "Other (4)", "7", "100"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -302,7 +302,7 @@ fn frequency_limit_threshold() {
         svec!["h1", "a", "4", "57.14286"],
         svec!["h2", "Other (4)", "7", "100"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -323,7 +323,7 @@ fn frequency_limit_threshold_notmet() {
         svec!["h2", "y", "2", "28.57143"],
         svec!["h2", "z", "3", "42.85714"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 #[test]
 fn frequency_asc() {
@@ -339,7 +339,7 @@ fn frequency_asc() {
         svec!["h2", "y", "2", "28.57143"],
         svec!["h2", "z", "3", "42.85714"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -357,7 +357,7 @@ fn frequency_asc_ignorecase() {
         svec!["h2", "y", "3", "42.85714"],
         svec!["h2", "z", "3", "42.85714"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -375,7 +375,7 @@ fn frequency_custom_other_text() {
         svec!["h1", "其他 (3)", "3", "42.85714"],
         svec!["h2", "其他 (4)", "7", "100"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -394,7 +394,7 @@ fn frequency_custom_other_text_sorted() {
         svec!["h1", "a", "4", "57.14286"],
         svec!["h2", "Ibang halaga (4)", "7", "100"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -412,7 +412,7 @@ fn frequency_other_sorted() {
         svec!["h1", "a", "4", "57.14286"],
         svec!["h2", "Other (4)", "7", "100"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -428,7 +428,7 @@ fn frequency_other_text_none() {
         svec!["field", "value", "count", "percentage"],
         svec!["h1", "a", "4", "57.14286"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -445,7 +445,7 @@ fn frequency_select() {
         svec!["h2", "y", "2", "28.57143"],
         svec!["h2", "z", "3", "42.85714"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -455,22 +455,14 @@ fn frequency_all_unique() {
     let mut cmd = wrk.command("frequency");
     cmd.args(["--select", "1"]).arg(testdata);
 
+    wrk.assert_success(&mut cmd);
+
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["field", "value", "count", "percentage"],
-        svec!["case_enquiry_id", "101004113298", "1", "1"],
-        svec!["case_enquiry_id", "101004113313", "1", "1"],
-        svec!["case_enquiry_id", "101004113348", "1", "1"],
-        svec!["case_enquiry_id", "101004113363", "1", "1"],
-        svec!["case_enquiry_id", "101004113371", "1", "1"],
-        svec!["case_enquiry_id", "101004113385", "1", "1"],
-        svec!["case_enquiry_id", "101004113386", "1", "1"],
-        svec!["case_enquiry_id", "101004113391", "1", "1"],
-        svec!["case_enquiry_id", "101004113394", "1", "1"],
-        svec!["case_enquiry_id", "101004113403", "1", "1"],
-        svec!["case_enquiry_id", "Other (90)", "90", "90"],
+        svec!["case_enquiry_id", "<ALL_UNIQUE>", "100", "100"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -494,7 +486,7 @@ fn frequency_all_unique_with_stats_cache() {
         svec!["field", "value", "count", "percentage"],
         svec!["case_enquiry_id", "<ALL_UNIQUE>", "100", "100"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -514,7 +506,6 @@ fn frequency_all_unique_with_stats_cache_alt_all_unique_text() {
     cmd.args(["--select", "1"])
         // "<ALL_UNIQUE>" in German
         .args(["--all-unique-text", "<ALLE EINZIGARTIG>"])
-        .args(["--stats-mode", "auto"])
         .arg(testdata);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
@@ -522,18 +513,16 @@ fn frequency_all_unique_with_stats_cache_alt_all_unique_text() {
         svec!["field", "value", "count", "percentage"],
         svec!["case_enquiry_id", "<ALLE EINZIGARTIG>", "100", "100"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
-fn frequency_all_unique_force_stats_cache() {
-    let wrk = Workdir::new("frequency_all_unique_force_stats_cache");
+fn frequency_all_unique_stats_cache_default() {
+    let wrk = Workdir::new("frequency_all_unique_stats_cache_default");
     let testdata = wrk.load_test_file("boston311-100.csv");
 
     let mut cmd = wrk.command("frequency");
-    cmd.args(["--select", "1"])
-        .args(["--stats-mode", "force"])
-        .arg(testdata);
+    cmd.args(["--select", "1"]).arg(testdata);
 
     wrk.assert_success(&mut cmd);
 
@@ -542,7 +531,7 @@ fn frequency_all_unique_force_stats_cache() {
         svec!["field", "value", "count", "percentage"],
         svec!["case_enquiry_id", "<ALL_UNIQUE>", "100", "100"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -561,8 +550,8 @@ fn frequency_all_unique_stats_mode_none() {
 
     // run frequency with stats-mode none, ignoring the stats cache
     let mut cmd = wrk.command("frequency");
-    cmd.args(["--select", "1"])
-        .args(["--stats-mode", "none"])
+    cmd.env("QSV_STATSCACHE_MODE", "None")
+        .args(["--select", "1"])
         .arg(testdata);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
@@ -580,7 +569,7 @@ fn frequency_all_unique_stats_mode_none() {
         svec!["case_enquiry_id", "101004113403", "1", "1"],
         svec!["case_enquiry_id", "Other (90)", "90", "90"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -610,7 +599,7 @@ fn frequency_issue1962() {
         svec!["year", "2010", "10", "3.33333"],
         svec!["year", "Other (9)", "45", "15"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let mut cmd = wrk.command("frequency");
     cmd.args(["--limit", "5"]).arg(testdata);
@@ -625,7 +614,7 @@ fn frequency_issue1962() {
         svec!["year", "2020", "20", "6.66667"],
         svec!["year", "Other (19)", "190", "63.33333"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 // This tests that a frequency table computed by `qsv` is always the same
@@ -705,7 +694,7 @@ fn param_prop_frequency(name: &str, rows: CsvData, idx: bool) -> bool {
     assert_eq_ftables(&got_ftables, &expected_ftables)
 }
 
-type FTables = AHashMap<String, Frequencies<String>>;
+type FTables = HashMap<String, Frequencies<String>>;
 
 #[derive(Deserialize)]
 struct FRow {
@@ -717,11 +706,11 @@ struct FRow {
 fn ftables_from_rows<T: Csv>(rows: T) -> FTables {
     let mut rows = rows.to_vecs();
     if rows.len() <= 1 {
-        return AHashMap::new();
+        return HashMap::new();
     }
 
     let header = rows.remove(0);
-    let mut ftables = AHashMap::new();
+    let mut ftables = HashMap::new();
     for field in &header {
         ftables.insert(field.clone(), Frequencies::new());
     }
@@ -739,7 +728,7 @@ fn ftables_from_rows<T: Csv>(rows: T) -> FTables {
 
 fn ftables_from_csv_string(data: String) -> FTables {
     let mut rdr = csv::Reader::from_reader(data.as_bytes());
-    let mut ftables = AHashMap::new();
+    let mut ftables = HashMap::new();
     for frow in rdr.deserialize() {
         let frow: FRow = frow.unwrap();
         match ftables.entry(frow.field) {
@@ -771,10 +760,155 @@ where
 
 fn assert_eq_ftables(got: &FTables, expected: &FTables) -> bool {
     for (k, v) in got.iter() {
-        assert_eq!(freq_data(v), freq_data(expected.get(k).unwrap()));
+        similar_asserts::assert_eq!(freq_data(v), freq_data(expected.get(k).unwrap()));
     }
     for (k, v) in expected.iter() {
-        assert_eq!(freq_data(got.get(k).unwrap()), freq_data(v));
+        similar_asserts::assert_eq!(freq_data(got.get(k).unwrap()), freq_data(v));
     }
     true
+}
+
+#[test]
+fn frequency_vis_whitespace() {
+    let wrk = Workdir::new("frequency_vis_whitespace");
+
+    // Create test data with various types of whitespace
+    let rows = vec![
+        svec!["header"],
+        svec!["value\t"],       // trailing tab
+        svec!["\tvalue"],       // leading tab
+        svec!["value\r"],       // trailing CR
+        svec!["\rvalue"],       // leading CR
+        svec!["value\n"],       // trailing LF
+        svec!["\nvalue"],       // leading LF
+        svec!["value "],        // trailing space
+        svec![" value"],        // leading space
+        svec!["      "],        // all spaces
+        svec!["value\u{00A0}"], // trailing non-breaking space
+        svec!["\u{00A0}value"], // leading non-breaking space
+        svec!["value\u{2003}"], // trailing em space
+        svec!["\u{2003}value"], // leading em space
+        svec!["value\u{2007}"], // trailing figure space
+        svec!["\u{2007}value"], // leading figure space
+        svec!["value\u{200B}"], // trailing zero width space
+        svec!["\u{200B}value"], // leading zero width space
+        svec!["no_whitespace"],
+    ];
+
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("frequency");
+    cmd.env("QSV_STATSCACHE_MODE", "none")
+        .arg("in.csv")
+        .args(["--limit", "0"])
+        .arg("--vis-whitespace");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["field", "value", "count", "percentage"],
+        svec!["header", "value", "8", "44.44444"],
+        svec!["header", "(NULL)", "1", "5.55556"],
+        svec!["header", "no_whitespace", "1", "5.55556"],
+        svec!["header", "value《⍽》", "1", "5.55556"],
+        svec!["header", "value《emsp》", "1", "5.55556"],
+        svec!["header", "value《figsp》", "1", "5.55556"],
+        svec!["header", "value《zwsp》", "1", "5.55556"],
+        svec!["header", "《⍽》value", "1", "5.55556"],
+        svec!["header", "《emsp》value", "1", "5.55556"],
+        svec!["header", "《figsp》value", "1", "5.55556"],
+        svec!["header", "《zwsp》value", "1", "5.55556"],
+    ];
+
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn frequency_vis_whitespace_no_trim() {
+    let wrk = Workdir::new("frequency_vis_whitespace_no_trim");
+
+    // Create test data with multiple occurrences of same whitespace patterns
+    let rows = vec![
+        svec!["header"],
+        svec!["value\t"], // trailing tab
+        svec!["value\t"], // trailing tab (duplicate)
+        svec!["\tvalue"], // leading tab
+        svec!["\tvalue"], // leading tab (duplicate)
+        svec!["value "],  // trailing space
+        svec!["value "],  // trailing space (duplicate)
+        svec![" value"],  // leading space
+        svec![" value"],  // leading space (duplicate)
+        svec!["      "],  // all spaces
+        svec!["      "],  // all spaces (duplicate)
+        svec!["no_whitespace"],
+    ];
+
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("frequency");
+    cmd.arg("in.csv")
+        .args(["--limit", "0"])
+        .arg("--vis-whitespace")
+        .arg("--no-trim");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["field", "value", "count", "percentage"],
+        svec!["header", "《→》value", "2", "18.18182"],
+        svec!["header", "《_》《_》《_》《_》《_》《_》", "2", "18.18182"],
+        svec!["header", " value", "2", "18.18182"],
+        svec!["header", "value《→》", "2", "18.18182"],
+        svec!["header", "value ", "2", "18.18182"],
+        svec!["header", "no_whitespace", "1", "9.09091"],
+    ];
+
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn frequency_vis_whitespace_ignore_case() {
+    let wrk = Workdir::new("frequency_vis_whitespace_ignore_case");
+
+    // Create test data with whitespace and mixed case
+    let rows = vec![
+        svec!["header"],
+        svec!["Value\t"],       // trailing tab
+        svec!["\tVALUE"],       // leading tab
+        svec!["value "],        // trailing space
+        svec!["value\u{000B}"], // vertical tab
+        svec!["value\u{000C}"], // form feed
+        svec!["value\u{0085}"], // next line
+        svec!["value\u{200E}"], // left-to-right mark
+        svec!["value\u{200F}"], // right-to-left mark
+        svec!["value\u{2028}"], // line separator
+        svec!["value\u{2029}"], // paragraph separator
+        svec!["value\u{00A0}"], // non-breaking space
+        svec!["value\u{2003}"], // em space
+        svec!["value\u{2007}"], // figure space
+        svec!["value\u{200B}"], // zero width space
+        svec![" VALUE"],        // leading space
+        svec!["no_whitespace"],
+        svec!["      "], // all spaces
+    ];
+
+    wrk.create("in.csv", rows);
+
+    let mut cmd = wrk.command("frequency");
+    cmd.env("QSV_STATSCACHE_MODE", "none")
+        .arg("in.csv")
+        .args(["--limit", "0"])
+        .arg("--vis-whitespace")
+        .arg("--ignore-case");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["field", "value", "count", "percentage"],
+        svec!["header", "value", "12", "70.58824"],
+        svec!["header", "(NULL)", "1", "5.88235"],
+        svec!["header", "no_whitespace", "1", "5.88235"],
+        svec!["header", "value《zwsp》", "1", "5.88235"],
+        svec!["header", "value《␎》", "1", "5.88235"],
+        svec!["header", "value《␏》", "1", "5.88235"],
+    ];
+
+    similar_asserts::assert_eq!(got, expected);
 }

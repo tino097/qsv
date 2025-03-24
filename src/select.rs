@@ -1,12 +1,12 @@
 use std::{
     cmp::Ordering,
     fmt,
-    iter::{self, repeat},
+    iter::{self, repeat_n},
     ops, slice,
     str::FromStr,
 };
 
-use ahash::AHashSet;
+use foldhash::HashSet;
 use regex::bytes::Regex;
 use serde::de::{Deserialize, Deserializer, Error};
 
@@ -52,7 +52,7 @@ impl SelectColumns {
             map.extend(idxs?);
         }
         if self.invert {
-            let set: AHashSet<_> = map.into_iter().collect();
+            let set: HashSet<_> = map.into_iter().collect();
             let mut map = vec![];
             for i in 0..first_record.len() {
                 if !set.contains(&i) {
@@ -64,10 +64,10 @@ impl SelectColumns {
         Ok(Selection(map))
     }
 
-    // commented out because it's unused
-    // pub fn is_empty(&self) -> bool {
-    //     self.selectors.is_empty()
-    // }
+    #[allow(dead_code)]
+    pub fn is_empty(&self) -> bool {
+        self.selectors.is_empty()
+    }
 }
 
 impl fmt::Debug for SelectColumns {
@@ -392,21 +392,31 @@ impl fmt::Debug for OneSelector {
 #[derive(Clone, Debug)]
 pub struct Selection(Vec<usize>);
 
-pub type _GetField = for<'c> fn(&mut &'c csv::ByteRecord, &usize) -> Option<&'c [u8]>;
+type _GetField = for<'c> fn(&mut &'c csv::ByteRecord, &usize) -> Option<&'c [u8]>;
 
 impl Selection {
     #[inline]
+    /// Returns an iterator that yields selected fields from a CSV record.
+    ///
+    /// This method takes a CSV record and returns an iterator that yields only the fields
+    /// specified by this Selection. The fields are returned in the order they were selected.
+    ///
+    /// # Arguments
+    ///
+    /// * `row` - The CSV record to select fields from
+    ///
+    /// # Returns
+    ///
+    /// An iterator that yields references to the selected fields as byte slices
     pub fn select<'a, 'b>(
         &'a self,
         row: &'b csv::ByteRecord,
     ) -> iter::Scan<slice::Iter<'a, usize>, &'b csv::ByteRecord, _GetField> {
-        // This is horrifying.
-        #[allow(clippy::unnecessary_wraps)]
         #[allow(clippy::trivially_copy_pass_by_ref)]
-        #[allow(clippy::needless_pass_by_ref_mut)]
         fn get_field<'c>(row: &mut &'c csv::ByteRecord, idx: &usize) -> Option<&'c [u8]> {
             Some(&row[*idx])
         }
+
         let get_field: _GetField = get_field;
         self.iter().scan(row, get_field)
     }
@@ -420,7 +430,7 @@ impl Selection {
         let mut normal = inds.clone();
         normal.sort_unstable();
         normal.dedup();
-        let mut set: Vec<_> = repeat(false).take(normal[normal.len() - 1] + 1).collect();
+        let mut set: Vec<_> = repeat_n(false, normal[normal.len() - 1] + 1).collect();
         for i in normal {
             set[i] = true;
         }
@@ -443,16 +453,32 @@ impl ops::Deref for Selection {
 #[derive(Clone, Debug)]
 pub struct NormalSelection(Vec<bool>);
 
-pub type _NormalScan<'a, T, I> = iter::Scan<iter::Enumerate<I>, &'a [bool], _NormalGetField<T>>;
+type _NormalScan<'a, T, I> = iter::Scan<iter::Enumerate<I>, &'a [bool], _NormalGetField<T>>;
 
-pub type _NormalFilterMap<'a, T, I> =
+type _NormalFilterMap<'a, T, I> =
     iter::FilterMap<_NormalScan<'a, T, I>, fn(Option<T>) -> Option<T>>;
 
-pub type _NormalGetField<T> = fn(&mut &[bool], (usize, T)) -> Option<Option<T>>;
+type _NormalGetField<T> = fn(&mut &[bool], (usize, T)) -> Option<Option<T>>;
 
 impl NormalSelection {
-    #[allow(clippy::needless_lifetimes)]
-    pub fn select<'a, T, I>(&'a self, row: I) -> _NormalFilterMap<'a, T, I>
+    /// Selects elements from an iterator based on the normal selection pattern.
+    ///
+    /// This method takes an iterator and returns a filtered version that only includes
+    /// elements at positions marked as true in the selection pattern.
+    ///
+    /// # Arguments
+    ///
+    /// * `row` - An iterator containing elements to filter
+    ///
+    /// # Returns
+    ///
+    /// Returns a filtered iterator that only yields elements at selected positions
+    ///
+    /// # Type Parameters
+    ///
+    /// * `T` - The type of elements in the iterator
+    /// * `I` - The type of the input iterator
+    pub fn select<T, I>(&self, row: I) -> _NormalFilterMap<'_, T, I>
     where
         I: Iterator<Item = T>,
     {
@@ -460,8 +486,6 @@ impl NormalSelection {
             v
         }
         #[allow(clippy::option_option)]
-        #[allow(clippy::unnecessary_wraps)]
-        #[allow(clippy::needless_pass_by_ref_mut)]
         fn get_field<T>(set: &mut &[bool], t: (usize, T)) -> Option<Option<T>> {
             let (i, v) = t;
             if i < set.len() && set[i] {

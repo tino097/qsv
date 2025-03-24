@@ -72,7 +72,7 @@ fn searchset() {
         svec!["barfoo", "foobar"],
         svec!["is waldo here", "spot"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
     wrk.assert_success(&mut cmd);
 }
 
@@ -101,7 +101,7 @@ fn searchset_match_count() {
 
     let got = wrk.output_stderr(&mut cmd);
     let expected = "3\n";
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     wrk.assert_success(&mut cmd);
 }
@@ -115,10 +115,10 @@ fn searchset_quick() {
     cmd.arg("regexset.txt").arg("--quick").arg("data.csv");
 
     let got_err = wrk.output_stderr(&mut cmd);
-    assert_eq!(got_err, "1\n");
+    similar_asserts::assert_eq!(got_err, "1\n");
     wrk.assert_success(&mut cmd);
     let got: String = wrk.stdout(&mut cmd);
-    assert_eq!(got, "");
+    similar_asserts::assert_eq!(got, "");
 }
 
 #[test]
@@ -160,7 +160,7 @@ fn searchset_unicode() {
         svec!["is waldo here", "spot"],
         svec!["Ḟooƀar", "ḃarḟoo"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
     wrk.assert_success(&mut cmd);
 }
 
@@ -181,7 +181,7 @@ fn searchset_unicode_envvar() {
         svec!["is waldo here", "spot"],
         svec!["Ḟooƀar", "ḃarḟoo"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
     wrk.assert_success(&mut cmd);
 }
 
@@ -225,7 +225,7 @@ fn searchset_ignore_case() {
         svec!["is waldo here", "spot"],
         svec!["bleh", "no, Waldo is there"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     wrk.assert_success(&mut cmd);
 }
@@ -247,11 +247,11 @@ fn searchset_ignore_case_count() {
         svec!["is waldo here", "spot"],
         svec!["bleh", "no, Waldo is there"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let got = wrk.output_stderr(&mut cmd);
     let expected = "4\n";
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     wrk.assert_success(&mut cmd);
 }
@@ -271,7 +271,7 @@ fn searchset_no_headers() {
         svec!["barfoo", "foobar"],
         svec!["is waldo here", "spot"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
     wrk.assert_success(&mut cmd);
 }
 
@@ -286,7 +286,7 @@ fn searchset_select() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![svec!["h1", "h2"], svec!["barfoo", "foobar"]];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
     wrk.assert_success(&mut cmd);
 }
 
@@ -302,7 +302,7 @@ fn searchset_select_no_headers() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![svec!["barfoo", "foobar"]];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
     wrk.assert_success(&mut cmd);
 }
 
@@ -322,7 +322,7 @@ fn searchset_invert_match() {
         svec!["Ḟooƀar", "ḃarḟoo"],
         svec!["bleh", "no, Waldo is there"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
     wrk.assert_success(&mut cmd);
 }
 
@@ -342,14 +342,14 @@ fn searchset_invert_match_no_headers() {
         svec!["Ḟooƀar", "ḃarḟoo"],
         svec!["bleh", "no, Waldo is there"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
     wrk.assert_success(&mut cmd);
 }
 
 #[test]
 fn searchset_flag() {
     let wrk = Workdir::new("searchset_flag");
-    wrk.create("data.csv", data(false));
+    wrk.create("data.csv", data(true));
     wrk.create("regexset.txt", regexset_file());
     let mut cmd = wrk.command("searchset");
     cmd.arg("regexset.txt")
@@ -358,14 +358,15 @@ fn searchset_flag() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
-        svec!["foobar", "barfoo", "flagged"],
+        svec!["h1", "h2", "flagged"],
+        svec!["foobar", "barfoo", "1;1,2"],
         svec!["a", "b", "0"],
         svec!["barfoo", "foobar", "3;1,2"],
         svec!["is waldo here", "spot", "4;3"],
         svec!["Ḟooƀar", "ḃarḟoo", "0"],
         svec!["bleh", "no, Waldo is there", "0"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
     wrk.assert_success(&mut cmd);
 }
 
@@ -373,7 +374,7 @@ fn searchset_flag() {
 fn searchset_flag_invert_match() {
     let wrk = Workdir::new("searchset_flag");
     wrk.create("regexset.txt", regexset_file());
-    wrk.create("data.csv", data(false));
+    wrk.create("data.csv", data(true));
     let mut cmd = wrk.command("searchset");
     cmd.arg("regexset.txt")
         .arg("data.csv")
@@ -382,14 +383,15 @@ fn searchset_flag_invert_match() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
-        svec!["foobar", "barfoo", "flagged"],
+        svec!["h1", "h2", "flagged"],
+        svec!["foobar", "barfoo", "0"],
         svec!["a", "b", "2"],
         svec!["barfoo", "foobar", "0"],
         svec!["is waldo here", "spot", "0"],
         svec!["Ḟooƀar", "ḃarḟoo", "5"],
         svec!["bleh", "no, Waldo is there", "6"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
     wrk.assert_success(&mut cmd);
 }
 
@@ -410,10 +412,10 @@ fn searchset_flag_complex() {
     let got_stderr: String = wrk.output_stderr(&mut cmd);
 
     let expected = wrk.load_test_resource("boston311-100-pii-searchset.csv");
-    assert_eq!(dos2unix(&got), dos2unix(&expected).trim_end());
+    similar_asserts::assert_eq!(dos2unix(&got), dos2unix(&expected).trim_end());
 
     let expected_stderr = r#"{"rows_with_matches":5,"total_matches":6,"record_count":100}"#;
-    assert_eq!(got_stderr.trim_end(), expected_stderr);
+    similar_asserts::assert_eq!(got_stderr.trim_end(), expected_stderr);
     wrk.assert_success(&mut cmd);
 }
 
@@ -437,13 +439,13 @@ fn searchset_flag_complex_unmatched_output() {
     let got_stderr: String = wrk.output_stderr(&mut cmd);
 
     let expected = wrk.load_test_resource("boston311-100-pii-searchset.csv");
-    assert_eq!(dos2unix(&got), dos2unix(&expected).trim_end());
+    similar_asserts::assert_eq!(dos2unix(&got), dos2unix(&expected).trim_end());
 
     let expected_stderr = r#"{"rows_with_matches":5,"total_matches":6,"record_count":100}"#;
-    assert_eq!(got_stderr.trim_end(), expected_stderr);
+    similar_asserts::assert_eq!(got_stderr.trim_end(), expected_stderr);
 
     let unmatched_got: String = wrk.from_str(&wrk.path("unmatched.csv"));
-    assert_eq!(unmatched_got, nopii_file);
+    similar_asserts::assert_eq!(unmatched_got, nopii_file);
 
     wrk.assert_success(&mut cmd);
 }
@@ -464,6 +466,6 @@ fn searchset_literal() {
         svec!["is wal[do] here", "spot"],
         svec!["bleh", "no, Wal[do] is there"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
     wrk.assert_success(&mut cmd);
 }

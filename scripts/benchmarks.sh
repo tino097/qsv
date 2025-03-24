@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Usage: ./benchmarks.sh <argument>
 #  where <argument> is a substring pattern of the benchmark name.
@@ -6,7 +6,7 @@
 #  if <argument> is omitted, all benchmarks are executed.
 #
 #  if <argument> is "reset", the benchmark data will be downloaded and prepared again.
-#   though the results/benchmark_results.csv and resutls/run_info_history.tsv historical
+#   though the results/benchmark_results.csv and results/run_info_history.tsv historical
 #   archives will be preserved.
 #  if <argument> is "clean", temporary files will be deleted.
 #  if <argument> is "setup", setup and install all the required tools.
@@ -24,8 +24,8 @@
 # Make sure you're using a release-optimized `qsv`.
 # If you can't use the prebuilt binaries at https://github.com/dathere/qsv/releases/latest,
 # build it to have at least the apply, geocode, luau, to and polars features enabled:
-# i.e. `cargo build --release --locked -F feature_capable,apply,geocode,luau,to,polars` or
-# `cargo install --locked qsv -F feature_capable,apply,geocode,luau,to,polars`
+# `CARGO_BUILD_RUSTFLAGS='-C target-cpu=native' cargo build --release --locked -F feature_capable,apply,geocode,luau,to,polars` or
+# `CARGO_BUILD_RUSTFLAGS='-C target-cpu=native' cargo install --locked qsv -F feature_capable,apply,geocode,luau,to,polars`
 #
 # This shell script has been tested on Linux and macOS. It should work on other Unix-like systems,
 # but will NOT run on native Windows. If you're on Windows, you can run it using Cygwin or WSL
@@ -42,7 +42,7 @@
 arg_pat="$1"
 
 # the version of this script
-bm_version=5.5.0
+bm_version=6.6.0
 
 # CONFIGURABLE VARIABLES ---------------------------------------
 # change as needed to reflect your environment/workloads
@@ -62,7 +62,7 @@ datazip=NYC_311_SR_2010-2020-sample-1M.7z
 # where to store the benchmark data
 data=NYC_311_SR_2010-2020-sample-1M.csv
 
-# Hyoerfine options - run `hyperfine --help`` for more info
+# Hyperfine options - run `hyperfine --help`` for more info
 # number of warmup runs for each benchmark.  A minimum of 2 is recommended
 warmup_runs=2
 # number of benchmark runs for each benchmark. A minimum of 3 is recommended
@@ -109,10 +109,10 @@ fi
 
 # check if required tools/dependencies are installed ---------
 
-# check if benchmarker_bin has the apply feature enabled
-if [[ "$benchmarker_version" != *"apply;"* ]]; then
-  echo "ERROR: $qsv_benchmarker_bin does not have the apply feature enabled."
-  echo "The qsv apply command is needed to format the benchmarks results."
+  # check if benchmarker_bin has the apply feature enabled
+  if [[ "$benchmarker_version" != *"apply;"* ]]; then
+    echo "ERROR: $qsv_benchmarker_bin does not have the apply feature enabled."
+    echo "The qsv apply command is needed to format the benchmarks results."
   exit
 fi
 
@@ -176,7 +176,7 @@ if [[ "$arg_pat" == "setup" ]]; then
   fi
 
   # if all required tools are installed, exit
-  if [[ "$need_sevenz" -eq 0 && "$need_hyperfine" -eq 0 && "$need_awk" -eq 0 && "$need_sed" -eq 0 ]]; then
+  if [[ "$need_sevenz" -eq 0 && "$need_hyperfine" -eq 0 && "$need_awk" -eq 0 && "$need_sed" -eq 0 && "$need_duckdb" -eq 0 ]]; then
     echo "> All required tools are installed..."
     exit
   fi
@@ -184,8 +184,22 @@ if [[ "$arg_pat" == "setup" ]]; then
   # check if homebrew is installed, if not, install it
   # as we need it to install the required tools
   if ! command -v brew &>/dev/null; then
-    echo "INFO: Homebrew could not be found. Installing brew first. Please enter requested info when prompted."
-    curl -fsSL "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
+    echo -n "INFO: Homebrew could not be found. Do you wish to install? "
+    read -p '(Requires sudo) (y/n)? ' -r CHOICE
+    case "$CHOICE" in
+    y | Y)
+      echo "Installing brew. Please enter requested info when prompted."
+      bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      ;;
+    n | N)
+      echo "Not installing brew. Review https://brew.sh/"
+      exit
+      ;;
+    *)
+      echo 'Invalid entry (only y/n)'
+      exit
+      ;;
+    esac
   fi
 
   # if 7z is not installed, install it
@@ -299,8 +313,6 @@ function cleanup_files {
   rm -r -f split_tempdir_idx_j1
   rm -r -f split_tempdir_chunks_idx
   rm -r -f split_tempdir_chunks_idx_j1
-  rm -r -f template_tempdir
-  rm -r -f template_tempdir_lookup
   rm -f template_temp.txt
   rm -f benchmark_work.*
   rm -r -f benchmark_work
@@ -348,7 +360,7 @@ fi
 
 # we get the rowcount, just in case the benchmark data was modified by the user to tailor
 # the benchmark to their system/workload. We use the rowcount to compute records per second
-rowcount=$("$qsv_bin" count "$data")
+rowcount=$("$qsv_bin" count --no-polars "$data")
 printf "  Benchmark data rowcount: %'.0f\n" "$rowcount"
 qsv_absolute_path=$(which "$qsv_bin")
 benchmarker_absolute_path=$(which "$qsv_benchmarker_bin")
@@ -378,7 +390,7 @@ if [ ! -r searchset_patterns_unicode.txt ]; then
   echo "   benchmark_data.jsonl..."
   "$qsv_benchmarker_bin" tojsonl "$data" --output benchmark_data.jsonl
   echo "   benchmark_data.json..."
-  "$qsv_benchmarker_bin" sqlp --format json "$data" -Q 'select * from _t_1' --infer-len 127000 --rnull-values 'N/A' --output benchmark_data.json
+  "$qsv_benchmarker_bin" sqlp --format json "$data" -q 'select * from _t_1' --infer-len 127000 --rnull-values 'N/A' --output benchmark_data.json
   echo "   benchmark_data.schema.json..."
   "$qsv_benchmarker_bin" schema "$data" --stdout >benchmark_data.csv.schema.json
   echo "   benchmark_data.snappy..."
@@ -512,9 +524,9 @@ run fmt_no_final_newline "$qsv_bin" fmt --no-final-newline "$data"
 run foreach "$qsv_bin" foreach City "echo {}" "$data"
 run frequency "$qsv_bin" frequency "$data"
 run --index frequency_index "$qsv_bin" frequency "$data"
-run --index frequency_index_stats_mode_auto "$qsv_bin" frequency --stats-mode auto "$data"
-run --index frequency_index_stats_mode_force "$qsv_bin" frequency --stats-mode force "$data"
-run --index frequency_index_stats_mode_none "$qsv_bin" frequency --stats-mode none "$data"
+run --index frequency_index_stats_mode_auto env QSV_STATS_MODE=auto bash -c \'"$qsv_bin" frequency "$data"\'
+run --index frequency_index_stats_mode_force env QSV_STATS_MODE=force bash -c \'"$qsv_bin" frequency "$data"\'
+run --index frequency_index_stats_mode_none env QSV_STATS_MODE=none bash -c \'"$qsv_bin" frequency "$data"\'
 run frequency_no_limit "$qsv_bin" frequency --limit 0 "$data"
 run --index frequency_no_limit_index "$qsv_bin" frequency --limit 0 "$data"
 run frequency_other_sorted "$qsv_bin" frequency --other-sorted "$data"
@@ -551,15 +563,18 @@ run luau_filter_no_globals "$qsv_bin" luau filter --no-globals \"Location == \'\
 run luau_filter_no_globals_colidx "$qsv_bin" luau filter --no-globals --colindex \"Location == \'\'\" "$data"
 run luau_multi "$qsv_bin" luau map dow,hourday,weekno "file:dt_format.luau" "$data"
 run luau_multi_colidx "$qsv_bin" luau map dow,hourday,weekno "file:dt_format.luau" --colindex "$data"
-run luau_filter_no_globals_colidx "$qsv_bin" luau filter --no-globals --colindex \"Location == \'\'\" "$data"
 run luau_filter_no_globals_no_colidx "$qsv_bin" luau filter --no-globals \"Location == \'\'\" "$data"
 run luau_multi_no_globals "$qsv_bin" luau map dow,hourday,weekno --no-globals "file:dt_format.luau" "$data"
 run luau_multi_no_globals_colidx "$qsv_bin" luau map dow,hourday,weekno --no-globals --colindex "file:dt_format.luau" "$data"
 run luau_script "$qsv_bin" luau map turnaround_time "file:turnaround_time.luau" "$data"
+run luau_script_debug env QSV_LOG_LEVEL=debug bash -c \'"$qsv_bin" luau map turnaround_time "file:turnaround_time.luau" "$data"\'
 run luau_script_colidx "$qsv_bin" luau map turnaround_time --colindex "file:turnaround_time.luau" "$data"
 run luau_script_no_globals "$qsv_bin" luau map turnaround_time --no-globals "file:turnaround_time.luau" "$data"
 run luau_script_no_globals_colidx "$qsv_bin" luau map turnaround_time --no-globals --colindex "file:turnaround_time.luau" "$data"
 run partition "$qsv_bin" partition \'Community Board\' /tmp/partitioned "$data"
+run pivotp_basic "$qsv_bin" pivotp "Agency" --index "Borough" --values "Complaint Type" "$data"
+run pivotp_smart "$qsv_bin" pivotp "Agency" --index "Borough" --values "Complaint Type" --agg smart "$data"
+run pivotp_dates "$qsv_bin" pivotp "Created Date" --index "Borough" --values "Complaint Type" --try-parsedates "$data"
 run pseudo "$qsv_bin" pseudo \'Unique Key\' "$data"
 run pseudo_formatstr "$qsv_bin" pseudo \'Unique Key\' --formatstr 'ID-{}' --increment 5 "$data"
 run rename "$qsv_bin" rename \'unique_key,created_date,closed_date,agency,agency_name,complaint_type,descriptor,loctype,zip,addr1,street,xstreet1,xstreet2,inter1,inter2,addrtype,city,landmark,facility_type,status,due_date,res_desc,res_act_date,comm_board,bbl,boro,xcoord,ycoord,opendata_type,parkname,parkboro,vehtype,taxi_boro,taxi_loc,bridge_hwy_name,bridge_hwy_dir,ramp,bridge_hwy_seg,lat,long,loc\' "$data"
@@ -576,6 +591,11 @@ run --index sample_100000_index "$qsv_bin" sample 100000 "$data"
 run sample_100000_seeded "$qsv_bin" sample 100000 --seed 42 "$data"
 run sample_100000_seeded_faster "$qsv_bin" sample 100000 --rng faster --seed 42 "$data"
 run sample_100000_seeded_secure "$qsv_bin" sample 100000 --rng cryptosecure --seed 42 "$data"
+run sample_bernoulli "$qsv_bin" sample --bernoulli 0.25 --seed 42 "$data"
+run sample_1000_systematic "$qsv_bin" sample 1000 --systematic random --seed 42 "$data"
+run sample_1000_stratified "$qsv_bin" sample 1000 --stratified "Agency" --seed 42 "$data"
+run sample_1000_weighted "$qsv_bin" sample 1000 --weighted "Incident Zip" --seed 42 "$data"
+run sample_1000_cluster "$qsv_bin" sample 1000 --cluster "Incident Zip" --seed 42 "$data"
 run --index sample_100000_seeded_index "$qsv_bin" sample --seed 42 100000 "$data"
 run --index sample_100000_seeded_index_faster "$qsv_bin" sample --rng faster --seed 42 100000 "$data"
 run --index sample_100000_seeded_index_secure "$qsv_bin" sample --rng cryptosecure --seed 42 100000 "$data"
@@ -620,45 +640,45 @@ run --index split_index "$qsv_bin" split --size 50000 split_tempdir_idx "$data"
 run --index split_index_j1 "$qsv_bin" split --size 50000 -j 1 split_tempdir_idx_j1 "$data"
 run --index split_chunks_index "$qsv_bin" split --chunks 20 split_tempdir_chunks_idx "$data"
 run --index split_chunks_index_j1 "$qsv_bin" split --chunks 20 -j 1 split_tempdir_chunks_idx_j1
-run sqlp "$qsv_bin" sqlp "$data" -Q --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
-run sqlp_aggregations "$qsv_bin" sqlp "$data" -Q --infer-len 100000 '"select Borough, count(*) from _t_1 where \"Complaint Type\"='\''Noise'\'' group by Borough"'
-run sqlp_aggregations_use_schema_cache "$qsv_bin" sqlp "$data" -Q --infer-len 100000 --cache-schema '"select Borough, count(*) from _t_1 where \"Complaint Type\"='\''Noise'\'' group by Borough"'
+run sqlp "$qsv_bin" sqlp "$data" -q --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
+run sqlp_aggregations "$qsv_bin" sqlp "$data" -q --infer-len 100000 '"select Borough, count(*) from _t_1 where \"Complaint Type\"='\''Noise'\'' group by Borough"'
+run sqlp_aggregations_use_schema_cache "$qsv_bin" sqlp "$data" -q --infer-len 100000 --cache-schema '"select Borough, count(*) from _t_1 where \"Complaint Type\"='\''Noise'\'' group by Borough"'
 run sqlp_aggregations_vs_duckdb duckdb :memory: '"select Borough, count(*) from read_csv_auto('\'''$data''\'') where \"Complaint Type\"='\''Noise'\'' group by Borough"'
-run sqlp_aggregations_expensive "$qsv_bin" sqlp SKIP_INPUT -Q --infer-len 100000 expensive.sql
-run sqlp_aggregations_expensive_streaming "$qsv_bin" sqlp SKIP_INPUT -Q --infer-len 100000 --streaming expensive.sql
+run sqlp_aggregations_expensive "$qsv_bin" sqlp SKIP_INPUT -q --infer-len 100000 expensive.sql
+run sqlp_aggregations_expensive_streaming "$qsv_bin" sqlp SKIP_INPUT -q --infer-len 100000 --streaming expensive.sql
 run sqlp_aggregations_expensive_vs_duckdb duckdb :memory: -c \".read expensiveduckdb.sql\"
-run sqlp_format_arrow "$qsv_bin" sqlp --format arrow "$data" -Q --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
-run sqlp_format_avro "$qsv_bin" sqlp --format avro "$data" -Q --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
-run sqlp_format_json "$qsv_bin" sqlp --format json "$data" -Q --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
-run sqlp_format_jsonl "$qsv_bin" sqlp --format jsonl "$data" -Q --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
-run sqlp_format_parquet "$qsv_bin" sqlp --format parquet "$data" -Q --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
-run sqlp_format_parquet_statistics "$qsv_bin" sqlp --format parquet --statistics "$data" -Q --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
-run sqlp_lowmemory "$qsv_bin" sqlp "$data" -Q --low-memory --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
-run sqlp_nooptimizations "$qsv_bin" sqlp "$data" -Q --no-optimizations --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
-run sqlp_tryparsedates "$qsv_bin" sqlp "$data" -Q --try-parsedates --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
-run sqlp_tryparsedates_inferlen "$qsv_bin" sqlp "$data" -Q --infer-len 10000 --try-parsedates '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
+run sqlp_format_arrow "$qsv_bin" sqlp --format arrow "$data" -q --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
+run sqlp_format_avro "$qsv_bin" sqlp --format avro "$data" -q --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
+run sqlp_format_json "$qsv_bin" sqlp --format json "$data" -q --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
+run sqlp_format_jsonl "$qsv_bin" sqlp --format jsonl "$data" -q --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
+run sqlp_format_parquet "$qsv_bin" sqlp --format parquet "$data" -q --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
+run sqlp_format_parquet_statistics "$qsv_bin" sqlp --format parquet --statistics "$data" -q --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
+run sqlp_lowmemory "$qsv_bin" sqlp "$data" -q --low-memory --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
+run sqlp_nooptimizations "$qsv_bin" sqlp "$data" -q --no-optimizations --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
+run sqlp_tryparsedates "$qsv_bin" sqlp "$data" -q --try-parsedates --infer-len 100000 '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
+run sqlp_tryparsedates_inferlen "$qsv_bin" sqlp "$data" -q --infer-len 10000 --try-parsedates '"select * from _t_1 where \"Complaint Type\"='\''Noise'\'' and Borough='\''BROOKLYN'\''"'
 run stats "$qsv_bin" stats --force "$data"
-run stats_create_cache "$qsv_bin" stats --force "$data"
+run stats_create_cache "$qsv_bin" stats --force "$data" --cache-threshold 1
 run --index stats_index "$qsv_bin" stats --force "$data"
-run --index stats_index_with_cache "$qsv_bin" stats "$data"
+run --index stats_index_with_cache "$qsv_bin" stats "$data" --cache-threshold 1
 run --index stats_index_j1 "$qsv_bin" stats -j 1 --force "$data"
-run --index stats_index_j1_with_cache "$qsv_bin" stats -j 1 "$data"
+run --index stats_index_j1_with_cache "$qsv_bin" stats -j 1 "$data" --cache-threshold 1
 run stats_everything "$qsv_bin" stats "$data" --force --everything
-run stats_everything_create_cache "$qsv_bin" stats "$data" --force --everything
+run stats_everything_create_cache "$qsv_bin" stats "$data" --force --everything --cache-threshold 1
 run stats_everything_infer_dates "$qsv_bin" stats "$data" --force --everything --infer-dates
 run stats_everything_j1 "$qsv_bin" stats "$data" --force --everything -j 1
 run stats_everything_sorted "$qsv_bin" stats data_sorted.csv --force --everything
 run --index stats_everything_index "$qsv_bin" stats "$data" --force --everything
-run --index stats_everything_index_with_cache "$qsv_bin" stats "$data" --everything
+run --index stats_everything_index_with_cache "$qsv_bin" stats "$data" --everything --cache-threshold 1
 run --index stats_everything_infer_dates_index "$qsv_bin" stats "$data" --force --everything --infer-dates
-run --index stats_everything_infer_dates_index_with_cache "$qsv_bin" stats "$data" --everything --infer-dates
+run --index stats_everything_infer_dates_index_with_cache "$qsv_bin" stats "$data" --everything --infer-dates --cache-threshold 1
 run --index stats_everything_index_j1 "$qsv_bin" stats "$data" --force --everything -j 1
-run --index stats_everything_index_j1_with_cache "$qsv_bin" stats "$data" --everything -j 1
+run --index stats_everything_index_j1_with_cache "$qsv_bin" stats "$data" --everything -j 1 --cache-threshold 1
 run --index stats_everything_sorted_index "$qsv_bin" stats data_sorted.csv --force --everything
+run --index stats_everything_sorted_index_with_cache "$qsv_bin" stats data_sorted.csv --everything --cache-threshold 1
 run table "$qsv_bin" table "$data"
-run template "$qsv_bin" template --template-file template.tpl "$data" --output template_temp.txt
-run template_outdir "$qsv_bin" template --template-file template.tpl "$data" template_tempdir
-run template_lookup_outdir "$qsv_bin" template --template-file template-with-cb-lookup.tpl "$data" template_tempdir_lookup
+run template "$qsv_bin" template --template-file template.tpl "$data" >/dev/null
+run template_lookup_outdir "$qsv_bin" template --template-file template-with-cb-lookup.tpl "$data" >/dev/null
 run to_xlsx "$qsv_bin" to xlsx benchmark_work.xlsx "$data"
 run to_sqlite "$qsv_bin" to sqlite benchmark_work.db "$data"
 run to_datapackage "$qsv_bin" to datapackage benchmark_work.json "$data"

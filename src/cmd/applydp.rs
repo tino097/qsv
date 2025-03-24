@@ -185,7 +185,7 @@ Common options:
 
 use std::{str::FromStr, sync::OnceLock};
 
-use dynfmt::Format;
+use dynfmt2::Format;
 use log::debug;
 use rayon::{
     iter::{IndexedParallelIterator, ParallelIterator},
@@ -197,13 +197,13 @@ use smallvec::SmallVec;
 use strum_macros::EnumString;
 
 use crate::{
+    CliResult,
     clitypes::CliError,
     config::{Config, Delimiter},
     regex_oncelock,
     select::SelectColumns,
     util,
     util::replace_column_value,
-    CliResult,
 };
 
 #[derive(Clone, EnumString, PartialEq)]
@@ -460,7 +460,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                                 record_vec.push(field.to_string());
                             }
                             if let Ok(formatted) =
-                                dynfmt::SimpleCurlyFormat.format(&dynfmt_template, record_vec)
+                                dynfmt2::SimpleCurlyFormat.format(&dynfmt_template, record_vec)
                             {
                                 cell = formatted.to_string();
                             }

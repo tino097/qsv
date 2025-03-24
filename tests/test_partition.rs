@@ -3,8 +3,8 @@ use std::borrow::ToOwned;
 use crate::workdir::Workdir;
 
 macro_rules! part_eq {
-    ($wrk:expr, $path:expr, $expected:expr) => {
-        assert_eq!(
+    ($wrk:expr_2021, $path:expr_2021, $expected:expr_2021) => {
+        similar_asserts::assert_eq!(
             $wrk.from_str::<String>(&$wrk.path($path)),
             $expected.to_owned()
         );
@@ -13,7 +13,7 @@ macro_rules! part_eq {
 
 fn data(headers: bool) -> Vec<Vec<String>> {
     let mut rows = vec![
-        svec!["NY", "Manhatten"],
+        svec!["NY", "Manhattan"],
         svec!["CA", "San Francisco"],
         svec!["TX", "Dallas"],
         svec!["NY", "Buffalo"],
@@ -47,7 +47,7 @@ CA,San Francisco
         "NY.csv",
         "\
 state,city
-NY,Manhatten
+NY,Manhattan
 NY,Buffalo
 "
     );
@@ -87,7 +87,7 @@ San Francisco
         "NY.csv",
         "\
 city
-Manhatten
+Manhattan
 Buffalo
 "
     );
@@ -125,7 +125,7 @@ CA,San Francisco
         wrk,
         "NY.csv",
         "\
-NY,Manhatten
+NY,Manhattan
 NY,Buffalo
 "
     );
@@ -163,7 +163,7 @@ San Francisco
         wrk,
         "NY.csv",
         "\
-Manhatten
+Manhattan
 Buffalo
 "
     );

@@ -62,10 +62,11 @@ use indicatif::{HumanCount, ProgressBar, ProgressDrawTarget};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    CliResult,
     cmd::{dedup, sort::iter_cmp},
     config::{Config, Delimiter},
     select::SelectColumns,
-    util, CliResult,
+    util,
 };
 
 #[allow(dead_code)]
@@ -145,7 +146,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         let more_records = rdr.read_byte_record(&mut next_record)?;
         if !more_records {
             break;
-        };
+        }
         let a = sel.select(&record);
         let b = sel.select(&next_record);
         let comparison = if ignore_case {
@@ -218,7 +219,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             );
         } else {
             println!("{}", serde_json::to_string(&sortcheck_struct).unwrap());
-        };
+        }
     }
 
     if !sorted {

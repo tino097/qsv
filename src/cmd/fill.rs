@@ -53,15 +53,15 @@ Common options:
 
 use std::{io, iter, ops};
 
-use ahash::AHashMap;
+use foldhash::{HashMap, HashMapExt};
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
     select::{SelectColumns, Selection},
     util,
     util::ByteString,
-    CliResult,
 };
 
 type BoxedWriter = csv::Writer<Box<dyn io::Write + 'static>>;
@@ -144,8 +144,8 @@ impl ops::Deref for ByteRecord {
 }
 
 type GroupKey = Option<ByteRecord>;
-type GroupBuffer = AHashMap<GroupKey, Vec<ByteRecord>>;
-type Grouper = AHashMap<GroupKey, GroupValues>;
+type GroupBuffer = HashMap<GroupKey, Vec<ByteRecord>>;
+type Grouper = HashMap<GroupKey, GroupValues>;
 type GroupKeySelection = Option<Selection>;
 
 trait GroupKeyConstructor {
@@ -163,14 +163,14 @@ impl GroupKeyConstructor for GroupKeySelection {
 
 #[derive(Debug)]
 struct GroupValues {
-    map:     AHashMap<usize, ByteString>,
+    map:     HashMap<usize, ByteString>,
     default: Option<ByteString>,
 }
 
 impl GroupValues {
     fn new(default: Option<ByteString>) -> Self {
         Self {
-            map: AHashMap::new(),
+            map: HashMap::new(),
             default,
         }
     }
@@ -273,7 +273,7 @@ impl Filler {
                 (true, _) => {},
                 (false, true) => group.memorize_first(&self.select, &record),
                 (false, false) => group.memorize(&self.select, &record),
-            };
+            }
 
             let row = group.fill(&self.select, ByteRecord::from(&record));
 

@@ -35,5 +35,6 @@ tmp/*
 .env
 *.db
 *.snappy
+*.sz
 *.key
 *.psv

@@ -63,9 +63,21 @@ template arguments:
     <outdir>                    The directory where the output files will be written.
                                 If it does not exist, it will be created.
                                 If not set, output will be sent to stdout or the specified --output.
+                                When writing to <outdir>, files are organized into subdirectories
+                                of --outsubdir-size (default: 1000) files each to avoid filesystem
+                                navigation & performance issues.
+                                For example, with 3500 records:
+                                  <outdir>/0000/0001.txt through <outdir>/0000/1000.txt
+                                  <outdir>/0001/1001.txt through <outdir>/0001/2000.txt
+                                  <outdir>/0002/2001.txt through <outdir>/0002/3000.txt
+                                  <outdir>/0003/3001.txt through <outdir>/0003/4000.txt
 template options:
     --template <str>            MiniJinja template string to use (alternative to --template-file)
     -t, --template-file <file>  MiniJinja template file to use
+    -j, --globals-json <file>   A JSON file containing global variables to make available in templates.
+                                The JSON properties can be accessed in templates using the "qsv_g"
+                                namespace (e.g. {{qsv_g.school_name}}, {{qsv_g.year}}).
+                                This allows sharing common values across all template renders.
     --outfilename <str>         MiniJinja template string to use to create the filename of the output 
                                 files to write to <outdir>. If set to just QSV_ROWNO, the filestem
                                 is set to the current rowno of the record, padded with leading
@@ -73,6 +85,8 @@ template options:
                                 Note that all the fields, including QSV_ROWNO, are available
                                 when defining the filename template.
                                 [default: QSV_ROWNO]
+    --outsubdir-size <num>      The number of files per subdirectory in <outdir>.
+                                [default: 1000]
     --customfilter-error <msg>  The value to return when a custom filter returns an error.
                                 Use "<empty string>" to return an empty string.
                                 [default: <FILTER_ERROR>]
@@ -104,30 +118,34 @@ Common options:
 "#;
 
 use std::{
+    fmt::Write as _,
     fs,
     io::{BufWriter, Write},
+    path::PathBuf,
     sync::{
-        atomic::{AtomicBool, AtomicU16, Ordering},
         OnceLock, RwLock,
+        atomic::{AtomicBool, AtomicU16, Ordering},
     },
 };
 
-use ahash::{HashMap, HashMapExt};
+use foldhash::{HashMap, HashMapExt};
+#[cfg(any(feature = "feature_capable", feature = "lite"))]
 use indicatif::{ProgressBar, ProgressDrawTarget};
-use minijinja::{value::ValueKind, Environment, Value};
+use minijinja::{Environment, Value, value::ValueKind};
 use minijinja_contrib::pycompat::unknown_method_callback;
 use rayon::{
     iter::{IndexedParallelIterator, ParallelIterator},
     prelude::IntoParallelRefIterator,
 };
 use serde::Deserialize;
-use simd_json::BorrowedValue;
+use simd_json::{BorrowedValue, json};
 
 use crate::{
-    config::{Config, Delimiter, DEFAULT_WTR_BUFFER_CAPACITY},
+    CliError, CliResult,
+    config::{Config, DEFAULT_WTR_BUFFER_CAPACITY, Delimiter},
     lookup,
     lookup::LookupTableOptions,
-    util, CliError, CliResult,
+    util,
 };
 
 const QSV_ROWNO: &str = "QSV_ROWNO";
@@ -137,14 +155,17 @@ struct Args {
     arg_input:               Option<String>,
     arg_outdir:              Option<String>,
     flag_template:           Option<String>,
-    flag_template_file:      Option<String>,
+    flag_template_file:      Option<PathBuf>,
+    flag_globals_json:       Option<PathBuf>,
     flag_output:             Option<String>,
     flag_outfilename:        String,
+    flag_outsubdir_size:     u16,
     flag_customfilter_error: String,
     flag_jobs:               Option<usize>,
     flag_batch:              usize,
     flag_delimiter:          Option<Delimiter>,
     flag_no_headers:         bool,
+    #[allow(dead_code)]
     flag_progressbar:        bool,
     flag_timeout:            u16,
     flag_cache_dir:          String,
@@ -185,7 +206,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         _ => {
             return fail_incorrectusage_clierror!(
                 "Must provide either --template or --template-file"
-            )
+            );
         },
     };
 
@@ -206,6 +227,23 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         util::timeout_secs(args.flag_timeout)? as u16,
         Ordering::Relaxed,
     );
+
+    // setup globals JSON context if specified
+    let mut globals_flag = false;
+    let globals_ctx = if let Some(globals_json) = args.flag_globals_json {
+        globals_flag = true;
+        match std::fs::read(globals_json) {
+            Ok(mut bytes) => match simd_json::from_slice(&mut bytes) {
+                Ok(json) => json,
+                Err(e) => return fail_clierror!("Failed to parse globals JSON file: {e}"),
+            },
+            Err(e) => return fail_clierror!("Failed to read globals JSON file: {e}"),
+        }
+    } else {
+        json!("")
+    };
+
+    let globals_ctx_borrowed: simd_json::BorrowedValue = globals_ctx.into();
 
     // Set up minijinja environment
     let mut env = Environment::new();
@@ -237,7 +275,14 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         .no_headers(args.flag_no_headers);
     let mut rdr = rconfig.reader()?;
 
-    // read headers
+    // Get width of rowcount for padding leading zeroes and early return
+    let rowcount = util::count_rows(&rconfig)?;
+    if rconfig.no_headers && rowcount == 1 {
+        return Ok(());
+    }
+    let width = rowcount.to_string().len();
+
+    // read headers - the headers are used as MiniJinja variables in the template
     let headers = if args.flag_no_headers {
         csv::StringRecord::new()
     } else {
@@ -277,10 +322,6 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         filename_env.template_from_str("")?
     };
 
-    // Get width of rowcount for padding leading zeroes
-    let rowcount = util::count_rows(&rconfig)?;
-    let width = rowcount.to_string().len();
-
     let mut bulk_wtr = if output_to_dir {
         fs::create_dir_all(args.arg_outdir.as_ref().unwrap())?;
         None
@@ -305,10 +346,12 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let batchsize = util::optimal_batch_size(&rconfig, args.flag_batch, num_jobs);
 
     // prep progress bar
+    #[cfg(any(feature = "feature_capable", feature = "lite"))]
     let show_progress =
         (args.flag_progressbar || util::get_envvar_flag("QSV_PROGRESSBAR")) && !rconfig.is_stdin();
-
+    #[cfg(any(feature = "feature_capable", feature = "lite"))]
     let progress = ProgressBar::with_draw_target(None, ProgressDrawTarget::stderr_with_hz(5));
+    #[cfg(any(feature = "feature_capable", feature = "lite"))]
     if show_progress {
         util::prep_progress(&progress, rowcount);
     } else {
@@ -343,15 +386,16 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         let re = regex::Regex::new(r"register_lookup\([^)]+\)")?;
 
         // Extract all register_lookup statements into a temporary template
-        let mut temp_template = String::new();
-        for cap in re.find_iter(&template_content) {
-            temp_template.push_str("{% if not ");
-            temp_template.push_str(cap.as_str());
-            temp_template.push_str(&format!(
-                r#" %}}LOOKUP REGISTRATION ERROR: "{}"\n{{% endif %}}"#,
-                cap.as_str()
-            ));
-        }
+        // safety: safe to unwrap for write! as we're just using it to append to a String
+        let temp_template = re.find_iter(&template_content)
+            .fold(String::new(), |mut acc, cap| {
+                write!(
+                    acc,
+                    r#"{{% if not {cap_str} %}}LOOKUP REGISTRATION ERROR: "{cap_str}"\n{{% endif %}}"#,
+                    cap_str = cap.as_str(),
+                ).unwrap();
+                acc
+            });
 
         // Create a temporary environment just for parsing
         let temp_env = env.clone();
@@ -413,6 +457,13 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 let curr_record = record;
 
                 let mut context = simd_json::borrowed::Object::default();
+                // Add globals context to the record context
+                if globals_flag {
+                    context.insert(
+                        std::borrow::Cow::Borrowed("qsv_g"),
+                        globals_ctx_borrowed.clone(),
+                    );
+                }
                 context.reserve(headers_len);
                 let mut row_number = 0_u64;
 
@@ -438,7 +489,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         }
                     }
                 } else {
-                    // Use header names
+                    // Use header names as template variables
                     for (header, field) in headers.iter().zip(curr_record.iter()) {
                         context.insert(
                             std::borrow::Cow::Borrowed(header),
@@ -479,11 +530,33 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             .collect_into_vec(&mut batch_results);
 
         let mut outpath = std::path::PathBuf::new();
-        for result_record in &batch_results {
+        let mut current_subdir = None;
+        let outsubdir_numfiles = args.flag_outsubdir_size as usize;
+
+        for (idx, result_record) in batch_results.iter().enumerate() {
             if output_to_dir {
                 // safety: this is safe as output_to_dir = args.arg_outdir.is_some()
                 // and result_record.0 (the filename to use) is_some()
                 outpath.push(args.arg_outdir.as_ref().unwrap());
+
+                // Create subdirectory for every outsubdir_size files
+                // to make it easier to handle & navigate generated files
+                // particularly, if we're using a large input CSV
+                let subdir_num = idx / outsubdir_numfiles;
+
+                if current_subdir == Some(subdir_num) {
+                    outpath.push(format!("{subdir_num:0width$}"));
+                } else {
+                    // Only create new subdir when needed
+                    let subdir_name = format!("{subdir_num:0width$}");
+                    outpath.push(&subdir_name);
+
+                    if !outpath.exists() {
+                        fs::create_dir(&outpath)?;
+                    }
+                    current_subdir = Some(subdir_num);
+                }
+
                 outpath.push(result_record.0.as_deref().unwrap());
 
                 // if output_to_dir is true, we'll be writing a LOT of files (one for each row)
@@ -501,6 +574,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             }
         }
 
+        #[cfg(any(feature = "feature_capable", feature = "lite"))]
         if show_progress {
             progress.inc(batch.len() as u64);
         }
@@ -508,6 +582,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         batch.clear();
     } // end batch loop
 
+    #[cfg(any(feature = "feature_capable", feature = "lite"))]
     if show_progress {
         util::finish_progress(&progress);
     }
@@ -777,7 +852,7 @@ fn register_lookup(
     let row_len = lookup_table.headers.len();
     for record in rdr.records().flatten() {
         let mut row_data: HashMap<String, String> =
-            HashMap::with_capacity_and_hasher(row_len, ahash::RandomState::new());
+            HashMap::with_capacity_and_hasher(row_len, foldhash::fast::RandomState::default());
 
         // Store all fields for this row
         for (header, value) in lookup_table.headers.iter().zip(record.iter()) {
@@ -877,11 +952,14 @@ fn lookup_filter(
                 itoa_buf.format(value.as_i64().unwrap())
             } else {
                 let float_num: f64;
-                if let Ok(num) = value.clone().try_into() {
-                    float_num = num;
-                    ryu_buf.format(float_num)
-                } else {
-                    unreachable!("Kind::Number should be integer or float")
+                match value.clone().try_into() {
+                    Ok(num) => {
+                        float_num = num;
+                        ryu_buf.format(float_num)
+                    },
+                    _ => {
+                        unreachable!("Kind::Number should be integer or float")
+                    },
                 }
             }
         },

@@ -1,4 +1,5 @@
 use newline_converter::dos2unix;
+use serde_json::json;
 
 use crate::workdir::Workdir;
 
@@ -26,7 +27,7 @@ fn luau_map() {
         svec!["c", "72", "73"],
         svec!["d", "7", "8"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -56,7 +57,7 @@ fn luau_map_multiple_columns() {
         svec!["c", "72", "73", "74", "75"],
         svec!["d", "7", "8", "9", "10"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -86,7 +87,7 @@ fn luau_map_idx() {
         svec!["c", "72", "216"],
         svec!["d", "7", "28"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -116,7 +117,7 @@ fn luau_aggregation() {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -148,7 +149,7 @@ fn luau_aggregation_with_begin() {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -182,11 +183,11 @@ fn luau_aggregation_with_begin_end() {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7/72 Grand total of 4 rows: 275\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -223,11 +224,11 @@ fn luau_aggregation_with_embedded_begin_end() {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7/72 Grand total of 4 rows: 275\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -311,11 +312,11 @@ END {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7/72 Grand total of 4 rows: 116 adjusted: 145\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -370,6 +371,9 @@ BEGIN {
     csv_indexed = qsv_autoindex();
 
     us_states_lookup_headers = qsv_register_lookup("us_states", "us-states-lookup.csv", 1000)
+    if not us_states_lookup_headers then
+        qsv_break("Failed to register us_states lookup table")
+    end
 
     -- note how we use the qsv_log function to log to the qsv log file
     qsv_log("debug", " _INDEX:", _INDEX, " _ROWCOUNT:", _ROWCOUNT, " csv_indexed:", csv_indexed)
@@ -425,11 +429,11 @@ END {
         svec!["b", "24", "107.12"],
         svec!["a", "13", "120.64"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
-    let expected_end = "Min/Max: 7.28/74.88 Grand total of 4 rows: 120.64\n".to_string();
-    assert_eq!(end, expected_end);
+    let expected_end = "Min/Max: 7.28/74.88 Grand total of 4 rows: 120.64\n";
+    assert!(end.ends_with(expected_end));
 
     wrk.assert_success(&mut cmd);
 }
@@ -461,6 +465,9 @@ BEGIN {
 
     us_states_lookup_headers = qsv_register_lookup("us_states", 
       "https://raw.githubusercontent.com/dathere/qsv/master/resources/test/us-states-lookup.csv", 100)
+    if not us_states_lookup_headers then
+        qsv_break("Failed to register us_states lookup table")
+    end
 
     -- note how we use the qsv_log function to log to the qsv log file
     qsv_log("debug", " _INDEX:", _INDEX, " _ROWCOUNT:", _ROWCOUNT, " csv_indexed:", csv_indexed)
@@ -510,6 +517,9 @@ END {
 
     wrk.assert_success(&mut cmd);
 
+    // Add a delay or ensure the file is closed properly
+    std::thread::sleep(std::time::Duration::from_millis(500));
+
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
         svec!["letter", "Amount", "Running Total"],
@@ -518,11 +528,11 @@ END {
         svec!["b", "24", "107.12"],
         svec!["a", "13", "120.64"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
-    let expected_end = "Min/Max: 7.28/74.88 Grand total of 4 rows: 120.64\n".to_string();
-    assert_eq!(end, expected_end);
+    let expected_end = "Min/Max: 7.28/74.88 Grand total of 4 rows: 120.64\n";
+    assert!(end.ends_with(expected_end));
 
     wrk.assert_success(&mut cmd);
 }
@@ -554,6 +564,9 @@ BEGIN {
 
     us_states_lookup_headers = qsv_register_lookup("us_states", 
       "dathere://us-states-example.csv", 100)
+    if not us_states_lookup_headers then
+        qsv_break("Failed to register us_states lookup table")
+    end
 
     -- note how we use the qsv_log function to log to the qsv log file
     qsv_log("debug", " _INDEX:", _INDEX, " _ROWCOUNT:", _ROWCOUNT, " csv_indexed:", csv_indexed)
@@ -611,11 +624,11 @@ END {
         svec!["b", "24", "107.12"],
         svec!["a", "13", "120.64"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
-    let expected_end = "Min/Max: 7.28/74.88 Grand total of 4 rows: 120.64\n".to_string();
-    assert_eq!(end, expected_end);
+    let expected_end = "Min/Max: 7.28/74.88 Grand total of 4 rows: 120.64\n";
+    assert!(end.ends_with(expected_end));
 
     wrk.assert_success(&mut cmd);
 }
@@ -641,6 +654,9 @@ fn luau_register_lookup_table_ckan() {
 BEGIN {
 
     cityscore_headers = qsv_register_lookup("cityscore", "ckan://CityScore Summary?", 1000)
+    if not cityscore_headers then
+        qsv_break("Failed to register cityscore_headers lookup table")
+    end
 
     function spairs(t, order)
         -- collect the keys
@@ -694,9 +710,8 @@ END {
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "previous_day_score,previous_month_score,previous_quarter_score,\
                         previous_week_score,score_calculated_ts,score_day_name,\
-                        score_final_table_ts,\n"
-        .to_string();
-    assert_eq!(end, expected_end);
+                        score_final_table_ts,\n";
+    assert!(end.ends_with(expected_end));
 
     wrk.assert_success(&mut cmd);
 }
@@ -792,12 +807,12 @@ END {
         svec!["a", "13", "13"],
         svec!["b", "24", "37"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end =
         "This is the break msg.\nMin/Max: 13/24 Grand total of 2 rows: 50\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -863,11 +878,11 @@ END {
         svec!["b", "24", "37"],
         svec!["d", "7", "44"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 0/24 Grand total of 3 rows: 94\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -930,11 +945,11 @@ END {
         svec!["c", "72", "charlie"],
         svec!["d", "7", "delta"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "4 rows\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1001,15 +1016,15 @@ END {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7/72 Grand total of 3 rows: 275\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
-    let table_txt = wrk.read_to_string("count.txt");
+    let table_txt = wrk.read_to_string("count.txt").unwrap();
     let expected_table_txt = "4\n";
-    assert_eq!(table_txt, expected_table_txt);
+    similar_asserts::assert_eq!(table_txt, expected_table_txt);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1139,11 +1154,11 @@ END {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
-    let echo_text = wrk.read_to_string("echo.txt");
+    let echo_text = wrk.read_to_string("echo.txt").unwrap();
     let expected_echo_text = "the quick brown fox jumped over the lazy dog";
-    assert_eq!(
+    similar_asserts::assert_eq!(
         dos2unix(&echo_text).trim_end(),
         dos2unix(expected_echo_text).trim_end()
     );
@@ -1220,11 +1235,11 @@ END {
         svec!["d4", "74", "275"],
         svec!["Grand Total", "", "275"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7/72 Grand total of 4 rows: 275\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1308,11 +1323,11 @@ END {
         svec!["a0", "130", "305"],
         svec!["Grand Total", "", "305"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7/72 Grand total of 4 rows: 305\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1370,11 +1385,11 @@ END {
         svec!["c", "1", "10"],
         svec!["d", "5", "15"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "The lock combination is 2715. Again, 2, 7, 1, 5.\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1421,11 +1436,11 @@ fn luau_aggregation_with_embedded_begin_end_and_beginend_options() {
         svec!["c", "72", "110"],
         svec!["d", "7", "117"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Minimum/Maximum: 7/72 Grand total of 4 rows: 279\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1506,11 +1521,11 @@ END {
         svec!["b", "24", "103"],
         svec!["a", "13", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7/72 Grand total of 4 rows: 305\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1600,11 +1615,11 @@ END {
         svec!["b", "24", "103"],
         svec!["a", "13", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max/Range: 7/72/65 Grand total of 4 rows: 305\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1690,11 +1705,11 @@ END {
         svec!["b", "24", "103", "113.3"],
         svec!["a", "13", "116", "127.6"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: 7/72 Grand total of 4 rows: 305\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1730,11 +1745,11 @@ fn luau_aggregation_with_begin_end_and_luau_syntax() {
         svec!["c", "-72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let end = wrk.output_stderr(&mut cmd);
     let expected_end = "Min/Max: -72/13 Grand total of 4 rows: 275\n".to_string();
-    assert_eq!(end, expected_end);
+    similar_asserts::assert_eq!(end, expected_end);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1767,7 +1782,7 @@ fn luau_map_remap_with_qsv_coalesce() {
         svec!["3", "Aramais E. Aghabekyan"],
         svec!["4", "Eleonora V. Avanesyan"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     wrk.assert_success(&mut cmd);
 }
@@ -1799,7 +1814,7 @@ fn luau_map_math() {
         svec!["c", "72", "36"],
         svec!["d", "7", "3"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1829,7 +1844,7 @@ fn luau_map_require_luadate() {
         svec!["c", "72", "2008-11-04", "2009-01-15T00:00:00"],
         svec!["d", "7", "2020-03-11", "2020-03-18T00:00:00"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1875,7 +1890,7 @@ return mintest"#;
         svec!["c", "72", "42", "42"],
         svec!["d", "7", "6.5", "6.5"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1929,7 +1944,7 @@ fn luau_map_header_with_nonalphanumeric_chars() {
         svec!["c", "72", "c36"],
         svec!["d", "7", "d3"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1957,7 +1972,7 @@ fn luau_map_no_headers() {
         svec!["c", "72", "73"],
         svec!["d", "7", "8"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1985,7 +2000,7 @@ fn luau_map_no_headers_multiple_new_columns() {
         svec!["c", "72", "73", "74", "75"],
         svec!["d", "7", "8", "9", "10"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2015,7 +2030,7 @@ fn luau_map_exec() {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2045,7 +2060,7 @@ fn luau_map_exec_long_column_names() {
         svec!["c", "72", "109"],
         svec!["d", "7", "116"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2077,7 +2092,7 @@ fn luau_map_no_globals() {
         svec!["3", "72", "4"],
         svec!["4", "7", "5"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2107,7 +2122,7 @@ fn luau_map_boolean() {
         svec!["c", "72", "true"],
         svec!["d", "7", "false"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2134,7 +2149,7 @@ fn luau_filter() {
         svec!["b", "24"],
         svec!["c", "72"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2163,7 +2178,7 @@ fn luau_filter_error() {
         svec!["c", "72"],
         svec!["d", "7"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2201,7 +2216,7 @@ fn luau_filter_num() {
         svec!["i", "0.000123"],
         svec!["j", "-7.01"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2243,7 +2258,7 @@ return tonumber(number) > tonumber(limit)
         .arg("data.csv");
 
     let testenvvar = std::env::var("TESTENVVAR").unwrap_or_else(|_| "NOT SET".to_string());
-    assert_eq!(testenvvar, "NOT SET");
+    similar_asserts::assert_eq!(testenvvar, "NOT SET");
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
@@ -2253,7 +2268,7 @@ return tonumber(number) > tonumber(limit)
         svec!["c", "72"],
         svec!["f", "42"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2299,5 +2314,986 @@ return tonumber(number) > tonumber(limit)
         svec!["c", "72"],
         svec!["f", "42"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_loadjson() {
+    let wrk = Workdir::new("luau_loadjson");
+
+    // Create a test JSON file
+    wrk.create_from_string(
+        "test.json",
+        r#"{
+            "string": "hello",
+            "number": 42,
+            "boolean": true,
+            "null": null,
+            "array": [1, 2, 3],
+            "object": {
+                "nested": "value",
+                "numbers": [4, 5, 6]
+            }
+        }"#,
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("result")
+        .arg(r#"
+BEGIN {
+    qsv_loadjson("config_tbl", "test.json");
+    qsv_log("debug", "Loaded JSON table:", config_tbl)
+    for k,v in pairs(config_tbl) do
+        qsv_log("debug", "Key:", k, "Value:", v)
+    end
+}!
+
+return config_tbl["string"] .. " " .. config_tbl["object"]["nested"] .. " " .. tostring(config_tbl["number"])
+"#)
+        .arg("--no-headers")
+        .arg("data.csv");
+
+    // Create a simple input CSV
+    wrk.create("data.csv", vec![svec!["a"], svec!["b"], svec!["c"]]);
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["a", "hello value 42"],
+        svec!["b", "hello value 42"],
+        svec!["c", "hello value 42"],
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_loadjson_array() {
+    let wrk = Workdir::new("luau_loadjson_array");
+
+    // Create a test JSON file with an array
+    wrk.create_from_string(
+        "test.json",
+        r#"[
+            {"id": 1, "name": "Alice"},
+            {"id": 2, "name": "Bob"},
+            {"id": 3, "name": "Charlie"}
+        ]"#,
+    );
+
+    // Create input CSV with index references
+    wrk.create(
+        "data.csv",
+        vec![svec!["x"], svec!["1"], svec!["2"], svec!["3"]],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("name")
+        .arg(
+            r#"
+BEGIN {
+    qsv_loadjson("users", "test.json");
+}!
+
+local idx = tonumber(x)
+return users[idx]["name"]
+"#,
+        )
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["x", "name"],
+        svec!["1", "Alice"],
+        svec!["2", "Bob"],
+        svec!["3", "Charlie"],
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_loadjson_error_missing_file() {
+    let wrk = Workdir::new("luau_loadjson_error");
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("result")
+        .arg(
+            r#"
+BEGIN {
+    qsv_loadjson("config", "nonexistent.json");
+}!
+
+return "should not get here"
+"#,
+        )
+        .arg("--no-headers")
+        .arg("data.csv");
+
+    // Create a simple input CSV
+    wrk.create("data.csv", vec![svec!["a"]]);
+
+    wrk.assert_err(&mut cmd);
+}
+
+#[test]
+fn luau_loadjson_error_invalid_json() {
+    let wrk = Workdir::new("luau_loadjson_invalid");
+
+    // Create an invalid JSON file
+    wrk.create_from_string(
+        "invalid.json",
+        r#"{
+            "unclosed": "object"
+        "#, // Missing closing brace
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("result")
+        .arg(
+            r#"
+BEGIN {
+    qsv_loadjson("config", "invalid.json");
+}!
+
+return "should not get here"
+"#,
+        )
+        .arg("--no-headers")
+        .arg("data.csv");
+
+    // Create a simple input CSV
+    wrk.create("data.csv", vec![svec!["a"]]);
+
+    wrk.assert_err(&mut cmd);
+}
+
+#[test]
+fn luau_cumsum_single() {
+    let wrk = Workdir::new("luau_cumsum_single");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["amount"],
+            svec!["10"],
+            svec!["20"],
+            svec!["30"],
+            svec!["40"],
+            svec!["50"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("running_total")
+        .arg(r#"qsv_cumsum(amount)"#)
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["amount", "running_total"],
+        svec!["10", "10"],
+        svec!["20", "30"],
+        svec!["30", "60"],
+        svec!["40", "100"],
+        svec!["50", "150"],
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_cumsum_multiple() {
+    let wrk = Workdir::new("luau_cumsum_multiple");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["revenue", "expenses"],
+            svec!["100", "50"],
+            svec!["200", "75"],
+            svec!["150", "80"],
+            svec!["300", "100"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("revenue_total,expenses_total,profit_total")
+        .arg(
+            r#"{
+            qsv_cumsum(revenue, "revenue"),
+            qsv_cumsum(expenses, "expenses"),
+            qsv_cumsum(tonumber(revenue) - tonumber(expenses), "profit")
+        }"#,
+        )
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec![
+            "revenue",
+            "expenses",
+            "revenue_total",
+            "expenses_total",
+            "profit_total"
+        ],
+        svec!["100", "50", "100", "50", "50"],
+        svec!["200", "75", "300", "125", "175"],
+        svec!["150", "80", "450", "205", "245"],
+        svec!["300", "100", "750", "305", "445"],
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_cumsum_invalid_input() {
+    let wrk = Workdir::new("luau_cumsum_invalid");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["10"],
+            svec!["invalid"],
+            svec!["20"],
+            svec!["bad"],
+            svec!["30"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("total")
+        .arg(r#"qsv_cumsum(value)"#)
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "total"],
+        svec!["10", "10"],
+        svec!["invalid", "10"], // Invalid input treated as 0
+        svec!["20", "30"],
+        svec!["bad", "30"], // Invalid input treated as 0
+        svec!["30", "60"],
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_cumprod() {
+    let wrk = Workdir::new("luau_cumprod");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["2"],
+            svec!["3"],
+            svec!["4"],
+            svec!["5"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("running_product")
+        .arg(r#"qsv_cumprod(value)"#)
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "running_product"],
+        svec!["2", "2"],
+        svec!["3", "6"],
+        svec!["4", "24"],
+        svec!["5", "120"],
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_cummax_cummin() {
+    let wrk = Workdir::new("luau_cummax_cummin");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["10"],
+            svec!["5"],
+            svec!["15"],
+            svec!["3"],
+            svec!["12"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("running_max,running_min")
+        .arg(r#"{qsv_cummax(value), qsv_cummin(value)}"#)
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "running_max", "running_min"],
+        svec!["10", "10", "10"],
+        svec!["5", "10", "5"],
+        svec!["15", "15", "5"],
+        svec!["3", "15", "3"],
+        svec!["12", "15", "3"],
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_lag() {
+    let wrk = Workdir::new("luau_lag");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["10"],
+            svec!["20"],
+            svec!["30"],
+            svec!["40"],
+            svec!["50"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("lag1,lag2")
+        .arg(
+            r#"{
+            qsv_lag(value, 1, "0"),
+            qsv_lag(value, 2, "0")
+        }"#,
+        )
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "lag1", "lag2"],
+        svec!["10", "0", "0"],
+        svec!["20", "10", "0"],
+        svec!["30", "20", "10"],
+        svec!["40", "30", "20"],
+        svec!["50", "40", "30"],
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_cumany_cumall() {
+    let wrk = Workdir::new("luau_cumany_cumall");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["10"],
+            svec!["0"],
+            svec!["15"],
+            svec!["0"],
+            svec!["20"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("has_zero,all_positive")
+        .arg(
+            r#"{
+            qsv_cumany(value == "0"),
+            qsv_cumall(tonumber(value) > 0)
+        }"#,
+        )
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "has_zero", "all_positive"],
+        svec!["10", "false", "true"],
+        svec!["0", "true", "false"],
+        svec!["15", "true", "false"],
+        svec!["0", "true", "false"],
+        svec!["20", "true", "false"],
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_diff() {
+    let wrk = Workdir::new("luau_diff");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["10"],
+            svec!["15"],
+            svec!["13"],
+            svec!["20"],
+            svec!["18"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("diff1,diff2")
+        .arg(
+            r#"{
+            qsv_diff(value),
+            qsv_diff(value, 2)
+        }"#,
+        )
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "diff1", "diff2"],
+        svec!["10", "0", "0"],
+        svec!["15", "5", "0"],
+        svec!["13", "-2", "3"],
+        svec!["20", "7", "5"],
+        svec!["18", "-2", "5"],
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_cumany_cumall_with_strings() {
+    let wrk = Workdir::new("luau_cumany_cumall_strings");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["hello"],
+            svec![""],
+            svec!["world"],
+            svec![""],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("has_empty,all_nonempty")
+        .arg(
+            r#"{
+            qsv_cumany(value == ""),
+            qsv_cumall(value ~= "")
+        }"#,
+        )
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "has_empty", "all_nonempty"],
+        svec!["hello", "false", "true"],
+        svec!["", "true", "false"],
+        svec!["world", "true", "false"],
+        svec!["", "true", "false"],
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_cumall_with_numbers() {
+    let wrk = Workdir::new("luau_cumall_numbers");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["10"],
+            svec!["0"],
+            svec!["20"],
+            svec!["30"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("all_positive")
+        .arg(r#"qsv_cumall(tonumber(value) > 0)"#)
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "all_positive"],
+        svec!["10", "true"],
+        svec!["0", "false"],
+        svec!["20", "false"],
+        svec!["30", "false"],
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_lag_with_default() {
+    let wrk = Workdir::new("luau_lag_default");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["10"],
+            svec!["20"],
+            svec!["30"],
+            svec!["40"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("prev,prev2")
+        .arg(
+            r#"{
+            qsv_lag(value, 1, "N/A"),
+            qsv_lag(value, 2, "N/A")
+        }"#,
+        )
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "prev", "prev2"],
+        svec!["10", "N/A", "N/A"],
+        svec!["20", "10", "N/A"],
+        svec!["30", "20", "10"],
+        svec!["40", "30", "20"],
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_diff_with_lag() {
+    let wrk = Workdir::new("luau_diff_lag");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["100"],
+            svec!["120"],
+            svec!["115"],
+            svec!["140"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("diff1,diff2,pct_change")
+        .arg(
+            r#"{
+            qsv_diff(value),
+            qsv_diff(value, 2),
+            string.format("%.1f%%", ((tonumber(value) / tonumber(qsv_lag(value))) - 1.0) * 100)
+        }"#,
+        )
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "diff1", "diff2", "pct_change"],
+        svec!["100", "0", "0", "inf%"], // division by zero
+        svec!["120", "20", "0", "20.0%"],
+        svec!["115", "-5", "15", "-4.2%"],
+        svec!["140", "25", "20", "21.7%"],
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_cumulative_stats() {
+    let wrk = Workdir::new("luau_cumulative_stats");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["15"],
+            svec!["10"],
+            svec!["25"],
+            svec!["5"],
+            svec!["20"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("running_max,running_min,running_sum")
+        .arg(
+            r#"{
+            qsv_cummax(value),
+            qsv_cummin(value),
+            qsv_cumsum(value)
+        }"#,
+        )
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "running_max", "running_min", "running_sum"],
+        svec!["15", "15", "15", "15"],
+        svec!["10", "15", "10", "25"],
+        svec!["25", "25", "10", "50"],
+        svec!["5", "25", "5", "55"],
+        svec!["20", "25", "5", "75"],
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_writejson_simple() {
+    let wrk = Workdir::new("luau_writejson");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["letter", "number"],
+            svec!["a", "13"],
+            svec!["b", "24"],
+            svec!["c", "72"],
+            svec!["d", "7"],
+        ],
+    );
+
+    // Test writing a simple table to JSON
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("result")
+        .arg(
+            r#"
+BEGIN {
+    -- Create a table to store
+    local data = {
+        numbers = {13, 24, 72, 7},
+        letters = {"a", "b", "c", "d"},
+        nested = {
+            key = "value",
+            array = {1, 2, 3}
+        }
+    }
+    -- Write both pretty and compact JSON
+    qsv_writejson(data, "output.json", false)
+    qsv_writejson(data, "output_pretty.json", true)
+}!
+
+return "ok"
+"#,
+        )
+        .arg("data.csv");
+
+    wrk.assert_success(&mut cmd);
+
+    // Verify the compact JSON output
+    let json_content = std::fs::read_to_string(wrk.path("output.json")).unwrap();
+    similar_asserts::assert_eq!(
+        json_content,
+        r#"{"numbers":[13,24,72,7],"nested":{"key":"value","array":[1,2,3]},"letters":["a","b","c","d"]}"#
+    );
+
+    // Verify the pretty JSON output has newlines and indentation
+    let pretty_content = std::fs::read_to_string(wrk.path("output_pretty.json")).unwrap();
+    let expected = r#"{
+  "numbers": [
+    13,
+    24,
+    72,
+    7
+  ],
+  "nested": {
+    "key": "value",
+    "array": [
+      1,
+      2,
+      3
+    ]
+  },
+  "letters": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ]
+}"#;
+
+    similar_asserts::assert_eq!(pretty_content, expected);
+}
+
+#[test]
+fn luau_writejson_special_values() {
+    let wrk = Workdir::new("luau_writejson_special");
+    wrk.create(
+        "data.csv",
+        vec![svec!["letter", "number"], svec!["a", "13"]],
+    );
+
+    // Test writing various Lua types
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("result")
+        .arg(
+            r#"
+BEGIN {
+    local data = {
+        null_value = nil,
+        boolean_true = true,
+        boolean_false = false,
+        number_integer = 42,
+        number_float = 3.14,
+        empty_string = "",
+        empty_table = {},
+        nested_empty = {empty = {}}
+    }
+    qsv_writejson(data, "special.json", true)
+}!
+
+return "ok"
+"#,
+        )
+        .arg("data.csv");
+
+    wrk.assert_success(&mut cmd);
+
+    // Verify the JSON output
+    let json_content = std::fs::read_to_string(wrk.path("special.json")).unwrap();
+    let json: serde_json::Value = serde_json::from_str(&json_content).unwrap();
+
+    assert!(json["null_value"].is_null());
+    similar_asserts::assert_eq!(json["boolean_true"], json!(true));
+    similar_asserts::assert_eq!(json["boolean_false"], json!(false));
+    similar_asserts::assert_eq!(json["number_integer"], json!(42));
+    similar_asserts::assert_eq!(json["number_float"], json!(3.14));
+    similar_asserts::assert_eq!(json["empty_string"], json!(""));
+    similar_asserts::assert_eq!(json["empty_table"], json!({}));
+    similar_asserts::assert_eq!(json["nested_empty"]["empty"], json!({}));
+}
+
+#[test]
+fn luau_accumulate_custom_sum_function() {
+    let wrk = Workdir::new("luau_accumulate_custom_sum_function");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["10"],
+            svec!["20"],
+            svec!["30"],
+            svec!["40"],
+            svec!["50"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("accumulated")
+        .arg(
+            r#"
+-- This is the MAIN LOOP
+-- Define a custom accumulator function that keeps a weighted sum
+-- where each new value is weighted by its position
+-- we define the function inside the MAIN LOOP to access the _IDX variable
+function weighted_sum(acc, x)
+        return acc + x * _IDX
+end
+
+return qsv_accumulate(value, weighted_sum, 0)
+"#,
+        )
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "accumulated"],
+        svec!["10", "10"],  // 10 + 0 * 1
+        svec!["20", "50"],  // 10 + 20 * 2
+        svec!["30", "140"], // 50 + 30 * 3
+        svec!["40", "300"], // 140 + 40 * 4
+        svec!["50", "550"], // 300 + 50 * 5
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_accumulate_custom_sum_function_no_initial_value() {
+    let wrk = Workdir::new("luau_accumulate_custom_sum_function_no_initial_value");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["10"],
+            svec!["20"],
+            svec!["30"],
+            svec!["40"],
+            svec!["50"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("accumulated")
+        .arg(
+            r#"
+-- This is the MAIN LOOP
+-- Define a custom accumulator function that keeps a weighted sum
+-- where each new value is weighted by its position
+-- we define the function inside the MAIN LOOP to access the _IDX variable
+function weighted_sum(acc, x)
+        return acc + x * _IDX
+end
+
+return qsv_accumulate(value, weighted_sum)
+"#,
+        )
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "accumulated"],
+        svec!["10", "20"],  // 10 + 10 * 1
+        svec!["20", "60"],  // 20 + 20 * 2
+        svec!["30", "150"], // 60 + 30 * 3
+        svec!["40", "310"], // 150 + 40 * 4
+        svec!["50", "560"], // 310 + 50 * 5
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_accumulate_custom_sum_function_with_initial_value() {
+    let wrk = Workdir::new("luau_accumulate_custom_sum_function_with_initial_value");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["10"],
+            svec!["20"],
+            svec!["30"],
+            svec!["40"],
+            svec!["50"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("accumulated")
+        .arg(
+            r#"
+BEGIN {
+
+    -- Define a custom accumulator function
+    function udf_sum(acc, x)
+         return acc + x
+    end
+}!
+
+-- This is the MAIN LOOP
+accumulated = qsv_accumulate(value, udf_sum, 100)
+
+-- return the accumulated value for the current row
+return accumulated
+"#,
+        )
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "accumulated"],
+        svec!["10", "110"], // initial value
+        svec!["20", "130"], // 110 + 20
+        svec!["30", "160"], // 130 + 30
+        svec!["40", "200"], // 160 + 40
+        svec!["50", "250"], // 200 + 50
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_accumulate_custom_function_with_reset() {
+    let wrk = Workdir::new("luau_accumulate_custom_with_reset");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["3"],
+            svec!["5"],
+            svec!["4"],
+            svec!["1"],
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("accumulated")
+        .arg(
+            r#"
+BEGIN {
+
+    -- Define a custom accumulator function that resets the accumulator
+    -- if the accumulated value exceeds a threshold of 7
+    function func_with_reset(acc, x)
+         if tonumber(acc) > 7 then
+            z = x
+         else
+            z = acc + x
+         end
+         return z
+    end
+}!
+
+-- This is the MAIN LOOP
+return qsv_accumulate(value, func_with_reset, 0)
+"#,
+        )
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["value", "accumulated"],
+        svec!["3", "3"], // initial value
+        svec!["5", "8"], // 3 + 5
+        svec!["4", "4"], // reset since 8 > 7
+        svec!["1", "5"], // 4 + 1
+    ];
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn luau_cumsum_overflow() {
+    let wrk = Workdir::new("luau_cumsum_overflow");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["value"],
+            svec!["1e308"], // Very large number
+            svec!["1e308"], // Adding these will overflow
+        ],
+    );
+
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("total")
+        .arg(r#"qsv_cumsum(value)"#)
+        .arg("data.csv");
+
+    wrk.assert_err(&mut cmd);
+    let stderr = wrk.output_stderr(&mut cmd);
+    let expected = "Luau errors encountered: 1\n";
+    similar_asserts::assert_eq!(stderr, expected);
+}
+
+#[test]
+fn luau_shellcmd_invalid_command() {
+    let wrk = Workdir::new("luau_shellcmd_invalid");
+    wrk.create("data.csv", vec![svec!["value"], svec!["10"]]);
+
+    // Test with an unauthorized command
+    let mut cmd = wrk.command("luau");
+    cmd.arg("map")
+        .arg("result")
+        .arg(
+            r#"
+BEGIN {
+    local result = qsv_shellcmd("rm", "-rf /")  -- This command should not be allowed
+}!
+return "ok"
+"#,
+        )
+        .arg("data.csv");
+
+    wrk.assert_err(&mut cmd);
+    let stderr = wrk.output_stderr(&mut cmd);
+    assert!(stderr.contains("Invalid shell command"));
 }

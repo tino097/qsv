@@ -20,6 +20,8 @@ pub fn stats_cmd() -> Command {
         arg!(--jobs),
         arg!(--"stats-jsonl"),
         arg!(--"cache-threshold"),
+        arg!(--"vis-whitespace"),
+        arg!(--"dataset-stats"),
         arg!(--output),
         arg!(--"no-headers"),
         arg!(--delimiter),

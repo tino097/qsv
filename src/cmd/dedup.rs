@@ -46,7 +46,7 @@ Common options:
                                appear as the header row in the output.
     -d, --delimiter <arg>      The field delimiter for reading CSV data.
                                Must be a single character. (default: ,)
-    -Q, --quiet                Do not print duplicate count to stderr.
+    -q, --quiet                Do not print duplicate count to stderr.
     --memcheck                 Check if there is enough memory to load the entire
                                CSV into memory using CONSERVATIVE heuristics.
 "#;
@@ -56,13 +56,13 @@ use std::cmp;
 use csv::ByteRecord;
 use rayon::slice::ParallelSliceMut;
 use serde::Deserialize;
-use simdutf8::basic::from_utf8;
 
 use crate::{
+    CliResult,
     cmd::sort::{iter_cmp, iter_cmp_num},
     config::{Config, Delimiter},
     select::SelectColumns,
-    util, CliResult,
+    util,
 };
 #[derive(Deserialize)]
 struct Args {
@@ -81,6 +81,7 @@ struct Args {
     flag_memcheck:       bool,
 }
 
+#[derive(Debug)]
 enum ComparisonMode {
     Numeric,
     IgnoreCase,
@@ -127,7 +128,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             if !more_records {
                 wtr.write_byte_record(&record)?;
                 break;
-            };
+            }
             let a = sel.select(&record);
             let b = sel.select(&next_record);
             let comparison = match compare_mode {
@@ -148,7 +149,11 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 },
                 cmp::Ordering::Greater => {
                     return fail_clierror!(
-                        "Aborting! Input not sorted! {record:?} is greater than {next_record:?}"
+                        r#"Aborting! Input not sorted! Current record is greater than Next record.
+  Compare mode: {compare_mode:?};  Select columns index/es (0-based): {sel:?}
+  Current: {record:?}
+     Next: {next_record:?}
+"#
                     );
                 },
             }
@@ -272,6 +277,6 @@ where
     X: Iterator<Item = &'a [u8]>,
 {
     xs.next()
-        .and_then(|bytes| from_utf8(bytes).ok())
+        .and_then(|bytes| simdutf8::basic::from_utf8(bytes).ok())
         .map(str::to_lowercase)
 }

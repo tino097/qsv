@@ -70,7 +70,9 @@ It has 40 supported operations:
       The decimal separator can be specified with --replacement (default: '.')
   * currencytonum: Gets the numeric value of a currency. Supports currency symbols
       (e.g. $,¥,£,€,֏,₱,₽,₪,₩,ƒ,฿,₫) and strings (e.g. USD, EUR, RMB, JPY, etc.). 
-      Recognizes point, comma and space separators.
+      Recognizes point, comma and space separators. Is "permissive" by default, meaning it
+      will allow no or non-ISO currency symbols. To enforce strict parsing, which will require
+      a valid ISO currency symbol, set the --formatstr to "strict".
   * numtocurrency: Convert a numeric value to a currency. Specify the currency symbol
       with --comparand. Automatically rounds values to two decimal places. Specify
       "euro" formatting (e.g. 1.000,00 instead of 1,000.00 ) by setting --formatstr to "euro".
@@ -267,7 +269,14 @@ apply options:
                                 Also used with numtocurrency operation to conversion rate.
     -f, --formatstr=<string>    This option is used by several subcommands:
 
-                                OPERATIONS: 
+                                OPERATIONS:
+                                  currencytonum
+                                    If set to "strict", will require a valid ISO currency symbol,
+                                    with the currency symbol at the beginning of the string.
+                                    Otherwise, only parse the numeric part of the string and ignore
+                                    the currency symbol altogether.
+                                    (default: permissive)
+
                                   numtocurrency
                                     If set to "euro", will format the currency to use "." instead of ","
                                     as separators (e.g. 1.000,00 instead of 1,000.00 )
@@ -308,7 +317,7 @@ use censor::{Censor, Sex, Zealous};
 use cpc::{eval, units::Unit};
 use crc32fast;
 use data_encoding::BASE64;
-use dynfmt::Format;
+use dynfmt2::Format;
 use eudex::Hash;
 use gender_guesser::Gender;
 use indicatif::{ProgressBar, ProgressDrawTarget};
@@ -327,18 +336,18 @@ use strsim::{
     sorensen_dice,
 };
 use strum_macros::EnumString;
-use thousands::{policies, Separable, SeparatorPolicy};
+use thousands::{Separable, SeparatorPolicy, policies};
 use titlecase::titlecase;
 use whatlang::detect;
 
 use crate::{
+    CliResult,
     clitypes::CliError,
     config::{Config, Delimiter},
     regex_oncelock,
     select::SelectColumns,
     util,
     util::replace_column_value,
-    CliResult,
 };
 
 #[derive(Clone, EnumString, PartialEq)]
@@ -643,7 +652,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                                 record_vec.push(field.to_string());
                             }
                             if let Ok(formatted) =
-                                dynfmt::SimpleCurlyFormat.format(&dynfmt_template, record_vec)
+                                dynfmt2::SimpleCurlyFormat.format(&dynfmt_template, record_vec)
                             {
                                 cell = formatted.to_string();
                             }
@@ -664,7 +673,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                                 record_vec.push(field.to_string());
                             }
                             if let Ok(formatted) =
-                                dynfmt::SimpleCurlyFormat.format(&dynfmt_template, record_vec)
+                                dynfmt2::SimpleCurlyFormat.format(&dynfmt_template, record_vec)
                             {
                                 cell = formatted.to_string();
                             }
@@ -872,7 +881,7 @@ fn validate_operations(
                 };
                 if THOUSANDS_POLICY.set(separator_policy).is_err() {
                     return fail!("Cannot initialize Thousands policy.");
-                };
+                }
             },
             Operations::Round => {
                 if ROUND_PLACES
@@ -884,7 +893,7 @@ fn validate_operations(
                     .is_err()
                 {
                     return fail!("Cannot initialize Round precision.");
-                };
+                }
             },
             Operations::Crc32 => {
                 if CRC32.set(crc32fast::Hasher::new()).is_err() {
@@ -965,7 +974,7 @@ fn validate_operations(
              similarity({sim_invokes}), strip({strip_invokes}), and whatlang({whatlang_invokes}) \
              ONCE per operation series."
         );
-    };
+    }
 
     Ok(ops_vec) // no validation errors
 }
@@ -1140,11 +1149,11 @@ fn apply_operations(
                 }
             },
             Operations::Currencytonum => {
-                // this is a workaround around current limitation of qsv-currency
+                // Handle currency strings with 3 decimal places by appending a 0
+                // to make it 4 decimal places without affecting the value
+                // This is a workaround around current limitation of qsv-currency
                 // and also of upstream currency-rs, that it cannot
                 // handle currency amounts properly with three decimal places
-                // to get around this limitation, we append a 0 at the end to make it four
-                // decimal places without affecting the value
                 let fract_3digits: &'static Regex = regex_oncelock!(r"\.\d\d\d$");
                 let cell_val = if fract_3digits.is_match(cell) {
                     format!("{cell}0")
@@ -1153,16 +1162,57 @@ fn apply_operations(
                 };
 
                 if let Ok(currency_val) = Currency::from_str(&cell_val) {
-                    // currency is stored as a BigInt, with
-                    // 1 currency unit being 100 coins
-                    let currency_coins = currency_val.value();
-                    let coins = format!("{:03}", &currency_coins);
-                    let coinlen = coins.len();
-                    if coinlen > 2 && coins != "000" {
-                        let decpoint = coinlen - 2;
-                        let coin_num = &coins[..decpoint];
-                        let coin_frac = &coins[decpoint..];
-                        *cell = format!("{coin_num}.{coin_frac}");
+                    if formatstr == "strict" {
+                        // Process ISO currency values
+                        let currency_coins = currency_val.value();
+                        let coins = format!("{:03}", &currency_coins);
+
+                        if currency_val.is_iso_currency() {
+                            if coins == "000" {
+                                *cell = "0.00".to_string();
+                            } else {
+                                let coinlen = coins.len();
+                                if coinlen > 2 {
+                                    let decpoint = coinlen - 2;
+                                    let coin_num = &coins[..decpoint];
+                                    let coin_frac = &coins[decpoint..];
+                                    *cell = format!("{coin_num}.{coin_frac}");
+                                }
+                            }
+                        }
+                    } else {
+                        // For non-strict mode, extract numeric parts from currency strings
+                        // using regex that handles various formats including thousand separators
+                        // we ignore the currency symbol altogether
+                        let numparts_re: &'static Regex =
+                            regex_oncelock!(r"-?(?:\d{1,3}(?:[,. ]\d{3})+|(?:\d+))(?:[,.]\d+)?");
+
+                        if let Some(numparts) = numparts_re.find(cell) {
+                            // use the same workaround as above to handle 3 decimal places
+                            let numparts_str = numparts.as_str();
+                            let numparts_val = if fract_3digits.is_match(numparts_str) {
+                                format!("{numparts_str}0")
+                            } else {
+                                numparts_str.to_string()
+                            };
+
+                            if let Ok(extracted_currency) = Currency::from_str(&numparts_val) {
+                                let currency_coins = extracted_currency.value();
+                                let coins = format!("{:03}", &currency_coins);
+
+                                if coins == "000" {
+                                    *cell = "0.00".to_string();
+                                } else {
+                                    let coinlen = coins.len();
+                                    if coinlen > 2 {
+                                        let decpoint = coinlen - 2;
+                                        let coin_num = &coins[..decpoint];
+                                        let coin_frac = &coins[decpoint..];
+                                        *cell = format!("{coin_num}.{coin_frac}");
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -1178,7 +1228,7 @@ fn apply_operations(
                 if let Ok(currency_value) = Currency::from_str(&cell_val) {
                     let currency_wrk = currency_value
                         .convert(replacement.parse::<f64>().unwrap_or(1.0_f64), comparand);
-                    *cell = if formatstr.contains("euro") {
+                    *cell = if formatstr == "euro" {
                         format!("{currency_wrk:e}")
                     } else {
                         format!("{currency_wrk}")

@@ -30,7 +30,7 @@ h1\th2
 abcdef\tghijkl
 mnopqr\tstuvwx
 \"ab\"\"cd\"\"ef\"\tgh,ij,kl";
-    assert_eq!(got, expected.to_string());
+    similar_asserts::assert_eq!(got, expected.to_string());
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn fmt_weird_delimiter() {
 abcdefh\"ghijkl\"
 mnopqrhstuvwx
 \"ab\"\"cd\"\"ef\"h\"gh,ij,kl\"";
-    assert_eq!(got, expected.to_string());
+    similar_asserts::assert_eq!(got, expected.to_string());
 }
 
 #[test]
@@ -58,7 +58,7 @@ h1,h2\r
 abcdef,ghijkl\r
 mnopqr,stuvwx\r
 \"ab\"\"cd\"\"ef\",\"gh,ij,kl\"";
-    assert_eq!(got, expected.to_string());
+    similar_asserts::assert_eq!(got, expected.to_string());
 }
 
 #[test]
@@ -68,7 +68,7 @@ fn fmt_tab_delimiter() {
 
     let got: String = wrk.stdout(&mut cmd);
     let expected = "h1\th2\nabcdef\tghijkl\nmnopqr\tstuvwx\n\"ab\"\"cd\"\"ef\"\tgh,ij,kl";
-    assert_eq!(got, expected.to_string());
+    similar_asserts::assert_eq!(got, expected.to_string());
 }
 
 #[test]
@@ -81,7 +81,7 @@ fn fmt_nofinalnewline() {
 abcdef,ghijkl
 mnopqr,stuvwx
 "ab""cd""ef","gh,ij,kl""#;
-    assert_eq!(got, expected.to_string());
+    similar_asserts::assert_eq!(got, expected.to_string());
 }
 
 #[test]
@@ -94,14 +94,14 @@ fn fmt_output() {
 
     wrk.assert_success(&mut cmd);
 
-    let got = wrk.read_to_string(&output_file);
+    let got = wrk.read_to_string(&output_file).unwrap();
 
     let expected = r#"h1,h2
 abcdef,ghijkl
 mnopqr,stuvwx
 "ab""cd""ef","gh,ij,kl"
 "#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -115,7 +115,7 @@ fn fmt_quote_always() {
 \"abcdef\",\"ghijkl\"
 \"mnopqr\",\"stuvwx\"
 \"ab\"\"cd\"\"ef\",\"gh,ij,kl\"";
-    assert_eq!(got, expected.to_string());
+    similar_asserts::assert_eq!(got, expected.to_string());
 }
 
 #[test]
@@ -129,5 +129,5 @@ h1,h2
 abcdef,ghijkl
 mnopqr,stuvwx
 ab\"cd\"ef,gh,ij,kl";
-    assert_eq!(got, expected.to_string());
+    similar_asserts::assert_eq!(got, expected.to_string());
 }

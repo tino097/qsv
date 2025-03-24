@@ -27,7 +27,7 @@ jobs:
     runs-on: ${{ matrix.job.os }}
     strategy:
       matrix:
-        rust: [nightly-2024-11-28]
+        rust: [nightly-2025-03-07]
         job:
           - os: ubuntu-24.04
             os-name: linux
@@ -36,7 +36,7 @@ jobs:
             addl-build-args: --features=apply,luau,fetch,foreach,nightly,self_update,geocode,polars,to,lens,prompt
             default-features:
             addl-qsvlite-features:
-            addl-qsvdp-features: luau,polars
+            addl-qsvdp-features: luau
             addl-rustflags: -C target-feature=+sse3,+ssse3,+sse4.1,+sse4.2,+popcnt,+avx,+avx2,+fma,+bmi1,+bmi2,+lzcnt,+pclmulqdq
           # - os: ubuntu-22.04
           #   os-name: linux
@@ -97,7 +97,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install libwayland-dev
-    - uses: actions/setup-python@v5.3.0
+    - uses: actions/setup-python@v5.4.0
       with:
         python-version: '3.12'
     - name: Build qsv-nightly
@@ -158,10 +158,11 @@ jobs:
         is-executable: false
         working-directory: "."
     - name: Download latest release zip
-      uses: robinraju/release-downloader@v1.11
+      uses: robinraju/release-downloader@v1.12
       with:
         repository: "dathere/qsv"
         latest: true
+        preRelease: true
         token: ${{ secrets.GITHUB_TOKEN }}
         fileName: qsv-${{ needs.analyze-tags.outputs.previous-tag }}-${{ matrix.job.target }}.zip
     - name: remove zipsign signature from zip archive
@@ -178,6 +179,8 @@ jobs:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: qsv-${{ needs.analyze-tags.outputs.previous-tag }}-${{ matrix.job.target }}.zip
         asset_name: qsv-${{ needs.analyze-tags.outputs.previous-tag }}-${{ matrix.job.target }}.zip
+        prerelease: true
+        make_latest: false
         overwrite: true
         tag: ${{ needs.analyze-tags.outputs.previous-tag }}    
  

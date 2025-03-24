@@ -1,5 +1,5 @@
 static USAGE: &str = r#"
-Validates CSV data using two modes:
+Validates CSV data using two main modes:
 
 JSON SCHEMA VALIDATION MODE:
 ===========================
@@ -34,44 +34,53 @@ qsv supports a custom format - `currency`. This format will only accept a valid 
 
 qsv also supports a custom keyword - `dynamicEnum`. It allows for dynamic validation against a CSV.
 This is useful for validating against a set of values unknown at the time of schema creation or
-when the set of valid values is dynamic or too large to hardcode into the schema.
+when the set of valid values is dynamic or too large to hardcode into the JSON Schema.
 `dynamicEnum` can be used to validate against a CSV file on the local filesystem or a URL
 (http/https, dathere and ckan schemes supported). The "dynamicEnum" value has the form:
 
-   // qsvlite binary variant only supports URIs which can be files on the local filesystem
-   // or remote files (http and https schemes supported)
-   dynamicEnum = "URI"
+  // qsvlite binary variant only supports URIs which can be files on the local filesystem
+  // or remote files (http and https schemes supported)
+  dynamicEnum = "URI|colname" where colname is the column name or column index (0-based)
 
-   // on other qsv binary variants, dynamicEnum has expanded functionality
-   dynamicEnum = "[cache_name;cache_age]|URI" where cache_name and cache_age are optional
+    // use data.csv from the current working directory; use the 1st column for validation
+    dynamicEnum = "data.csv"
 
-  // get data.csv; cache it as data.csv with a default cache age of 3600 seconds
-  // i.e. the cached data.csv expires after 1 hour
-  dynamicEnum = "https://example.com/data.csv"
+    // use data.csv in /lookup_dir directory; use the column "Agency" for validation
+    dynamicEnum = "/lookupdir/data.csv|Agency"
 
-  // get data.csv; cache it as custom_name.csv, cache age 600 seconds
-  dynamicEnum = "custom_name;600|https://example.com/data.csv"
+    // get data.csv; use the 3rd column for validation (2 as the col index is 0-based)
+    dynamicEnum = "https://example.com/data.csv|2"
 
-  // get data.csv; cache it as data.csv, cache age 800 seconds
-  dynamicEnum = ";800|https://example.com/data.csv"
+  // on other qsv binary variants, dynamicEnum has expanded caching functionality
+  dynamicEnum = "[cache_name;cache_age]|URI|colname" where cache_name and cache_age are optional
 
-  // get the top matching result for nyc_neighborhoods (signaled by trailing ?),
-  // cache it as nyc_neighborhood_data.csv (NOTE: cache name is required when using CKAN scheme)
-  // with a default cache age of 3600 seconds
-  // be sure to set --ckan-api, otherwise it will default to datHere's CKAN (data.dathere.com)
-  dynamicEnum = "nyc_neighborhood_data|ckan:://nyc_neighborhoods?"
+    // use data.csv from current working directory; cache it as data with a default 
+    // cache age of 3600 seconds i.e. the cached data.csv expires after 1 hour
+    dynamicEnum = "data.csv"
 
-  // get CKAN resource with id 1234567, cache it as resname, 3600 secs cache age
-  // note that if the resource is a private resource, you'll need to set --ckan-token
-  dynamicEnum = "resname|ckan:://1234567"
+    // get data.csv; cache it as custom_name, cache age 600 seconds
+    dynamicEnum = "custom_name;600|https://example.com/data.csv"
 
-  // same as above but with a cache age of 100 seconds
-  dynamicEnum = "resname;100|ckan:://1234567
+    // get data.csv; cache it as data, cache age 800 seconds
+    dynamicEnum = ";800|https://example.com/data.csv"
 
-  // get us_states.csv from datHere lookup tables
-  dynamicEnum = "dathere://us_states.csv"
+    // get the top matching result for nyc_neighborhoods (signaled by trailing ?),
+    // cache it as nyc_neighborhood_data.csv (NOTE: cache name is required when using CKAN scheme)
+    // with a default cache age of 3600 seconds
+    // be sure to set --ckan-api, otherwise it will default to datHere's CKAN (data.dathere.com)
+    dynamicEnum = "nyc_neighborhood_data|ckan:://nyc_neighborhoods?"
 
-Only the first column of the CSV file is read and used for validation.
+    // get CKAN resource with id 1234567, cache it as resname, 3600 secs cache age
+    // note that if the resource is a private resource, you'll need to set --ckan-token
+    dynamicEnum = "resname|ckan:://1234567"
+
+    // same as above but with a cache age of 100 seconds; use the borough column for validation
+    dynamicEnum = "resname;100|ckan:://1234567|borough
+
+    // get us_states.csv from datHere lookup tables
+    dynamicEnum = "dathere://us_states.csv"
+
+If colname is not specified, the first column of the CSV file is read and used for validation.
 
 You can create a JSON Schema file from a reference CSV file using the `qsv schema` command.
 Once the schema is created, you can fine-tune it to your needs and use it to validate other CSV
@@ -98,11 +107,14 @@ If we validate another CSV file, "mydata2.csv", which we know is valid, there ar
 and the exit code is 0.
 
 If piped from stdin, the filenames will use `stdin.csv` as the base filename. For example:
-`cat mydata.csv | qsv validate reference.schema.json`
+  `cat mydata.csv | qsv validate reference.schema.json`
 
    * stdin.csv.valid
    * stdin.csv.invalid
    * stdin.csv.validation-errors.tsv
+
+`validate` also has a `schema` subcommand to validate JSON Schema files. For example:
+  `qsv validate schema myjsonschema.json`
 
 RFC 4180 VALIDATION MODE:
 ========================
@@ -119,6 +131,7 @@ For examples, see the tests included in this file (denoted by '#[test]') or see
 https://github.com/dathere/qsv/blob/master/tests/test_validate.rs.
 
 Usage:
+    qsv validate schema [<json-schema>]
     qsv validate [options] [<input>] [<json-schema>]
     qsv validate --help
 
@@ -179,7 +192,7 @@ Common options:
     -d, --delimiter <arg>      The field delimiter for reading CSV data.
                                Must be a single character.
     -p, --progressbar          Show progress bars. Not valid for stdin.
-    -Q, --quiet                Do not display validation summary message.
+    -q, --quiet                Do not display validation summary message.
 "#;
 
 use std::{
@@ -188,20 +201,20 @@ use std::{
     io::{BufReader, BufWriter, Read, Write},
     str,
     sync::{
-        atomic::{AtomicU16, Ordering},
         OnceLock,
+        atomic::{AtomicU16, Ordering},
     },
 };
 
-use ahash::{HashSet, HashSetExt};
 use csv::ByteRecord;
+use foldhash::{HashSet, HashSetExt};
 use indicatif::HumanCount;
 #[cfg(any(feature = "feature_capable", feature = "lite"))]
 use indicatif::{ProgressBar, ProgressDrawTarget};
 use jsonschema::{
+    Keyword, ValidationError, Validator,
     output::BasicOutput,
     paths::{LazyLocation, Location},
-    Keyword, ValidationError, Validator,
 };
 use log::{debug, info, log_enabled};
 use qsv_currency::Currency;
@@ -210,17 +223,18 @@ use rayon::{
     prelude::IntoParallelRefIterator,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{json, value::Number, Map, Value};
+use serde_json::{Map, Value, json, value::Number};
 #[cfg(feature = "lite")]
 use tempfile::NamedTempFile;
 
 #[cfg(not(feature = "lite"))]
 use crate::lookup;
 #[cfg(not(feature = "lite"))]
-use crate::lookup::{load_lookup_table, LookupTableOptions};
+use crate::lookup::{LookupTableOptions, load_lookup_table};
 use crate::{
-    config::{Config, Delimiter, DEFAULT_WTR_BUFFER_CAPACITY},
-    util, CliError, CliResult,
+    CliError, CliResult,
+    config::{Config, DEFAULT_WTR_BUFFER_CAPACITY, Delimiter},
+    util,
 };
 
 // to save on repeated init/allocs
@@ -256,6 +270,7 @@ macro_rules! fail_validation_error {
 #[derive(Deserialize)]
 #[allow(dead_code)]
 struct Args {
+    cmd_schema:        bool,
     flag_trim:         bool,
     flag_fail_fast:    bool,
     flag_valid:        Option<String>,
@@ -354,42 +369,239 @@ impl Keyword for DynEnumValidator {
     }
 }
 
-/// Parse the dynamicEnum URI string to extract cache name and age
-/// Format: "[cache_name;cache_age]|URL" where cache_name and cache_age are optional
+/// Parse the dynamicEnum URI string to extract cache_name, final_uri, cache_age and column
+/// Format: "[cache_name;cache_age]|URL[|column]" where cache_name, cache_age and column are
+/// optional
+///
+/// # Arguments
+/// * `uri` - The dynamicEnum URI string to parse
+///
+/// # uri parsing examples:
+/// lookup.csv
+///    - cache_name: lookup, final_uri: lookup.csv, cache_age: 3600, column: None
+///
+/// lookup.csv|name
+///    - cache_name: lookup, final_uri: lookup.csv, cache_age: 3600, column: Some(name)
+///
+/// lookup_name;600|lookup.csv
+///    - cache_name: lookup_name, final_uri: lookup.csv, cache_age: 600, column: None
+///
+/// remote_lookup|https://example.com/remote.csv|col1
+///    - cache_name: remote_lookup, final_uri: https://example.com/remote.csv, cache_age: 3600,
+///      column: Some(col1)
+///
+/// https://example.com/remote.csv
+///    - cache_name: remote, final_uri: https://example.com/remote.csv, cache_age: 3600, column:
+///      None
+///
+/// # Returns
+/// * `(String, String, i64, Option<String>)` - Tuple containing:
+///   - cache_name: Name to use for caching the lookup table
+///   - final_uri: The actual URI/URL to load the lookup table from
+///   - cache_age: How long to cache the lookup table in seconds
+///   - column: Optional column name/index to use from the lookup table
 #[cfg(not(feature = "lite"))]
-fn parse_dynenum_uri(uri: &str) -> (String, i64) {
+fn parse_dynenum_uri(uri: &str) -> (String, String, i64, Option<String>) {
     const DEFAULT_CACHE_AGE_SECS: i64 = 3600; // 1 hour
-    const DEFAULT_LOOKUP_NAME: &str = "dynenum";
 
-    if !uri.contains('|') {
-        return (
-            uri.split('/')
-                .last()
-                .unwrap_or(DEFAULT_LOOKUP_NAME)
+    // Extract cache name from URI (handles both URLs and local files)
+    fn get_cache_name(uri: &str) -> String {
+        // For URIs with schemes (http://, dathere://, ckan://, etc.)
+        if uri.contains("://") {
+            // Split on "://" and take everything after it
+            let after_scheme = uri.split("://").nth(1).unwrap_or(uri);
+            // Then take the last part of the path and remove .csv
+            after_scheme
+                .split('/')
+                .next_back()
+                .unwrap_or(after_scheme)
                 .trim_end_matches(".csv")
-                .to_string(),
-            DEFAULT_CACHE_AGE_SECS,
-        );
-    }
-
-    let cache_config = uri.split('|').next().unwrap();
-
-    if !cache_config.contains(';') {
-        return (cache_config.to_owned(), DEFAULT_CACHE_AGE_SECS);
-    }
-
-    let parts: Vec<&str> = cache_config.split(';').collect();
-    let cache_age = parts[1].parse::<i64>().unwrap_or(DEFAULT_CACHE_AGE_SECS);
-    let cache_name = parts[0].to_string();
-
-    (
-        if cache_name.is_empty() {
-            cache_config.to_string()
+                .to_string()
         } else {
-            cache_name
-        },
-        cache_age,
-    )
+            // For regular paths, split on both / and \ and take the last part
+            uri.split(['/', '\\'])
+                .next_back()
+                .unwrap_or(uri)
+                .trim_end_matches(".csv")
+                .to_string()
+        }
+    }
+
+    // Handle simple URL case with no pipe separators
+    if !uri.contains('|') {
+        let final_uri = uri.to_string();
+        let cache_name = get_cache_name(&final_uri);
+        return (cache_name, final_uri, DEFAULT_CACHE_AGE_SECS, None);
+    }
+
+    // Split the URI into parts
+    let parts: Vec<&str> = uri.split('|').collect();
+
+    // Get the final URI and handle cache configuration
+    let (final_uri, cache_name, cache_age) = if parts[0].contains(';') {
+        // Has cache config: "name;age|uri"
+        let config_parts: Vec<&str> = parts[0].split(';').collect();
+        let name = if config_parts[0].is_empty() {
+            get_cache_name(parts[1])
+        } else {
+            config_parts[0].trim_end_matches(".csv").to_string()
+        };
+        let age = config_parts
+            .get(1)
+            .and_then(|s| s.parse::<i64>().ok())
+            .unwrap_or(DEFAULT_CACHE_AGE_SECS);
+        (parts[1].to_string(), name, age)
+    } else if parts[1].contains("://") {
+        // Has URL/scheme: "name|scheme://uri"
+        (
+            parts[1].to_string(),
+            get_cache_name(parts[0]),
+            DEFAULT_CACHE_AGE_SECS,
+        )
+    } else {
+        // Simple case: "uri|column"
+        (
+            parts[0].to_string(),
+            get_cache_name(parts[0]),
+            DEFAULT_CACHE_AGE_SECS,
+        )
+    };
+
+    // Extract column if present (last part if it's not the URI)
+    let column = if parts.len() > 2 {
+        Some(parts[2].to_string())
+    } else if parts.len() == 2
+        && !parts[1].contains("://")
+        && !parts[1].to_lowercase().ends_with(".csv")
+    {
+        Some(parts[1].to_string())
+    } else {
+        None
+    };
+
+    (cache_name, final_uri, cache_age, column)
+}
+
+#[cfg(not(feature = "lite"))]
+#[test]
+fn test_parse_dynenum_uri() {
+    // Test simple URL with no pipe separators
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("https://example.com/data.csv");
+    similar_asserts::assert_eq!(cache_name, "data");
+    similar_asserts::assert_eq!(uri, "https://example.com/data.csv");
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, None);
+
+    // Test with custom cache name and age
+    let (cache_name, uri, cache_age, column) =
+        parse_dynenum_uri("custom_name;600|https://example.com/data.csv");
+    similar_asserts::assert_eq!(cache_name, "custom_name");
+    similar_asserts::assert_eq!(uri, "https://example.com/data.csv");
+    similar_asserts::assert_eq!(cache_age, 600);
+    similar_asserts::assert_eq!(column, None);
+
+    // Test with column name
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("lookup.csv|name");
+    similar_asserts::assert_eq!(cache_name, "lookup");
+    similar_asserts::assert_eq!(uri, "lookup.csv");
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, Some("name".to_string()));
+
+    // Test with cache config and column
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("MyCache;1800|lookup.csv|code");
+    similar_asserts::assert_eq!(cache_name, "MyCache");
+    similar_asserts::assert_eq!(uri, "lookup.csv");
+    similar_asserts::assert_eq!(cache_age, 1800);
+    similar_asserts::assert_eq!(column, Some("code".to_string()));
+
+    // Test empty cache name with age and column
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri(";1800|lookup.csv|code");
+    similar_asserts::assert_eq!(cache_name, "lookup");
+    similar_asserts::assert_eq!(uri, "lookup.csv");
+    similar_asserts::assert_eq!(cache_age, 1800);
+    similar_asserts::assert_eq!(column, Some("code".to_string()));
+
+    // Test empty cache name with age but no column
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri(";1800|lookup.csv");
+    similar_asserts::assert_eq!(cache_name, "lookup");
+    similar_asserts::assert_eq!(uri, "lookup.csv");
+    similar_asserts::assert_eq!(cache_age, 1800);
+    similar_asserts::assert_eq!(column, None);
+
+    // Test simple local file path
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("lookup.csv");
+    similar_asserts::assert_eq!(cache_name, "lookup");
+    similar_asserts::assert_eq!(uri, "lookup.csv");
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, None);
+
+    // Test simple fully qualified local file path in Windows
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri(r#"c:\Users\jdoe\lookup.csv"#);
+    similar_asserts::assert_eq!(cache_name, "lookup");
+    similar_asserts::assert_eq!(uri, r#"c:\Users\jdoe\lookup.csv"#);
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, None);
+
+    // Test simple local file path on *nix filesystem, with column
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("/tmp/lookup.csv|first_col");
+    similar_asserts::assert_eq!(cache_name, "lookup");
+    similar_asserts::assert_eq!(uri, "/tmp/lookup.csv");
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, Some("first_col".to_string()));
+
+    // Test case-insensitive cache name generation
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("LookUp.csv");
+    similar_asserts::assert_eq!(cache_name, "LookUp");
+    similar_asserts::assert_eq!(uri, "LookUp.csv");
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, None);
+
+    // Test CKAN URL with custom cache name
+    let (cache_name, uri, cache_age, column) =
+        parse_dynenum_uri("NYC_neighborhood_data|ckan://nyc_neighborhoods?");
+    similar_asserts::assert_eq!(cache_name, "NYC_neighborhood_data");
+    similar_asserts::assert_eq!(uri, "ckan://nyc_neighborhoods?");
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, None);
+
+    // Test CKAN URL with custom cache name and age
+    let (cache_name, uri, cache_age, column) =
+        parse_dynenum_uri("NYC_neighborhood_data;5000|ckan://nyc_neighborhoods?");
+    similar_asserts::assert_eq!(cache_name, "NYC_neighborhood_data");
+    similar_asserts::assert_eq!(uri, "ckan://nyc_neighborhoods?");
+    similar_asserts::assert_eq!(cache_age, 5000);
+    similar_asserts::assert_eq!(column, None);
+
+    // Test CKAN URL with custom cache name, age and column
+    let (cache_name, uri, cache_age, column) =
+        parse_dynenum_uri("NYC_neighborhood_data;5000|ckan://nyc_neighborhoods?|Neighborhood_Col");
+    similar_asserts::assert_eq!(cache_name, "NYC_neighborhood_data");
+    similar_asserts::assert_eq!(uri, "ckan://nyc_neighborhoods?");
+    similar_asserts::assert_eq!(cache_age, 5000);
+    similar_asserts::assert_eq!(column, Some("Neighborhood_Col".to_string()));
+
+    // Test dathere URL with no options
+    let (cache_name, uri, cache_age, column) = parse_dynenum_uri("dathere://us_states.csv");
+    similar_asserts::assert_eq!(cache_name, "us_states");
+    similar_asserts::assert_eq!(uri, "dathere://us_states.csv");
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, None);
+
+    // Test dathere URL with column
+    let (cache_name, uri, cache_age, column) =
+        parse_dynenum_uri("dathere://us_states.csv|state_col");
+    similar_asserts::assert_eq!(cache_name, "us_states");
+    similar_asserts::assert_eq!(uri, "dathere://us_states.csv");
+    similar_asserts::assert_eq!(cache_age, 3600);
+    similar_asserts::assert_eq!(column, Some("state_col".to_string()));
+
+    // Test dathere URL with custom cache name, age and column
+    let (cache_name, uri, cache_age, column) =
+        parse_dynenum_uri("usl_lookup;6000|dathere://us_states.csv|state_col");
+    similar_asserts::assert_eq!(cache_name, "usl_lookup");
+    similar_asserts::assert_eq!(uri, "dathere://us_states.csv");
+    similar_asserts::assert_eq!(cache_age, 6000);
+    similar_asserts::assert_eq!(column, Some("state_col".to_string()));
 }
 
 /// Factory function that creates a DynEnumValidator for validating against dynamic enums loaded
@@ -417,6 +629,7 @@ fn parse_dynenum_uri(uri: &str) -> (String, i64) {
 /// * `Ok(Box<DynEnumValidator>)` - Validator initialized with values from first CSV column
 /// * `Err(ValidationError)` - If loading/parsing CSV fails or value is not a string
 #[cfg(not(feature = "lite"))]
+#[allow(clippy::result_large_err)]
 fn dyn_enum_validator_factory<'a>(
     _parent: &'a Map<String, Value>,
     value: &'a Value,
@@ -431,18 +644,17 @@ fn dyn_enum_validator_factory<'a>(
         )
     })?;
 
-    let (lookup_name, cache_age_secs) = parse_dynenum_uri(uri);
+    let (lookup_name, final_uri, cache_age_secs, column) = parse_dynenum_uri(uri);
 
     // Create lookup table options
     let opts = LookupTableOptions {
         name: lookup_name,
-        uri: uri.to_string(),
+        uri: final_uri,
         cache_age_secs,
         cache_dir: QSV_CACHE_DIR.get().unwrap().to_string(),
         delimiter: DELIMITER.get().copied().flatten(),
         ckan_api_url: CKAN_API.get().cloned(),
-        #[allow(clippy::redundant_closure_for_method_calls)]
-        ckan_token: CKAN_TOKEN.get().and_then(|t| t.clone()),
+        ckan_token: CKAN_TOKEN.get().and_then(std::clone::Clone::clone),
         timeout_secs: TIMEOUT_SECS.load(Ordering::Relaxed),
     };
 
@@ -452,7 +664,7 @@ fn dyn_enum_validator_factory<'a>(
         Err(e) => return fail_validation_error!("Error loading dynamicEnum lookup table: {}", e),
     };
 
-    // Read the first column into a HashSet
+    // Read the specified column into a HashSet
     let mut enum_set = HashSet::with_capacity(lookup_result.headers.len());
     let rconfig = Config::new(Some(lookup_result.filepath).as_ref());
     let mut rdr = match rconfig
@@ -465,21 +677,49 @@ fn dyn_enum_validator_factory<'a>(
         Err(e) => return fail_validation_error!("Error opening dynamicEnum file: {e}"),
     };
 
+    // Get column index based on name or default to first column
+    let column_idx = if let Some(col_name) = column {
+        // Try parsing as index first
+        if let Ok(idx) = col_name.parse::<usize>() {
+            idx
+        } else {
+            // Try finding column by name
+            match rdr.headers() {
+                Ok(headers) => {
+                    let idx = headers.iter().position(|h| h == col_name);
+                    match idx {
+                        Some(i) => i,
+                        None => {
+                            return fail_validation_error!(
+                                "Column '{}' not found in lookup table",
+                                col_name
+                            );
+                        },
+                    }
+                },
+                Err(e) => return fail_validation_error!("Error reading headers: {e}"),
+            }
+        }
+    } else {
+        0
+    };
+
     for result in rdr.records() {
         match result {
             Ok(record) => {
-                if let Some(value) = record.get(0) {
+                if let Some(value) = record.get(column_idx) {
                     enum_set.insert(value.to_owned());
                 }
             },
             Err(e) => return fail_validation_error!("Error reading dynamicEnum file - {e}"),
-        };
+        }
     }
 
     Ok(Box::new(DynEnumValidator::new(enum_set)))
 }
 
 #[cfg(feature = "lite")]
+#[allow(clippy::result_large_err)]
 fn dyn_enum_validator_factory<'a>(
     _parent: &'a Map<String, Value>,
     value: &'a Value,
@@ -491,8 +731,13 @@ fn dyn_enum_validator_factory<'a>(
             Err(e) => return fail_validation_error!("Failed to create temporary file: {}", e),
         };
 
-        let dynenum_path = if uri.starts_with("http") {
-            let valid_url = reqwest::Url::parse(uri).map_err(|e| {
+        // Split URI to get column specification
+        let parts: Vec<&str> = uri.split('|').collect();
+        let base_uri = parts[0];
+        let column = parts.get(1).map(std::string::ToString::to_string);
+
+        let dynenum_path = if base_uri.starts_with("http") {
+            let valid_url = reqwest::Url::parse(base_uri).map_err(|e| {
                 ValidationError::custom(
                     Location::default(),
                     location,
@@ -525,15 +770,15 @@ fn dyn_enum_validator_factory<'a>(
             temp_download.path().to_str().unwrap().to_string()
         } else {
             // its a local file
-            let uri_path = std::path::Path::new(uri);
+            let uri_path = std::path::Path::new(base_uri);
             let uri_exists = uri_path.exists();
             if !uri_exists {
-                return fail_validation_error!("dynamicEnum file not found - {uri}");
+                return fail_validation_error!("dynamicEnum file not found - {base_uri}");
             }
             uri_path.to_str().unwrap().to_string()
         };
 
-        // read the first column into a HashSet
+        // read the specified column into a HashSet
         let mut enum_set = HashSet::with_capacity(50);
         let rconfig = Config::new(Some(dynenum_path).as_ref());
         let mut rdr = match rconfig
@@ -545,10 +790,27 @@ fn dyn_enum_validator_factory<'a>(
             Ok(reader) => reader,
             Err(e) => return fail_validation_error!("Error opening dynamicEnum file: {e}"),
         };
+
+        // Get column index based on name or default to first column
+        let column_idx = if let Some(col_name) = column {
+            // Try parsing as index first
+            if let Ok(idx) = col_name.parse::<usize>() {
+                idx
+            } else {
+                // Try finding column by name
+                match rdr.headers() {
+                    Ok(headers) => headers.iter().position(|h| h == col_name).unwrap_or(0),
+                    Err(_) => 0,
+                }
+            }
+        } else {
+            0
+        };
+
         for result in rdr.records() {
             match result {
                 Ok(record) => {
-                    if let Some(value) = record.get(0) {
+                    if let Some(value) = record.get(column_idx) {
                         enum_set.insert(value.to_owned());
                     }
                 },
@@ -569,6 +831,30 @@ fn dyn_enum_validator_factory<'a>(
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
+
+    // validate the JSON Schema file
+    if args.cmd_schema {
+        if let Some(ref schema) = args.arg_json_schema {
+            let schema_json = load_json(schema)?;
+            match jsonschema::meta::try_is_valid(&serde_json::from_str(&schema_json)?) {
+                Ok(is_valid) => {
+                    if is_valid {
+                        if !args.flag_quiet {
+                            winfo!("Valid JSON Schema.");
+                            return Ok(());
+                        }
+                    } else {
+                        return fail_clierror!("Invalid JSON Schema.");
+                    }
+                },
+                Err(e) => {
+                    return fail_clierror!("Invalid JSON Schema: {e}");
+                },
+            }
+        } else {
+            return fail_clierror!("No JSON Schema file supplied.");
+        }
+    }
 
     TIMEOUT_SECS.store(
         util::timeout_secs(args.flag_timeout)? as u16,
@@ -845,7 +1131,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     // parse and compile supplied JSON Schema
     let (schema_json, schema_compiled): (Value, Validator) =
         // safety: we know the schema is_some() because we checked above
-        match load_json(&args.arg_json_schema.unwrap()) {
+        match load_json(&args.arg_json_schema.clone().unwrap()) {
             Ok(s) => {
                 // parse JSON string
                 let mut s_slice = s.as_bytes().to_vec();
@@ -860,12 +1146,14 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         {
                             Ok(schema) => (json, schema),
                             Err(e) => {
-                                return fail_clierror!("Cannot compile JSONschema. error: {e}");
+                                return fail_clierror!(r#"Cannot compile JSONschema. error: {e}
+Try running `qsv validate schema {}` to check the JSON Schema file."#, args.arg_json_schema.unwrap());
                             },
                         }
                     },
                     Err(e) => {
-                        return fail_clierror!("Unable to parse JSONschema. error: {e}");
+                        return fail_clierror!(r#"Unable to parse JSONschema. error: {e}
+Try running `qsv validate schema {}` to check the JSON Schema file."#, args.arg_json_schema.unwrap());
                     },
                 }
             },
@@ -1182,7 +1470,7 @@ fn to_json_instance(
                     return fail_clierror!(
                         "Can't cast into Number. key: {key}, value: {}",
                         String::from_utf8_lossy(value)
-                    )
+                    );
                 },
             },
             JSONtypes::Integer => match atoi_simd::parse::<i64>(value) {
@@ -1191,7 +1479,7 @@ fn to_json_instance(
                     return fail_clierror!(
                         "Can't cast into Integer. key: {key}, value: {}",
                         String::from_utf8_lossy(value)
-                    )
+                    );
                 },
             },
             JSONtypes::Boolean => match value {
@@ -1201,7 +1489,7 @@ fn to_json_instance(
                     return fail_clierror!(
                         "Can't cast into Boolean. key: {key}, value: {}",
                         String::from_utf8_lossy(value)
-                    )
+                    );
                 },
             },
             JSONtypes::Unsupported => unreachable!("we should never get an unsupported JSON type"),
@@ -1345,7 +1633,7 @@ mod tests_for_csv_to_json_conversion {
         let mut record = rdr.byte_records().next().unwrap().unwrap();
         record.trim();
 
-        assert_eq!(
+        similar_asserts::assert_eq!(
             to_json_instance(&header_types, headers.len(), &record)
                 .expect("can't convert csv to json instance"),
             json!({
@@ -1382,7 +1670,7 @@ mod tests_for_csv_to_json_conversion {
         );
         assert!(&result.is_err());
         let error = result.err().unwrap().to_string();
-        assert_eq!("Can't cast into Integer. key: C, value: 3.0e8", error);
+        similar_asserts::assert_eq!("Can't cast into Integer. key: C, value: 3.0e8", error);
     }
 }
 
@@ -1534,7 +1822,7 @@ mod tests_for_schema_validation {
 
         assert!(result.is_some());
 
-        assert_eq!(
+        similar_asserts::assert_eq!(
             vec![(
                 "/name".to_string(),
                 "\"X\" is shorter than 2 characters".to_string()
@@ -1609,7 +1897,7 @@ fn test_validate_currency_email_dynamicenum_validator() {
     let result = validate_json_instance(&instance, &compiled_schema);
 
     // Dogecoin is not an ISO currency
-    assert_eq!(
+    similar_asserts::assert_eq!(
         result,
         Some(vec![(
             "/fee".to_owned(),
@@ -1637,7 +1925,7 @@ fn test_validate_currency_email_dynamicenum_validator() {
 
     let result = validate_json_instance(&instance, &compiled_schema);
 
-    assert_eq!(
+    similar_asserts::assert_eq!(
         result,
         Some(vec![
             (
@@ -1680,10 +1968,10 @@ fn test_validate_currency_email_dynamicenum_validator() {
         let result = validate_json_instance(&instance, &compiled_schema);
 
         match i {
-            0 => assert_eq!(result, None),
-            1 => assert_eq!(result, None),
-            2 => assert_eq!(result, None),
-            3 => assert_eq!(
+            0 => similar_asserts::assert_eq!(result, None),
+            1 => similar_asserts::assert_eq!(result, None),
+            2 => similar_asserts::assert_eq!(result, None),
+            3 => similar_asserts::assert_eq!(
                 result,
                 Some(vec![
                     (
@@ -1696,29 +1984,29 @@ fn test_validate_currency_email_dynamicenum_validator() {
                     )
                 ])
             ),
-            4 => assert_eq!(
+            4 => similar_asserts::assert_eq!(
                 result,
                 Some(vec![(
                     "/name".to_owned(),
                     "\"X\" is shorter than 2 characters".to_owned()
                 )])
             ),
-            5 => assert_eq!(result, None),
-            6 => assert_eq!(
+            5 => similar_asserts::assert_eq!(result, None),
+            6 => similar_asserts::assert_eq!(
                 result,
                 Some(vec![(
                     "/agency".to_owned(),
                     "\"NYFD\" is not a valid dynamicEnum value".to_owned()
                 )])
             ),
-            7 => assert_eq!(
+            7 => similar_asserts::assert_eq!(
                 result,
                 Some(vec![(
                     "/fee".to_owned(),
                     "\"WAX 100.000,00\" is not a \"currency\"".to_owned()
                 )])
             ),
-            8 => assert_eq!(
+            8 => similar_asserts::assert_eq!(
                 result,
                 Some(vec![
                     (
@@ -1776,12 +2064,15 @@ fn test_dyn_enum_validator() {
     assert!(!validator.is_valid(&json!("bananana")));
     assert!(!validator.is_valid(&json!("")));
     assert!(!validator.is_valid(&json!(5)));
-    if let Err(e) = validator.validate(&json!("lanzones")) {
-        assert_eq!(
-            format!("{e:?}"),
-            r#"ValidationError { instance: String("lanzones"), kind: Custom { message: "\"lanzones\" is not a valid dynamicEnum value" }, instance_path: Location(""), schema_path: Location("") }"#
-        );
-    } else {
-        unreachable!("Expected an error, but validation succeeded.");
+    match validator.validate(&json!("lanzones")) {
+        Err(e) => {
+            similar_asserts::assert_eq!(
+                format!("{e:?}"),
+                r#"ValidationError { instance: String("lanzones"), kind: Custom { message: "\"lanzones\" is not a valid dynamicEnum value" }, instance_path: Location(""), schema_path: Location("") }"#
+            );
+        },
+        _ => {
+            unreachable!("Expected an error, but validation succeeded.");
+        },
     };
 }

@@ -55,7 +55,7 @@ searchset options:
     --unmatched-output <file>  When --flag-matches-only is enabled, output the rows
                                that did not match to <file>.
 
-    -q, --quick                Return on first match with an exitcode of 0, returning
+    -Q, --quick                Return on first match with an exitcode of 0, returning
                                the row number of the first match to stderr.
                                Return exit code 1 if no match is found.
                                No output is produced. Ignored if --json is enabled.
@@ -83,7 +83,7 @@ Common options:
     -d, --delimiter <arg>      The field delimiter for reading CSV data.
                                Must be a single character. (default: ,)
     -p, --progressbar          Show progress bars. Not valid for stdin.
-    -Q, --quiet                Do not return number of matches to stderr.
+    -q, --quiet                Do not return number of matches to stderr.
 "#;
 
 use std::{
@@ -94,14 +94,15 @@ use std::{
 #[cfg(any(feature = "feature_capable", feature = "lite"))]
 use indicatif::{HumanCount, ProgressBar, ProgressDrawTarget};
 use log::{debug, info};
-use regex::{bytes::RegexSetBuilder, Regex};
+use regex::{Regex, bytes::RegexSetBuilder};
 use serde::Deserialize;
 use serde_json::json;
 
 use crate::{
+    CliError, CliResult,
     config::{Config, Delimiter},
     select::SelectColumns,
-    util, CliError, CliResult,
+    util,
 };
 
 #[allow(dead_code)]
@@ -220,7 +221,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     }
 
     let mut record = csv::ByteRecord::new();
-    let mut flag_rowi: u64 = 1;
+    let mut flag_rowi: u64 = 0;
     let mut match_row_ctr: u64 = 0;
     let mut total_matches: u64 = 0;
     let mut row_ctr: u64 = 0;

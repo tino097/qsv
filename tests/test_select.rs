@@ -1,8 +1,8 @@
 use crate::workdir::Workdir;
 
 macro_rules! select_test {
-    ($name:ident, $select:expr, $select_no_headers:expr,
-     $expected_headers:expr, $expected_rows:expr) => {
+    ($name:ident, $select:expr_2021, $select_no_headers:expr_2021,
+     $expected_headers:expr_2021, $expected_rows:expr_2021) => {
         mod $name {
             use super::data;
             use crate::workdir::Workdir;
@@ -25,7 +25,7 @@ macro_rules! select_test {
                         .map(|s| s.to_string())
                         .collect::<Vec<String>>(),
                 ];
-                assert_eq!(got, expected);
+                similar_asserts::assert_eq!(got, expected);
             }
 
             #[test]
@@ -39,18 +39,20 @@ macro_rules! select_test {
                     .arg("data.csv");
                 let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
 
-                let expected = vec![$expected_rows
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect::<Vec<String>>()];
-                assert_eq!(got, expected);
+                let expected = vec![
+                    $expected_rows
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect::<Vec<String>>(),
+                ];
+                similar_asserts::assert_eq!(got, expected);
             }
         }
     };
 }
 
 macro_rules! select_test_err {
-    ($name:ident, $select:expr) => {
+    ($name:ident, $select:expr_2021) => {
         #[test]
         fn $name() {
             let wrk = Workdir::new(stringify!($name));
@@ -249,7 +251,7 @@ fn test_select_sort() {
             "value7", "value4"
         ],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -266,7 +268,7 @@ fn test_select_sort_subset() {
         svec!["8", "9", "4", "7"],
         svec!["value3", "value2", "value7", "value4"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -282,20 +284,20 @@ fn test_select_random_seeded() {
 
     let expected = vec![
         svec![
-            "Bob", "Đan", "Élise", "Héctor", "Günther", "Jürgen", "İbrahim", "Fátima", "Çemil",
-            "Alice"
+            "Jürgen", "İbrahim", "Đan", "Çemil", "Alice", "Héctor", "Élise", "Bob", "Fátima",
+            "Günther"
         ],
         svec![
-            "value8", "value4", "value10", "value6", "value1", "value9", "value7", "value5",
-            "value3", "value2"
+            "value9", "value7", "value4", "value3", "value2", "value6", "value10", "value8",
+            "value5", "value1"
         ],
-        svec!["8", "4", "10", "6", "1", "9", "7", "5", "3", "2"],
+        svec!["9", "7", "4", "3", "2", "6", "10", "8", "5", "1"],
         svec![
-            "value3", "value7", "value1", "value5", "value10", "value2", "value4", "value6",
-            "value8", "value9"
+            "value2", "value4", "value7", "value8", "value9", "value5", "value1", "value3",
+            "value6", "value10"
         ],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -310,10 +312,10 @@ fn test_select_random_seeded_subset() {
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
 
     let expected = vec![
-        svec!["Jürgen", "İbrahim", "Đan", "Bob"],
-        svec!["value9", "value7", "value4", "value8"],
-        svec!["9", "7", "4", "8"],
-        svec!["value2", "value4", "value7", "value3"],
+        svec!["İbrahim", "Đan", "Jürgen", "Bob"],
+        svec!["value7", "value4", "value9", "value8"],
+        svec!["7", "4", "9", "8"],
+        svec!["value4", "value7", "value2", "value3"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }

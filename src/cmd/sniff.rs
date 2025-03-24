@@ -65,7 +65,7 @@ sniff options:
                              Specify this when the delimiter is known beforehand,
                              as the delimiter inferencing algorithm can sometimes fail.
                              Must be a single ascii character.
-    -q, --quote <arg>        The quote character for reading CSV data.
+    --quote <arg>        The quote character for reading CSV data.
                              Specify this when the quote character is known beforehand,
                              as the quote char inferencing algorithm can sometimes fail.
                              Must be a single ascii character - typically, double quote ("),
@@ -88,7 +88,7 @@ sniff options:
                              in this mode.
     --just-mime              Only return the file's mime type. Use this to use sniff as a general
                              mime type detector. Synonym for --no-infer.
-    --quick                  When sniffing a non-CSV remote file, only download the first chunk of the file
+    -Q, --quick              When sniffing a non-CSV remote file, only download the first chunk of the file
                              before attempting to detect the mime type. This is faster but less accurate as
                              some mime types cannot be detected with just the first downloaded chunk.
     --harvest-mode           This is a convenience flag when using sniff in CKAN harvesters. 
@@ -103,7 +103,7 @@ Common options:
 use std::{
     cmp::min,
     fmt, fs,
-    io::{copy, Seek, SeekFrom, Write},
+    io::{Seek, SeekFrom, Write, copy},
     path::PathBuf,
     time::Duration,
 };
@@ -124,10 +124,10 @@ use tempfile::NamedTempFile;
 use url::Url;
 
 use crate::{
+    CliResult,
     config::{Config, Delimiter},
     util,
     util::format_systemtime,
-    CliResult,
 };
 #[allow(dead_code)]
 #[derive(Deserialize)]
@@ -395,6 +395,8 @@ async fn get_file_to_sniff(args: &Args, tmpdir: &tempfile::TempDir) -> CliResult
                 #[cfg(any(feature = "feature_capable", feature = "lite"))]
                 if show_progress {
                     progress.set_style(
+                        #[allow(clippy::to_string_in_format_args)]
+                        #[allow(clippy::literal_string_with_formatting_args)]
                         ProgressStyle::default_bar()
                             .template(
                                 "{msg}\n{spinner:.green} [{elapsed_precise}] \
@@ -812,7 +814,7 @@ async fn sniff_main(mut args: Args) -> CliResult<()> {
         .delimiter(args.flag_delimiter);
     let n_rows = if sfile_info.downloaded_records == 0 {
         //if we have the whole file and not just a sample, we can count the number of rows
-        match util::count_rows(&conf) {
+        match util::count_rows_regular(&conf) {
             Ok(n) => n as usize,
             Err(e) => {
                 cleanup_tempfile(sfile_info.tempfile_flag, tempfile_to_delete)?;
@@ -1000,7 +1002,7 @@ async fn sniff_main(mut args: Args) -> CliResult<()> {
                 );
             } else {
                 println!("{}", serde_json::to_string(&processed_results).unwrap());
-            };
+            }
             return Ok(());
         }
         let sniff_error_json = json!({

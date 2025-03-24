@@ -1,14 +1,12 @@
 static USAGE: &str = r#"
-Joins two sets of CSV data on the specified columns using the Pola.rs engine.
+Joins two sets of CSV data on the specified columns using the Polars engine.
 
 The default join operation is an 'inner' join. This corresponds to the
 intersection of rows on the keys specified.
 
 Unlike the join command, joinp can process files larger than RAM, is multithreaded,
-has join key validation, pre-join filtering, supports asof joins & its output columns
-can be coalesced (no duplicate columns).
-
-However, joinp doesn't have an --ignore-case option.
+has join key validation, a maintain row order option, pre-join filtering, supports
+non-equi & asof joins and its output columns can be coalesced (no duplicate columns).
 
 Returns the shape of the join result (number of rows, number of columns) to stderr.
 
@@ -17,10 +15,12 @@ For examples, see https://github.com/dathere/qsv/blob/master/tests/test_joinp.rs
 Usage:
     qsv joinp [options] <columns1> <input1> <columns2> <input2>
     qsv joinp --cross [--validate <arg>] <input1> <input2> [--output <file>]
+    qsv joinp --non-equi <expr> <input1> <input2> [options] [--output <file>]
     qsv joinp --help
 
 joinp arguments:
-    Both <input1> and <input2> files need to have headers. Stdin is not supported.
+    Both <input1> aka <left> & <input2> aka <right> files need to have headers.
+    Stdin is not supported.
 
     The columns arguments specify the columns to join for each input. Columns are
     referenced by name. Specify multiple columns by separating them with a comma.
@@ -29,7 +29,6 @@ joinp arguments:
     Note that <input1> is the left CSV data set and <input2> is the right CSV data set.
 
 joinp options:
-    -i, --ignore-case      When set, joins are done case insensitively.
     --left                 Do a 'left outer' join. This returns all rows in
                            first CSV data set, including rows with no
                            corresponding row in the second data set. When no
@@ -47,6 +46,13 @@ joinp options:
                            corresponding row in the first data set. When no
                            corresponding row exists, it is padded out with
                            empty fields. (This is the reverse of 'outer left'.)
+    --right-anti           This returns only the rows in the second CSV data set
+                           that do not have a corresponding row in the first
+                           data set. The output schema is the same as the
+                           second dataset.
+    --right-semi           This returns only the rows in the second CSV data set
+                           that have a corresponding row in the first data set.
+                           The output schema is the same as the second data set.
     --full                 Do a 'full outer' join. This returns all rows in
                            both data sets with matching records joined. If
                            there is no match, the missing side will be padded
@@ -57,6 +63,17 @@ joinp options:
                            equal to N * M, where N and M correspond to the
                            number of rows in the given data sets, respectively.
                            The columns1 and columns2 arguments are ignored.
+    --non-equi <expr>      Do a non-equi join. The given expression is evaluated
+                           for each row in the left dataset and can refer to columns
+                           in the left and right dataset. If the expression evaluates
+                           to true, the row is joined with the corresponding row in
+                           the right dataset.
+                           The expression is a valid Polars SQL where clause, with each
+                           column name followed by "_left" or "_right" suffixes to indicate
+                           which data set the column belongs to.
+                           (e.g. "salary_left >= min_salary_right AND \
+                                  salary_left <= max_salary_right AND \
+                                  experience_left >= min_exp_right")
 
     --coalesce             Force the join to coalesce columns with the same name.
                            For inner joins, this is not necessary as the join
@@ -76,7 +93,13 @@ joinp options:
                              onetoone - join keys are unique in both left & right data sets.
                            [default: none]
 
-                           JOIN OPTIONS:
+                            JOIN OPTIONS:
+    --maintain-order <arg>  Which row order to preserve, if any. Valid values are:
+                              none, left, right, left_right, right_left
+                            Do not rely on any observed ordering without explicitly
+                            setting this parameter. Not specifying any order can improve
+                            performance. Supported for inner, left, right and full joins.
+                            [default: none]
     --nulls                When set, joins will work on empty fields.
                            Otherwise, empty fields are completely ignored.
     --streaming            When set, the join will be done in a streaming fashion.
@@ -91,18 +114,23 @@ joinp options:
                            enabled when using asof joins.
     --infer-len <arg>      The number of rows to scan when inferring the schema of the CSV.
                            Set to 0 to do a full table scan (warning: very slow).
+                           Only used when --cache-schema is 0 or 1 and no cached schema exists or
+                           when --infer-len is 0.
                            [default: 10000]
-    --cache-schema         Create and cache Polars schema JSON files.
-                           If specified and the schema file/s do not exist, it will check if a
-                           stats cache is available. If so, it will use it to derive a Polars schema
-                           and save it. If there's no stats cache, it will infer the schema 
-                           using --infer-len and save the inferred schemas. 
-                           Each schema file will have the same file stem as the corresponding
-                           input file, with the extension ".pschema.json"
-                           (data.csv's Polars schema file will be data.pschema.json)
-                           If the file/s exists, it will load the schema instead of inferring it
-                           (ignoring --infer-len) and attempt to use it for each corresponding
-                           Polars "table" with the same file stem.
+    --cache-schema <arg>   Create and cache Polars schema JSON files.
+                           Ignored when --infer-len is 0.
+                           ‎ -2: treat all columns as String. A Polars schema file is created & cached.
+                           ‎ -1: treat all columns as String. No Polars schema file is created.
+                             0: do not cache Polars schema. Uses --infer-len to infer schema.
+                             1: cache Polars schema with the following behavior:
+                                - If schema file exists and is newer than input: use cached schema
+                                - If schema file missing/outdated and stats cache exists: 
+                                  derive schema from stats and cache it
+                                - If no schema or stats cache: infer schema using --infer-len 
+                                  and cache the result
+                                Schema files use the same name as input with .pschema.json extension
+                                (e.g., data.csv -> data.pschema.json)
+                           [default: 0]
     --low-memory           Use low memory mode when parsing CSVs. This will use less memory
                            but will be slower. It will also process the join in streaming mode.
                            Only use this when you get out of memory errors.
@@ -122,9 +150,16 @@ joinp options:
                            ASOF JOIN OPTIONS:
     --asof                 Do an 'asof' join. This is similar to a left inner
                            join, except we match on nearest key rather than
-                           equal keys. Note that both CSV data sets will be SORTED
-                           AUTOMATICALLY on the join columns.
+                           equal keys (see --allow-exact-matches).
                            Particularly useful for time series data.
+                           Note that both CSV data sets will be SORTED on the join columns
+                           by default, unless --no-sort is set.
+    --no-sort              Do not sort the CSV data sets on the join columns by default.
+                           Note that asof joins REQUIRE the join keys to be sorted,
+                           so this option should only be used as a performance optimization
+                           when you know the CSV join keys are already sorted.
+                           If the CSV join keys are not sorted, the asof join will fail or
+                           return incorrect results.
     --left_by <arg>        Do an 'asof_by' join - a special implementation of the asof
                            join that searches for the nearest keys within a subgroup
                            set by the asof_by columns. This specifies the column/s for
@@ -170,12 +205,16 @@ joinp options:
                              Suffix with “_saturating” to indicate that dates too
                              large for their month should saturate at the largest date
                              (e.g. 2022-02-29 -> 2022-02-28) instead of erroring.
+   -X, --allow-exact-matches  When set, the asof join will allow exact matches.
+                              (i.e. less-than-or-equal-to or greater-than-or-equal-to)
+                              Otherwise, the asof join will only allow nearest matches
+                              (strictly less-than or greater-than) by default.
 
                              OUTPUT FORMAT OPTIONS:
    --sql-filter <SQL>        The SQL expression to apply against the join result.
-                             Ordinarily used to select columns and filter rows from 
-                             the join result. Be sure to select from the "join_result"
-                             table when formulating the SQL expression.
+                             Used to select columns and filter rows AFTER running the join.
+                             Be sure to select from the "join_result" table when formulating
+                             the SQL expression.
                              (e.g. "select c1, c2 as colname from join_result where c2 > 20")
    --datetime-format <fmt>   The datetime format to use writing datetimes.
                              See https://docs.rs/chrono/latest/chrono/format/strftime/index.html
@@ -187,71 +226,110 @@ joinp options:
    --null-value <arg>        The string to use when writing null values.
                              (default: <empty string>)
 
+                             JOIN KEY TRANSFORMATION OPTIONS:
+                             Note that transformations are applied to TEMPORARY
+                             join key columns. The original columns are not modified
+                             and the TEMPORARY columns are removed after the join.
+
+-i, --ignore-case            When set, joins are done case insensitively.
+-z, --ignore-leading-zeros   When set, joins are done ignoring leading zeros.
+                             Note that this is only applied to the join keys for
+                             both numeric and string columns. Also note that
+                             Polars will automatically remove leading zeros from
+                             numeric columns when it infers the schema.
+                             To force the schema to be all String types,
+                             set --cache-schema to -1 or -2.
+-N, --norm-unicode <arg>     When set, join keys are Unicode normalized.
+                             Valid values are:
+                               nfc - Normalization Form C
+                               nfd - Normalization Form D
+                               nfkc - Normalization Form KC
+                               nfkd - Normalization Form KD
+                               none - No normalization is performed.
+                             [default: none]
+
 Common options:
     -h, --help             Display this message
     -o, --output <file>    Write output to <file> instead of stdout.
     -d, --delimiter <arg>  The field delimiter for reading/writing CSV data.
                            Must be a single character. (default: ,)
-    -Q, --quiet            Do not return join shape to stderr.
+    -q, --quiet            Do not return join shape to stderr.
 "#;
 
 use std::{
     env,
     fs::File,
     io::{self, BufReader, BufWriter, Read, Write},
+    mem::swap,
     path::{Path, PathBuf},
     str,
 };
 
-use polars::{datatypes::AnyValue, prelude::*, sql::SQLContext};
+use polars::prelude::*;
 use serde::Deserialize;
 use tempfile::tempdir;
 
 use crate::{
-    cmd::sqlp::compress_output_if_needed, config::Delimiter, util, util::get_stats_records,
-    CliResult,
+    CliResult, cmd::sqlp::compress_output_if_needed, config::Delimiter, util,
+    util::get_stats_records,
 };
 
 #[derive(Deserialize)]
 struct Args {
-    arg_columns1:          String,
-    arg_input1:            String,
-    arg_columns2:          String,
-    arg_input2:            String,
-    flag_left:             bool,
-    flag_left_anti:        bool,
-    flag_left_semi:        bool,
-    flag_right:            bool,
-    flag_full:             bool,
-    flag_cross:            bool,
-    flag_coalesce:         bool,
-    flag_filter_left:      Option<String>,
-    flag_filter_right:     Option<String>,
-    flag_validate:         Option<String>,
-    flag_nulls:            bool,
-    flag_streaming:        bool,
-    flag_try_parsedates:   bool,
-    flag_decimal_comma:    bool,
-    flag_infer_len:        usize,
-    flag_cache_schema:     bool,
-    flag_low_memory:       bool,
-    flag_no_optimizations: bool,
-    flag_ignore_errors:    bool,
-    flag_asof:             bool,
-    flag_left_by:          Option<String>,
-    flag_right_by:         Option<String>,
-    flag_strategy:         Option<String>,
-    flag_tolerance:        Option<String>,
-    flag_sql_filter:       Option<String>,
-    flag_datetime_format:  Option<String>,
-    flag_date_format:      Option<String>,
-    flag_time_format:      Option<String>,
-    flag_float_precision:  Option<usize>,
-    flag_null_value:       String,
-    flag_output:           Option<String>,
-    flag_delimiter:        Option<Delimiter>,
-    flag_quiet:            bool,
-    flag_ignore_case:      bool,
+    arg_columns1:              String,
+    arg_input1:                String,
+    arg_columns2:              String,
+    arg_input2:                String,
+    flag_left:                 bool,
+    flag_left_anti:            bool,
+    flag_left_semi:            bool,
+    flag_right:                bool,
+    flag_right_anti:           bool,
+    flag_right_semi:           bool,
+    flag_full:                 bool,
+    flag_cross:                bool,
+    flag_non_equi:             Option<String>,
+    flag_coalesce:             bool,
+    flag_filter_left:          Option<String>,
+    flag_filter_right:         Option<String>,
+    flag_validate:             Option<String>,
+    flag_maintain_order:       Option<String>,
+    flag_nulls:                bool,
+    flag_streaming:            bool,
+    flag_try_parsedates:       bool,
+    flag_decimal_comma:        bool,
+    flag_infer_len:            usize,
+    flag_cache_schema:         i8,
+    flag_low_memory:           bool,
+    flag_no_optimizations:     bool,
+    flag_ignore_errors:        bool,
+    flag_asof:                 bool,
+    flag_no_sort:              bool,
+    flag_left_by:              Option<String>,
+    flag_right_by:             Option<String>,
+    flag_strategy:             Option<String>,
+    flag_tolerance:            Option<String>,
+    flag_allow_exact_matches:  bool,
+    flag_sql_filter:           Option<String>,
+    flag_datetime_format:      Option<String>,
+    flag_date_format:          Option<String>,
+    flag_time_format:          Option<String>,
+    flag_float_precision:      Option<usize>,
+    flag_null_value:           String,
+    flag_output:               Option<String>,
+    flag_delimiter:            Option<Delimiter>,
+    flag_quiet:                bool,
+    flag_ignore_case:          bool,
+    flag_ignore_leading_zeros: bool,
+    flag_norm_unicode:         Option<String>,
+}
+
+#[derive(PartialEq, Eq)]
+enum SpecialJoin {
+    NonEqui(String),
+    AsOfAutoSort,
+    AsOfNoSort,
+    None,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -283,48 +361,143 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         s => return fail_incorrectusage_clierror!("Invalid join validation: {s}"),
     };
 
+    let flag_maintain_order = args
+        .flag_maintain_order
+        .unwrap_or_else(|| "none".to_string())
+        .to_lowercase();
+    let maintain_order = match flag_maintain_order.as_str() {
+        "none" => MaintainOrderJoin::None,
+        "left" => MaintainOrderJoin::Left,
+        "right" => MaintainOrderJoin::Right,
+        "left_right" => MaintainOrderJoin::LeftRight,
+        "right_left" => MaintainOrderJoin::RightLeft,
+        s => return fail_incorrectusage_clierror!("Invalid maintain order option: {s}"),
+    };
+
+    let flag_norm_unicode = args
+        .flag_norm_unicode
+        .unwrap_or_else(|| "none".to_string())
+        .to_lowercase();
+    let normalization_form = match flag_norm_unicode.as_str() {
+        "nfc" => Some(UnicodeForm::NFC),
+        "nfd" => Some(UnicodeForm::NFD),
+        "nfkc" => Some(UnicodeForm::NFKC),
+        "nfkd" => Some(UnicodeForm::NFKD),
+        "none" => None,
+        s => return fail_incorrectusage_clierror!("Invalid normalization form: {s}"),
+    };
+
     let join_shape: (usize, usize) = match (
         args.flag_left,
         args.flag_left_anti,
         args.flag_left_semi,
         args.flag_right,
+        args.flag_right_anti,
+        args.flag_right_semi,
         args.flag_full,
         args.flag_cross,
         args.flag_asof,
+        args.flag_non_equi.is_some(),
     ) {
-        (false, false, false, false, false, false, false) => {
-            join.run(JoinType::Inner, validation, false)
+        // default inner join
+        (false, false, false, false, false, false, false, false, false, false) => join.run(
+            JoinType::Inner,
+            validation,
+            maintain_order,
+            SpecialJoin::None,
+            normalization_form.as_ref(),
+        ),
+        // left join
+        (true, false, false, false, false, false, false, false, false, false) => join.run(
+            JoinType::Left,
+            validation,
+            maintain_order,
+            SpecialJoin::None,
+            normalization_form.as_ref(),
+        ),
+        // left anti join
+        (false, true, false, false, false, false, false, false, false, false) => join.run(
+            JoinType::Anti,
+            validation,
+            maintain_order,
+            SpecialJoin::None,
+            normalization_form.as_ref(),
+        ),
+        // left semi join
+        (false, false, true, false, false, false, false, false, false, false) => join.run(
+            JoinType::Semi,
+            validation,
+            maintain_order,
+            SpecialJoin::None,
+            normalization_form.as_ref(),
+        ),
+        // right join
+        (false, false, false, true, false, false, false, false, false, false) => join.run(
+            JoinType::Right,
+            validation,
+            maintain_order,
+            SpecialJoin::None,
+            normalization_form.as_ref(),
+        ),
+        // right anti join
+        // swap left and right data sets and run left anti join
+        (false, false, false, false, true, false, false, false, false, false) => {
+            let mut swapped_join = join;
+            swap(&mut swapped_join.left_lf, &mut swapped_join.right_lf);
+            swap(&mut swapped_join.left_sel, &mut swapped_join.right_sel);
+            swapped_join.run(
+                JoinType::Anti,
+                validation,
+                maintain_order,
+                SpecialJoin::None,
+                normalization_form.as_ref(),
+            )
         },
-        (true, false, false, false, false, false, false) => {
-            join.run(JoinType::Left, validation, false)
+        // right semi join
+        // swap left and right data sets and run left semi join
+        (false, false, false, false, false, true, false, false, false, false) => {
+            let mut swapped_join = join;
+            swap(&mut swapped_join.left_lf, &mut swapped_join.right_lf);
+            swap(&mut swapped_join.left_sel, &mut swapped_join.right_sel);
+            swapped_join.run(
+                JoinType::Semi,
+                validation,
+                maintain_order,
+                SpecialJoin::None,
+                normalization_form.as_ref(),
+            )
         },
-        (false, true, false, false, false, false, false) => {
-            join.run(JoinType::Anti, validation, false)
-        },
-        (false, false, true, false, false, false, false) => {
-            join.run(JoinType::Semi, validation, false)
-        },
-        (false, false, false, true, false, false, false) => {
-            join.run(JoinType::Right, validation, false)
-        },
-        (false, false, false, false, true, false, false) => {
-            join.run(JoinType::Full, validation, false)
-        },
-        (false, false, false, false, false, true, false) => {
-            join.run(JoinType::Cross, validation, false)
-        },
-        (false, false, false, false, false, false, true) => {
+        // full join
+        (false, false, false, false, false, false, true, false, false, false) => join.run(
+            JoinType::Full,
+            validation,
+            maintain_order,
+            SpecialJoin::None,
+            normalization_form.as_ref(),
+        ),
+        // cross join
+        (false, false, false, false, false, false, false, true, false, false) => join.run(
+            JoinType::Cross,
+            validation,
+            MaintainOrderJoin::None,
+            SpecialJoin::None,
+            normalization_form.as_ref(),
+        ),
+
+        // as of join
+        (false, false, false, false, false, false, false, false, true, false) => {
             // safety: flag_strategy is always is_some() as it has a default value
             args.flag_strategy = Some(args.flag_strategy.unwrap().to_lowercase());
             let strategy = match args.flag_strategy.as_deref() {
                 Some("backward") | None => AsofStrategy::Backward,
                 Some("forward") => AsofStrategy::Forward,
                 Some("nearest") => AsofStrategy::Nearest,
-                Some(s) => return fail_clierror!("Invalid asof strategy: {}", s),
+                Some(s) => return fail_incorrectusage_clierror!("Invalid asof strategy: {}", s),
             };
 
             let mut asof_options = AsOfOptions {
                 strategy,
+                allow_eq: args.flag_allow_exact_matches,
                 ..Default::default()
             };
 
@@ -358,7 +531,30 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         .collect(),
                 );
             }
-            join.run(JoinType::AsOf(asof_options), validation, true)
+            join.run(
+                JoinType::AsOf(asof_options),
+                validation,
+                MaintainOrderJoin::None,
+                if args.flag_no_sort {
+                    SpecialJoin::AsOfNoSort
+                } else {
+                    SpecialJoin::AsOfAutoSort
+                },
+                normalization_form.as_ref(),
+            )
+        },
+
+        // non-equi join
+        (false, false, false, false, false, false, false, false, false, true) => {
+            // JoinType::Inner is just a placeholder value to satisfy the compiler
+            // as this is a non-equi join
+            join.run(
+                JoinType::Inner,
+                validation,
+                maintain_order,
+                SpecialJoin::NonEqui(args.flag_non_equi.unwrap()),
+                normalization_form.as_ref(),
+            )
         },
         _ => fail_incorrectusage_clierror!("Please pick exactly one join operation."),
     }?;
@@ -371,22 +567,23 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 }
 
 struct JoinStruct {
-    left_lf:          LazyFrame,
-    left_sel:         String,
-    right_lf:         LazyFrame,
-    right_sel:        String,
-    output:           Option<String>,
-    delim:            u8,
-    coalesce:         bool,
-    streaming:        bool,
-    no_optimizations: bool,
-    sql_filter:       Option<String>,
-    datetime_format:  Option<String>,
-    date_format:      Option<String>,
-    time_format:      Option<String>,
-    float_precision:  Option<usize>,
-    null_value:       String,
-    ignore_case:      bool,
+    left_lf:              LazyFrame,
+    left_sel:             String,
+    right_lf:             LazyFrame,
+    right_sel:            String,
+    output:               Option<String>,
+    delim:                u8,
+    coalesce:             bool,
+    streaming:            bool,
+    no_optimizations:     bool,
+    sql_filter:           Option<String>,
+    datetime_format:      Option<String>,
+    date_format:          Option<String>,
+    time_format:          Option<String>,
+    float_precision:      Option<usize>,
+    null_value:           String,
+    ignore_case:          bool,
+    ignore_leading_zeros: bool,
 }
 
 impl JoinStruct {
@@ -394,7 +591,9 @@ impl JoinStruct {
         mut self,
         jointype: JoinType,
         validation: JoinValidation,
-        asof_join: bool,
+        maintain_order: MaintainOrderJoin,
+        special_join: SpecialJoin,
+        normalization_form: Option<&UnicodeForm>,
     ) -> CliResult<(usize, usize)> {
         let mut left_selcols: Vec<_> = self
             .left_sel
@@ -407,58 +606,69 @@ impl JoinStruct {
             .map(polars::lazy::dsl::col)
             .collect();
 
-        // If ignore_case is enabled, create lowercase versions of the join columns
-        if self.ignore_case {
-            // Create temporary lowercase versions of join columns in left dataframe
-            for col in &left_selcols {
-                self.left_lf = self
-                    .left_lf
-                    .with_column(col.clone().str().to_lowercase().alias(format!(
-                        "_qsv-{}-lower",
-                        col.to_string()
-                            .trim_start_matches(r#"col(""#)
-                            .trim_end_matches(r#"")"#)
-                    )));
-            }
+        // Handle ignore_case, ignore_leading_zeros, and unicode normalization transformations
+        let keys_transformed =
+            if self.ignore_case || self.ignore_leading_zeros || normalization_form.is_some() {
+                // Create transformation function that applies all enabled transformations
+                let transform_col = |col: Expr| {
+                    let mut transformed = col.cast(DataType::String);
+                    if self.ignore_leading_zeros {
+                        transformed = transformed.str().replace_all(lit(r"^0+"), lit(""), false);
+                    }
+                    if self.ignore_case {
+                        transformed = transformed.str().to_lowercase();
+                    }
+                    if let Some(form) = normalization_form {
+                        transformed = transformed.str().normalize(form.clone());
+                    }
+                    transformed
+                };
 
-            // Create temporary lowercase versions of join columns in right dataframe
-            for col in &right_selcols {
-                self.right_lf = self
-                    .right_lf
-                    .with_column(col.clone().str().to_lowercase().alias(format!(
-                        "_qsv-{}-lower",
-                        col.to_string()
-                            .trim_start_matches(r#"col(""#)
-                            .trim_end_matches(r#"")"#)
-                    )));
-            }
+                // Helper to get clean column name without col("") wrapper
+                let clean_col_name = |col: &Expr| {
+                    col.to_string()
+                        .trim_start_matches(r#"col(""#)
+                        .trim_end_matches(r#"")"#)
+                        .to_string()
+                };
 
-            // Create new vectors for the lowercase column names
-            let left_selcols_w: Vec<_> = left_selcols
-                .iter()
-                .map(|col| {
-                    polars::lazy::dsl::col(format!(
-                        "_qsv-{}-lower",
-                        col.to_string()
-                            .trim_start_matches(r#"col(""#)
-                            .trim_end_matches(r#"")"#)
-                    ))
-                })
-                .collect();
-            left_selcols = left_selcols_w;
-            let right_selcols_w: Vec<_> = right_selcols
-                .iter()
-                .map(|col| {
-                    polars::lazy::dsl::col(format!(
-                        "_qsv-{}-lower",
-                        col.to_string()
-                            .trim_start_matches(r#"col(""#)
-                            .trim_end_matches(r#"")"#)
-                    ))
-                })
-                .collect();
-            right_selcols = right_selcols_w;
-        }
+                // Transform left dataframe columns
+                for col in &left_selcols {
+                    let col_name = clean_col_name(col);
+                    let temp_col_name = format!("_qsv-{col_name}-transformed");
+                    self.left_lf = self
+                        .left_lf
+                        .with_column(transform_col(col.clone()).alias(&temp_col_name));
+                }
+
+                // Transform right dataframe columns
+                for col in &right_selcols {
+                    let col_name = clean_col_name(col);
+                    let temp_col_name = format!("_qsv-{col_name}-transformed");
+                    self.right_lf = self
+                        .right_lf
+                        .with_column(transform_col(col.clone()).alias(&temp_col_name));
+                }
+
+                // Update selcols to use transformed column names
+                left_selcols = left_selcols
+                    .iter()
+                    .map(|col| {
+                        polars::lazy::dsl::col(format!("_qsv-{}-transformed", clean_col_name(col)))
+                    })
+                    .collect();
+
+                right_selcols = right_selcols
+                    .iter()
+                    .map(|col| {
+                        polars::lazy::dsl::col(format!("_qsv-{}-transformed", clean_col_name(col)))
+                    })
+                    .collect();
+
+                true
+            } else {
+                false
+            };
 
         let left_selcols_len = left_selcols.len();
         let right_selcols_len = right_selcols.len();
@@ -485,12 +695,12 @@ impl JoinStruct {
                 | OptFlags::CLUSTER_WITH_COLUMNS
                 | OptFlags::TYPE_COERCION
                 | OptFlags::SIMPLIFY_EXPR
-                | OptFlags::FILE_CACHING
                 | OptFlags::SLICE_PUSHDOWN
                 | OptFlags::COMM_SUBPLAN_ELIM
                 | OptFlags::COMM_SUBEXPR_ELIM
                 | OptFlags::ROW_ESTIMATE
-                | OptFlags::FAST_PROJECTION;
+                | OptFlags::FAST_PROJECTION
+                | OptFlags::COLLAPSE_JOINS;
         }
 
         optflags.set(OptFlags::STREAMING, self.streaming);
@@ -510,7 +720,8 @@ impl JoinStruct {
                 .finish()
                 .collect()?
         } else {
-            if asof_join {
+            if special_join == SpecialJoin::AsOfAutoSort {
+                // it's an asof join and --no-sort is not set
                 // sort by the asof columns, as asof joins require sorted join column data
                 let left_selcols_vec: Vec<PlSmallStr> =
                     self.left_sel.split(',').map(PlSmallStr::from_str).collect();
@@ -530,40 +741,78 @@ impl JoinStruct {
                     .sort(right_selcols_vec, SortMultipleOptions::default());
             }
 
-            self.left_lf
-                .with_optimizations(optflags)
-                .join_builder()
-                .with(self.right_lf.with_optimizations(optflags))
-                .left_on(left_selcols)
-                .right_on(right_selcols)
-                .how(jointype)
-                .coalesce(coalesce_flag)
-                .allow_parallel(true)
-                .validate(validation)
-                .finish()
-                .collect()?
+            if let SpecialJoin::NonEqui(expr) = special_join {
+                // it's a non-equi join
+                let expr = polars::sql::sql_expr(expr)?;
+
+                // Add "_left" & "_right" suffixes to all columns before doing the non-equi join.
+                // This is necessary as the NonEqui expression is a SQL where clause and the
+                // column names for the left and right data sets are used in the expression.
+                self.left_lf = self.left_lf.select([all().name().suffix("_left")]);
+                self.right_lf = self.right_lf.select([all().name().suffix("_right")]);
+
+                self.left_lf
+                    .with_optimizations(optflags)
+                    .join_builder()
+                    .with(self.right_lf.with_optimizations(optflags))
+                    .join_where(vec![expr])
+                    .collect()?
+            } else {
+                // it's one of the "standard" joins as indicated by jointype
+                self.left_lf
+                    .with_optimizations(optflags)
+                    .join_builder()
+                    .with(self.right_lf.with_optimizations(optflags))
+                    .left_on(left_selcols)
+                    .right_on(right_selcols)
+                    .how(jointype)
+                    .maintain_order(maintain_order)
+                    .coalesce(coalesce_flag)
+                    .allow_parallel(true)
+                    .validate(validation)
+                    .finish()
+                    .collect()?
+            }
         };
 
-        let mut results_df = if let Some(sql_filter) = &self.sql_filter {
-            let mut ctx = SQLContext::new();
-            ctx.register("join_result", join_results.lazy());
-            ctx.execute(sql_filter)
-                .and_then(polars::prelude::LazyFrame::collect)?
-        } else {
-            join_results
+        let mut results_df = match &self.sql_filter {
+            Some(sql_filter) => {
+                let mut ctx = polars::sql::SQLContext::new();
+                ctx.register("join_result", join_results.lazy());
+                ctx.execute(sql_filter)
+                    .and_then(polars::prelude::LazyFrame::collect)?
+            },
+            _ => join_results,
         };
 
-        // if self.ignore_case, remove the temporary lowercase columns from the dataframe
-        if self.ignore_case {
-            // Get all column names
+        if keys_transformed {
+            // Remove temporary transformed columns and
+            // duplicate right-side join columns if coalesce is true
             let cols = results_df.get_column_names();
-            // Filter out the lowercase columns (those with "_qsv-*-lower" pattern)
-            let keep_cols: Vec<String> = cols
-                .iter()
-                .filter(|&col| !(col.starts_with("_qsv-") && col.ends_with("-lower")))
-                .map(|&s| s.to_string())
+            let mut keep_cols: Vec<String> = Vec::new();
+
+            let left_join_cols: Vec<String> = self
+                .left_sel
+                .split(',')
+                .map(std::string::ToString::to_string)
                 .collect();
-            // Select only the non-lowercase columns
+
+            for col in cols {
+                if col.contains("-transformed") {
+                    continue;
+                }
+
+                // For join columns, only keep the left version if coalesce is true
+                if self.coalesce && col.ends_with("_right") {
+                    let base_col = col.trim_end_matches("_right");
+                    if left_join_cols.contains(&base_col.to_string()) {
+                        continue;
+                    }
+                }
+
+                keep_cols.push(col.to_string());
+            }
+
             results_df = results_df.select(keep_cols)?;
         }
 
@@ -601,8 +850,6 @@ impl JoinStruct {
 
 impl Args {
     fn new_join(&mut self, tmpdir: &tempfile::TempDir) -> CliResult<JoinStruct> {
-        // =============== NEW_JOIN HELPER FUNCTIONS =================
-
         // Helper function to create a LazyFrameReader with common settings
         fn create_lazy_reader(
             file_path: &str,
@@ -639,7 +886,7 @@ impl Args {
                 flag_memcheck:        false,
             };
 
-            let (csv_fields, csv_stats) =
+            let (csv_fields, csv_stats, _) =
                 get_stats_records(&schema_args, util::StatsMode::PolarsSchema)?;
 
             let mut schema = Schema::with_capacity(csv_stats.len());
@@ -681,8 +928,31 @@ impl Args {
             Ok(schema)
         }
 
-        // Helper function to setup a LazyFrame with schema handling
-        #[inline]
+        /// Helper function to setup a LazyFrame with schema handling based on cache_schema flag.
+        ///
+        /// # Arguments
+        /// * `input_path` - Path to the input CSV file
+        /// * `comment_char` - Optional comment character to ignore lines starting with it
+        /// * `args` - Command line arguments containing schema caching and other options
+        /// * `delim` - Delimiter character for CSV parsing
+        /// * `debuglog_flag` - Whether debug logging is enabled
+        ///
+        /// # Returns
+        /// Returns a tuple containing:
+        /// * The configured LazyFrame for reading the CSV
+        /// * A boolean indicating if a new schema needs to be created and cached
+        ///
+        /// # Schema Caching Modes
+        /// * `0` - No schema caching, infer schema from data sample using Polars
+        /// * `1` - Cache inferred schema from stats in .pschema.json file
+        /// * `-1` - Use string schema for all columns without caching
+        /// * `-2` - Use string schema for all columns and cache it
+        ///
+        /// # Errors
+        /// Returns error if:
+        /// * File operations fail
+        /// * Schema parsing fails
+        /// * Invalid cache_schema value provided
         fn setup_lazy_frame(
             input_path: &Path,
             comment_char: Option<&PlSmallStr>,
@@ -691,47 +961,96 @@ impl Args {
             debuglog_flag: bool,
         ) -> CliResult<(LazyFrame, bool)> {
             let schema_file = input_path.canonicalize()?.with_extension("pschema.json");
-            let mut create_schema = args.flag_cache_schema;
+            let mut create_schema = false;
+            let cache_schema = if args.flag_infer_len == 0 {
+                0
+            } else {
+                args.flag_cache_schema
+            };
 
             let mut reader =
                 create_lazy_reader(input_path.to_str().unwrap(), comment_char, args, delim);
 
-            if create_schema {
-                let mut valid_schema_exists = schema_file.exists()
-                    && schema_file.metadata()?.modified()? > input_path.metadata()?.modified()?;
+            match cache_schema {
+                0 => {
+                    reader = reader.with_infer_schema_length(if args.flag_infer_len == 0 {
+                        None
+                    } else {
+                        Some(args.flag_infer_len)
+                    });
+                },
+                1 => {
+                    let mut valid_schema_exists = schema_file.exists()
+                        && schema_file.metadata()?.modified()?
+                            > input_path.metadata()?.modified()?;
 
-                if !valid_schema_exists {
-                    let schema = create_schema_from_stats(input_path, args)?;
-                    let stats_schema = Arc::new(schema);
-                    let stats_schema_json = serde_json::to_string_pretty(&stats_schema)?;
+                    if !valid_schema_exists {
+                        let schema = create_schema_from_stats(input_path, args)?;
+                        let stats_schema = Arc::new(schema);
+                        let stats_schema_json = serde_json::to_string_pretty(&stats_schema)?;
 
-                    let mut file = BufWriter::new(File::create(&schema_file)?);
-                    file.write_all(stats_schema_json.as_bytes())?;
-                    file.flush()?;
-                    if debuglog_flag {
-                        log::debug!("Saved schema to file: {}", schema_file.display());
+                        let mut file = BufWriter::new(File::create(&schema_file)?);
+                        file.write_all(stats_schema_json.as_bytes())?;
+                        file.flush()?;
+                        if debuglog_flag {
+                            log::debug!("Saved schema to file: {}", schema_file.display());
+                        }
+                        valid_schema_exists = true;
                     }
-                    valid_schema_exists = true;
-                }
 
-                if valid_schema_exists {
-                    let file = File::open(&schema_file)?;
-                    let mut buf_reader = BufReader::new(file);
-                    let mut schema_json = String::with_capacity(100);
-                    buf_reader.read_to_string(&mut schema_json)?;
-                    let schema: Schema = serde_json::from_str(&schema_json)?;
-                    reader = reader.with_schema(Some(Arc::new(schema)));
+                    if valid_schema_exists {
+                        let file = File::open(&schema_file)?;
+                        let mut buf_reader = BufReader::new(file);
+                        let mut schema_json = String::with_capacity(100);
+                        buf_reader.read_to_string(&mut schema_json)?;
+                        let schema: Schema = serde_json::from_str(&schema_json)?;
+                        reader = reader.with_schema(Some(Arc::new(schema)));
+                        create_schema = false;
+                    } else {
+                        reader = reader.with_infer_schema_length(Some(args.flag_infer_len));
+                        create_schema = true;
+                    }
+                },
+                -1 | -2 => {
+                    // get the headers from the input file
+                    let mut rdr = csv::Reader::from_path(input_path)?;
+                    let csv_fields = rdr.byte_headers()?.clone();
+                    drop(rdr);
+
+                    let mut schema = Schema::with_capacity(csv_fields.len());
+                    for field in &csv_fields {
+                        schema.insert(
+                            PlSmallStr::from_str(simdutf8::basic::from_utf8(field).unwrap()),
+                            polars::datatypes::DataType::String,
+                        );
+                    }
+                    let allstring_schema = Arc::new(schema);
+
+                    reader = reader.with_schema(Some(allstring_schema.clone()));
                     create_schema = false;
-                } else {
-                    reader = reader.with_infer_schema_length(Some(args.flag_infer_len));
-                    create_schema = true;
-                }
-            } else {
-                reader = reader.with_infer_schema_length(if args.flag_infer_len == 0 {
-                    None
-                } else {
-                    Some(args.flag_infer_len)
-                });
+
+                    // create and cache allstring schema
+                    if cache_schema == -2 {
+                        let allstring_schema_json =
+                            serde_json::to_string_pretty(&allstring_schema)?;
+
+                        let mut file = BufWriter::new(File::create(&schema_file)?);
+                        file.write_all(allstring_schema_json.as_bytes())?;
+                        file.flush()?;
+                        if debuglog_flag {
+                            log::debug!(
+                                "Saved allstring_schema to file: {}",
+                                schema_file.display()
+                            );
+                        }
+                    }
+                },
+                _ => {
+                    return fail_incorrectusage_clierror!(
+                        "Invalid --cache-schema value: {cache_schema}. Valid values are 0, 1, -1 \
+                         and -2"
+                    );
+                },
             }
 
             Ok((reader.finish()?, create_schema))
@@ -851,6 +1170,7 @@ impl Args {
                 self.flag_null_value.clone()
             },
             ignore_case: self.flag_ignore_case,
+            ignore_leading_zeros: self.flag_ignore_leading_zeros,
         })
     }
 }
@@ -895,23 +1215,23 @@ pub fn tsvssv_delim<P: AsRef<Path>>(file: P, orig_delim: u8) -> u8 {
 
 #[test]
 fn test_tsvssv_delim() {
-    assert_eq!(tsvssv_delim("test.tsv", b','), b'\t');
-    assert_eq!(tsvssv_delim("test.tab", b','), b'\t');
-    assert_eq!(tsvssv_delim("test.ssv", b','), b';');
-    assert_eq!(tsvssv_delim("test.sz", b','), b',');
-    assert_eq!(tsvssv_delim("test.csv", b','), b',');
-    assert_eq!(tsvssv_delim("test.TSV", b','), b'\t');
-    assert_eq!(tsvssv_delim("test.Tab", b','), b'\t');
-    assert_eq!(tsvssv_delim("test.SSV", b','), b';');
-    assert_eq!(tsvssv_delim("test.sZ", b','), b',');
-    assert_eq!(tsvssv_delim("test.CsV", b','), b',');
-    assert_eq!(tsvssv_delim("test", b','), b',');
-    assert_eq!(tsvssv_delim("test.csv.sz", b','), b',');
-    assert_eq!(tsvssv_delim("test.tsv.sz", b','), b'\t');
-    assert_eq!(tsvssv_delim("test.tab.sz", b','), b'\t');
-    assert_eq!(tsvssv_delim("test.ssv.sz", b','), b';');
-    assert_eq!(tsvssv_delim("test.csV.Sz", b','), b',');
-    assert_eq!(tsvssv_delim("test.TSV.SZ", b','), b'\t');
-    assert_eq!(tsvssv_delim("test.Tab.sZ", b','), b'\t');
-    assert_eq!(tsvssv_delim("test.SSV.sz", b','), b';');
+    similar_asserts::assert_eq!(tsvssv_delim("test.tsv", b','), b'\t');
+    similar_asserts::assert_eq!(tsvssv_delim("test.tab", b','), b'\t');
+    similar_asserts::assert_eq!(tsvssv_delim("test.ssv", b','), b';');
+    similar_asserts::assert_eq!(tsvssv_delim("test.sz", b','), b',');
+    similar_asserts::assert_eq!(tsvssv_delim("test.csv", b','), b',');
+    similar_asserts::assert_eq!(tsvssv_delim("test.TSV", b','), b'\t');
+    similar_asserts::assert_eq!(tsvssv_delim("test.Tab", b','), b'\t');
+    similar_asserts::assert_eq!(tsvssv_delim("test.SSV", b','), b';');
+    similar_asserts::assert_eq!(tsvssv_delim("test.sZ", b','), b',');
+    similar_asserts::assert_eq!(tsvssv_delim("test.CsV", b','), b',');
+    similar_asserts::assert_eq!(tsvssv_delim("test", b','), b',');
+    similar_asserts::assert_eq!(tsvssv_delim("test.csv.sz", b','), b',');
+    similar_asserts::assert_eq!(tsvssv_delim("test.tsv.sz", b','), b'\t');
+    similar_asserts::assert_eq!(tsvssv_delim("test.tab.sz", b','), b'\t');
+    similar_asserts::assert_eq!(tsvssv_delim("test.ssv.sz", b','), b';');
+    similar_asserts::assert_eq!(tsvssv_delim("test.csV.Sz", b','), b',');
+    similar_asserts::assert_eq!(tsvssv_delim("test.TSV.SZ", b','), b'\t');
+    similar_asserts::assert_eq!(tsvssv_delim("test.Tab.sZ", b','), b'\t');
+    similar_asserts::assert_eq!(tsvssv_delim("test.SSV.sz", b','), b';');
 }

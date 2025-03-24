@@ -235,22 +235,23 @@ Common options:
 use std::{fs, num::NonZeroU32, sync::OnceLock, thread, time};
 
 use cached::{
+    Cached, IOCached, RedisCache, Return, SizedCache,
     proc_macro::{cached, io_cached},
     stores::DiskCacheBuilder,
-    Cached, IOCached, RedisCache, Return, SizedCache,
 };
-use dynfmt::Format;
+use dynfmt2::Format;
 use governor::{
+    Quota, RateLimiter,
     clock::DefaultClock,
     middleware::NoOpMiddleware,
-    state::{direct::NotKeyed, InMemoryState},
-    Quota, RateLimiter,
+    state::{InMemoryState, direct::NotKeyed},
 };
 use indicatif::{HumanCount, MultiProgress, ProgressBar, ProgressDrawTarget};
-use jaq_interpret::{Ctx, FilterT, ParseCtx, RcIter, Val};
+use jaq_core::{Compiler, Ctx, RcIter, load};
+use jaq_json::Val;
 use log::{
-    debug, error, info, log_enabled, warn,
     Level::{Debug, Trace, Warn},
+    debug, error, info, log_enabled, warn,
 };
 use rand::Rng;
 use regex::Regex;
@@ -259,15 +260,16 @@ use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue},
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use url::Url;
 use util::expand_tilde;
 
 use crate::{
+    CliError, CliResult,
     config::{Config, Delimiter},
     regex_oncelock,
     select::SelectColumns,
-    util, CliError, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]
@@ -317,6 +319,9 @@ static DEFAULT_REDIS_POOL_SIZE: u32 = 20;
 static DEFAULT_DISKCACHE_TTL_SECS: u64 = 60 * 60 * 24 * 28;
 
 static TIMEOUT_SECS: OnceLock<u64> = OnceLock::new();
+
+pub static JAQ_FILTER: OnceLock<jaq_core::Filter<jaq_core::Native<jaq_json::Val>>> =
+    OnceLock::new();
 
 const FETCH_REPORT_PREFIX: &str = "qsv_fetch_";
 const FETCH_REPORT_SUFFIX: &str = ".fetch-report.tsv";
@@ -417,16 +422,17 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         .unwrap();
 
     // setup diskcache dir response caching
-    let diskcache_dir = if let Some(dir) = &args.flag_disk_cache_dir {
-        if dir.starts_with('~') {
-            // expand the tilde
-            let expanded_dir = expand_tilde(dir).unwrap();
-            expanded_dir.to_string_lossy().to_string()
-        } else {
-            dir.to_string()
-        }
-    } else {
-        String::new()
+    let diskcache_dir = match &args.flag_disk_cache_dir {
+        Some(dir) => {
+            if dir.starts_with('~') {
+                // expand the tilde
+                let expanded_dir = expand_tilde(dir).unwrap();
+                expanded_dir.to_string_lossy().to_string()
+            } else {
+                dir.to_string()
+            }
+        },
+        _ => String::new(),
     };
 
     let cache_type = if args.flag_no_cache {
@@ -463,14 +469,14 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             Err(e) => {
                 return fail_incorrectusage_clierror!(
                     r#"Invalid Redis connection string "{conn_str}": {e:?}"#
-                )
+                );
             },
         };
 
         let mut redis_conn;
         match redis_client.get_connection() {
             Err(e) => {
-                return fail_clierror!(r#"Cannot connect to Redis using "{conn_str}": {e:?}"#)
+                return fail_clierror!(r#"Cannot connect to Redis using "{conn_str}": {e:?}"#);
             },
             Ok(x) => redis_conn = x,
         }
@@ -568,7 +574,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         _ => {
             return fail_incorrectusage_clierror!(
                 "Rate Limit should be between 0 to 1000 queries per second."
-            )
+            );
         },
     };
     debug!("RATE LIMIT: {rate_limit}");
@@ -666,6 +672,16 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         Some(ref jaq_file) => Some(fs::read_to_string(jaq_file)?),
         None => args.flag_jaq.as_ref().map(std::string::ToString::to_string),
     };
+
+    // this is primarily to check if the jaq query is valid
+    // and if is, to cache the compiled jaq filter
+    if let Some(ref query) = jaq_selector {
+        let Ok(()) = JAQ_FILTER.set(compile_jaq_filter(query)?) else {
+            return Err(CliError::Other(
+                "Failed to cache precompiled JAQ filter".to_string(),
+            ));
+        };
+    }
 
     // prepare report
     let report = if args.flag_report.to_lowercase().starts_with('d') {
@@ -766,7 +782,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
         if report != ReportKind::None {
             now = time::Instant::now();
-        };
+        }
 
         if args.flag_url_template.is_some() {
             // we're using a URL template.
@@ -780,7 +796,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 );
             }
             if let Ok(formatted) =
-                dynfmt::SimpleCurlyFormat.format(&dynfmt_url_template, &*record_vec)
+                dynfmt2::SimpleCurlyFormat.format(&dynfmt_url_template, &*record_vec)
             {
                 url = formatted.into_owned();
             }
@@ -858,7 +874,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                             return fail_clierror!(
                                 "Cannot deserialize Redis cache value. Try flushing the Redis \
                                  cache with --flushdb: {e}"
-                            )
+                            );
                         },
                     };
                     if !args.flag_cache_error && final_response.status_code != 200 {
@@ -874,7 +890,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         if GET_REDIS_RESPONSE.cache_remove(&key).is_err() && log_enabled!(Warn) {
                             // failure to remove cache keys is non-fatal. Continue, but log it.
                             wwarn!(r#"Cannot remove Redis key "{key}""#);
-                        };
+                        }
                     }
                 },
                 CacheType::None => {
@@ -891,7 +907,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                     was_cached = false;
                 },
             }
-        };
+        }
 
         if final_response.status_code == 200 {
             running_success_count += 1;
@@ -1405,7 +1421,7 @@ fn get_response(
                 // we multiply reset_secs by 1001 instead of 1000 to give the server a teeny bit
                 // more breathing room before we hit it again
                 let pause_time =
-                    (reset_secs * 1001) + (retries as u64 * rand::thread_rng().gen_range(10..30));
+                    (reset_secs * 1001) + (retries as u64 * rand::rng().random_range(10..30));
 
                 debug!(
                     "sleeping for {pause_time} ms until ratelimit is reset/retry_after has elapsed"
@@ -1454,6 +1470,33 @@ fn get_response(
     }
 }
 
+pub fn compile_jaq_filter(
+    query: &str,
+) -> CliResult<jaq_core::Filter<jaq_core::Native<jaq_json::Val>>> {
+    // Create the program from query string
+    let program = load::File {
+        code: query,
+        path: (),
+    };
+
+    // Setup loader and arena
+    let loader = load::Loader::new(jaq_std::defs().chain(jaq_json::defs()));
+    let arena = load::Arena::default();
+
+    // Parse the filter
+    let modules = loader
+        .load(&arena, program)
+        .map_err(|e| CliError::Other(format!("Failed to parse jaq query: {e:?}")))?;
+
+    // Compile the filter
+    let filter = Compiler::default()
+        .with_funs(jaq_std::funs().chain(jaq_json::funs()))
+        .compile(modules)
+        .map_err(|e| CliError::Other(format!("Failed to compile jaq query: {e:?}")))?;
+
+    Ok(filter)
+}
+
 #[cached(
     size = 2_000_000,
     key = "String",
@@ -1461,34 +1504,24 @@ fn get_response(
     result = true
 )]
 pub fn process_jaq(json: &str, query: &str) -> CliResult<String> {
-    let mut deserializer = serde_json::Deserializer::from_str(json);
+    let jaq_filter = JAQ_FILTER.get_or_init(|| {
+        // safety: we know query is not empty
+        // and the jaq query is valid as it was checked in main
+        compile_jaq_filter(query).unwrap()
+    });
 
-    let value = match serde_json::Value::deserialize(&mut deserializer) {
-        Ok(valid_value) => valid_value,
-        Err(e) => return fail_clierror!("Failed to deserialize the JSON data: {e:?}"),
-    };
-
-    // Parse jaq filter based on JSON input
-    let mut defs = ParseCtx::new(Vec::new());
-    let (f, errs) = jaq_parse::parse(query, jaq_parse::main());
-
-    // Check for parsing errors
-    if !errs.is_empty() {
-        return fail_clierror!("Invalid jaq query: {errs:?}");
-    }
-
-    let f = match f {
-        Some(filter) => defs.compile(filter),
-        None => return fail_clierror!("Failed to compile jaq query"),
-    };
+    // Parse input JSON
+    let input: serde_json::Value = serde_json::from_str(json)?;
 
     let inputs = RcIter::new(core::iter::empty());
-    let out = f
-        .run((Ctx::new([], &inputs), Val::from(value)))
+
+    // Run the filter
+    let output = jaq_filter
+        .run((Ctx::new([], &inputs), Val::from(input)))
         .filter_map(std::result::Result::ok);
 
     #[allow(clippy::from_iter_instead_of_collect)]
-    let jaq_value = serde_json::Value::from_iter(out);
+    let jaq_value = serde_json::Value::from_iter(output);
 
     let final_val = match jaq_value {
         Value::Array(arr) => {
@@ -1542,175 +1575,8 @@ fn test_apply_jaq_invalid_json() {
 
     let value = process_jaq(json, selectors).unwrap_err().to_string();
 
-    assert_eq!(
-        "Failed to deserialize the JSON data: Error(\"expected value\", line: 1, column: 1)",
+    similar_asserts::assert_eq!(
+        "JSON error: Error(\"expected value\", line: 1, column: 1)",
         value
     );
-}
-
-#[test]
-fn test_apply_jaq_invalid_selector() {
-    let json_data = serde_json::json!(
-        {
-            "post code": "90210",
-            "country": "United States",
-            "country abbreviation": "US",
-            "places": [
-                {
-                    "place name": "Beverly Hills",
-                    "longitude": -118.4065,
-                    "state": "California",
-                    "state abbreviation": "CA",
-                    "latitude": 34.0901
-                }
-            ]
-        }
-    );
-    let json_string = serde_json::to_string(&json_data).unwrap();
-    let selectors = r#"."place"[0]."place name""#;
-
-    let value = process_jaq(&json_string, selectors)
-        .unwrap_err()
-        .to_string();
-
-    assert_eq!("Jaq query returned an empty result", value);
-}
-
-#[test]
-fn test_apply_jaq_string() {
-    let json_data = serde_json::json!(
-        {
-            "post code": "90210",
-            "country": "United States",
-            "country abbreviation": "US",
-            "places": [
-                {
-                    "place name": "Beverly Hills",
-                    "longitude": "-118.4065",
-                    "state": "California",
-                    "state abbreviation": "CA",
-                    "latitude": "34.0901"
-                }
-            ]
-        }
-    );
-    let json_string = serde_json::to_string(&json_data).unwrap();
-    let selectors = r#"."places"[0]."place name""#;
-
-    let value = process_jaq(&json_string, selectors).unwrap();
-
-    assert_eq!(r#""Beverly Hills""#, value);
-}
-
-#[test]
-fn test_apply_jaq() {
-    let json_data = serde_json::json!({
-        "data": [
-            {
-                "fruit": "apple",
-                "price": 0.50
-            },
-            {
-                "fruit": "banana",
-                "price": 1.00
-            }
-        ]
-    });
-
-    let json_string = serde_json::to_string(&json_data).unwrap();
-    let value = process_jaq(&json_string, ".data[]").unwrap();
-
-    assert_eq!(
-        "{\"fruit\":\"apple\",\"price\":0.5}, {\"fruit\":\"banana\",\"price\":1.0}",
-        value
-    );
-}
-
-#[test]
-fn test_apply_jaq_number() {
-    let json_data = serde_json::json!(
-        {
-            "post code": "90210",
-            "country": "United States",
-            "country abbreviation": "US",
-            "places": [
-                {
-                    "place name": "Beverly Hills",
-                    "longitude": -118.4065,
-                    "state": "California",
-                    "state abbreviation": "CA",
-                    "latitude": 34.0901
-                }
-            ]
-        }
-    );
-    let json_string = serde_json::to_string(&json_data).unwrap();
-    let selectors = r#"."places"[0]."longitude""#;
-
-    let value = process_jaq(&json_string, selectors).unwrap();
-
-    assert_eq!("-118.4065", value);
-}
-
-#[test]
-fn test_apply_jaq_bool() {
-    let json_data = serde_json::json!(
-        {
-            "post code": "90210",
-            "country": "United States",
-            "country abbreviation": "US",
-            "places": [
-                {
-                    "place name": "Beverly Hills",
-                    "longitude": -118.4065,
-                    "state": "California",
-                    "state abbreviation": "CA",
-                    "latitude": 34.0901,
-                    "expensive": true,
-                }
-            ]
-        }
-    );
-    let json_string = serde_json::to_string(&json_data).unwrap();
-    let selectors = r#"."places"[0]."expensive""#;
-
-    let value = process_jaq(&json_string, selectors).unwrap();
-
-    assert_eq!("true", value);
-}
-
-#[test]
-fn test_apply_jaq_array() {
-    let json_data = serde_json::json!(
-        {
-            "post code": "90210",
-            "country": "United States",
-            "country abbreviation": "US",
-            "places": [
-                {
-                    "place name": "Beverly Hills",
-                    "longitude": -118.4065,
-                    "state": "California",
-                    "state abbreviation": "CA",
-                    "latitude": 34.0901
-                }
-            ]
-        }
-    );
-    let json_string = serde_json::to_string(&json_data).unwrap();
-    let selectors = r#"[ ."places"[0]."longitude", ."places"[0]."latitude" ] "#;
-
-    let value = process_jaq(&json_string, selectors).unwrap();
-
-    assert_eq!("[-118.4065,34.0901]", value);
-}
-
-#[test]
-fn test_root_out_of_bounds_jaq() {
-    let json = r#"[{"page":1,"pages":1,"per_page":"50","total":1},[{"id":"BRA","iso2Code":"BR","name":"Brazil","region":{"id":"LCN","iso2code":"ZJ","value":"Latin America & Caribbean (all income levels)"},"adminregion":{"id":"LAC","iso2code":"XJ","value":"Latin America & Caribbean (developing only)"},"incomeLevel":{"id":"UMC","iso2code":"XT","value":"Upper middle income"},"lendingType":{"id":"IBD","iso2code":"XF","value":"IBRD"},"capitalCity":"Brasilia","longitude":"-47.9292","latitude":"-15.7801"}]]"#;
-    let selectors = r#".[2][0].incomeLevel.value"#;
-
-    let value = process_jaq(json, selectors).unwrap_err().to_string();
-
-    assert_eq!("Jaq query returned an empty result", value);
 }

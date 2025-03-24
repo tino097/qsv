@@ -23,7 +23,7 @@ fn template_basic() {
     let expected = "Hello John from New York!\nHello Jane from Boston!";
 
     wrk.assert_success(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -42,7 +42,7 @@ fn template_no_headers() {
     let expected = "Name: name, Age: age\nName: John, Age: 30\nName: Jane, Age: 25";
 
     wrk.assert_success(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -59,7 +59,7 @@ fn template_string() {
     let expected = "John is 30 years old\nJane is 25 years old";
 
     wrk.assert_success(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -81,7 +81,7 @@ fn template_custom_delimiter() {
     let expected = "Name: John, Age: 30\nName: Jane, Age: 25";
 
     wrk.assert_success(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -102,7 +102,7 @@ fn template_with_filters() {
     let expected = "John: $1234.57\nJane: $9876.54";
 
     wrk.assert_success(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -123,7 +123,7 @@ fn template_with_conditionals() {
     let expected = "John is a minor\nJane is an adult";
 
     wrk.assert_success(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -144,7 +144,7 @@ fn template_missing_field() {
     let expected = "John (N/A)\nJane (N/A)";
 
     wrk.assert_success(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -162,7 +162,7 @@ fn template_empty_input() {
     let expected = "";
 
     wrk.assert_success(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -187,7 +187,7 @@ fn template_with_loops() {
     let expected = "John's hobbies: reading, gaming, cooking, \nJane's hobbies: hiking, painting, ";
 
     wrk.assert_success(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -236,7 +236,7 @@ fn template_with_whitespace_control() {
     let expected = "Items:\n  - a\n  - b\n  - c";
 
     wrk.assert_success(&mut cmd);
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -255,9 +255,9 @@ fn template_output_file() {
 
     wrk.assert_success(&mut cmd);
 
-    let got = wrk.read_to_string(output_file);
+    let got = wrk.read_to_string(output_file).unwrap();
     let expected = "John,New York\nJane,Boston\n";
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -276,11 +276,11 @@ fn template_output_directory() {
     wrk.assert_success(&mut cmd);
 
     // Check that files were created with default ROWNO naming
-    let file1 = wrk.read_to_string(&format!("{outdir}/1.txt"));
-    let file2 = wrk.read_to_string(&format!("{outdir}/2.txt"));
+    let file1 = wrk.read_to_string(&format!("{outdir}/0/1.txt")).unwrap();
+    let file2 = wrk.read_to_string(&format!("{outdir}/0/2.txt")).unwrap();
 
-    assert_eq!(file1, "Hello John from New York!");
-    assert_eq!(file2, "Hello Jane from Boston!");
+    similar_asserts::assert_eq!(file1, "Hello John from New York!");
+    similar_asserts::assert_eq!(file2, "Hello Jane from Boston!");
 }
 
 #[test]
@@ -301,11 +301,15 @@ fn template_output_custom_filename() {
     wrk.assert_success(&mut cmd);
 
     // Check that files were created with custom naming
-    let file1 = wrk.read_to_string(&format!("{outdir}/John_greeting-1.txt"));
-    let file2 = wrk.read_to_string(&format!("{outdir}/Jane_greeting-2.txt"));
+    let file1 = wrk
+        .read_to_string(&format!("{outdir}/0/John_greeting-1.txt"))
+        .unwrap();
+    let file2 = wrk
+        .read_to_string(&format!("{outdir}/0/Jane_greeting-2.txt"))
+        .unwrap();
 
-    assert_eq!(file1, "Greetings from New York!");
-    assert_eq!(file2, "Greetings from Boston!");
+    similar_asserts::assert_eq!(file1, "Greetings from New York!");
+    similar_asserts::assert_eq!(file2, "Greetings from Boston!");
 }
 
 #[test]
@@ -325,11 +329,11 @@ fn template_output_directory_no_headers() {
     wrk.assert_success(&mut cmd);
 
     // Check files with row numbers
-    let file1 = wrk.read_to_string(&format!("{outdir}/1.txt"));
-    let file2 = wrk.read_to_string(&format!("{outdir}/2.txt"));
+    let file1 = wrk.read_to_string(&format!("{outdir}/0/1.txt")).unwrap();
+    let file2 = wrk.read_to_string(&format!("{outdir}/0/2.txt")).unwrap();
 
-    assert_eq!(file1, "Record: John - New York");
-    assert_eq!(file2, "Record: Jane - Boston");
+    similar_asserts::assert_eq!(file1, "Record: John - New York");
+    similar_asserts::assert_eq!(file2, "Record: Jane - Boston");
 }
 
 #[test]
@@ -380,7 +384,7 @@ Score (2 decimals): 2.72
 Score (rounded): 2.7183 2.7183
 Active: false
 Float with commas: 7,654,321.04"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -404,7 +408,7 @@ fn template_inline() {
     let expected = "\
 Hello Alice, you are 25 years old!
 Hello Bob, you are 30 years old!";
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -434,7 +438,7 @@ fn template_conditional() {
     let expected = "\
 Alice is a minor.
 Bob is an adult.";
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -457,9 +461,8 @@ fn template_render_error() {
 
     wrk.assert_err(&mut *&mut cmd);
     let got: String = wrk.output_stderr(&mut cmd);
-    let expected =
-        "syntax error: unexpected `}}`, expected end of variable block (in template:1)\n";
-    assert_eq!(got, expected);
+    let expected = "syntax error: unexpected `}`, expected end of variable block (in template:1)\n";
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -482,7 +485,7 @@ fn template_filter_error() {
 
     let got: String = wrk.stdout(&mut cmd);
     let expected = "Alice: <FILTER_ERROR>\nBob: 123.45";
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Test custom filter error message
     let mut cmd = wrk.command("template");
@@ -494,7 +497,7 @@ fn template_filter_error() {
 
     let got: String = wrk.stdout(&mut cmd);
     let expected = "Alice: INVALID NUMBER\nBob: 123.45";
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     // Test empty string as filter error
     let mut cmd = wrk.command("template");
@@ -506,7 +509,7 @@ fn template_filter_error() {
 
     let got: String = wrk.stdout(&mut cmd);
     let expected = "Alice: \nBob: 123.45";
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -570,7 +573,7 @@ fn template_contrib_filters() {
         "first: 1\n",
         "last: 3",
     );
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -606,7 +609,7 @@ fn template_contrib_functions() {
         "now: true\n",
         "dtformat: December 23 1999 23:37:22",
     );
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -656,7 +659,7 @@ fn template_pycompat_filters() {
         "rfind: -1\n",
         "rstrip:   Hello",
     );
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -702,7 +705,7 @@ VALUE: ghi
   human_count: ERROR: "7654321.04" is not an integer.
   human_float_count: 7,654,321.04
   round_banker: 7654321.04"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     let mut cmd = wrk.command("template");
     cmd.arg("--template")
@@ -734,7 +737,7 @@ VALUE: ghi
   human_count: 
   human_float_count: 7,654,321.04
   round_banker: 7654321.04"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -777,7 +780,7 @@ false
 false
 false
 false"#;
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -812,7 +815,7 @@ fn template_substr_filter() {
         "middle: g 123\n",
         "invalid: ERROR"
     );
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -864,7 +867,7 @@ fn template_lookup_filter_simple() {
         "2: banana - A yellow fruit\n",
         r#"4: <not found> - lookup: "products-name" not found for: "4" - <not found> - lookup: "products-description" not found for: "4""#
     );
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -918,7 +921,7 @@ fn template_lookup_filter_invalid_field() {
 "#,
         r#"4: <not found> - lookup: "products-name" not found for: "4" - <not found> - lookup: "products-non_existent_column" not found for: "4""#
     );
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -956,7 +959,7 @@ fn template_lookup_filter_errors() {
     wrk.assert_success(&mut cmd);
 
     let got: String = wrk.stdout(&mut cmd);
-    assert_eq!(
+    similar_asserts::assert_eq!(
         got,
         "<FILTER_ERROR> - lookup: \"non_existent lookup-name\" not found for: \"1\""
     );
@@ -1019,7 +1022,7 @@ fn template_lookup_case_sensitivity() {
         .arg("data.csv");
 
     let got: String = wrk.stdout(&mut cmd);
-    assert_eq!(
+    similar_asserts::assert_eq!(
         got,
         r#"<FILTER_ERROR> - lookup: "codes-value" not found for: "abc"
 <FILTER_ERROR> - lookup: "codes-value" not found for: "DEF"
@@ -1037,7 +1040,7 @@ fn template_lookup_case_sensitivity() {
         .arg("data.csv");
 
     let got: String = wrk.stdout(&mut cmd);
-    assert_eq!(got, "first\nsecond\nthird");
+    similar_asserts::assert_eq!(got, "first\nsecond\nthird");
 }
 
 #[test]
@@ -1070,7 +1073,7 @@ fn template_humanfloat_filter() {
         "0.0001\n",
         "ERROR: \"not_a_number\" is not a float."
     );
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1108,5 +1111,79 @@ fn template_round_banker_filter() {
         "2 places: ERROR: \"not_a_number\" is not a float.\n",
         "0 places: ERROR: \"not_a_number\" is not a float."
     );
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn template_globals_json() {
+    let wrk = Workdir::new("template_globals");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["name", "score"],
+            svec!["Alice", "85"],
+            svec!["Bob", "92"],
+        ],
+    );
+
+    wrk.create_from_string(
+        "globals.json",
+        r#"{
+            "passing_score": 90,
+            "school_name": "Test Academy",
+            "year": 2023
+        }"#,
+    );
+
+    let mut cmd = wrk.command("template");
+    cmd.arg("--template")
+        .arg(concat!(
+            "School: {{qsv_g.school_name}}\n",
+            "Year: {{qsv_g.year}}\n",
+            "Student: {{name}}\n",
+            "Score: {{score}}\n",
+            "Status: {% if score|int >= qsv_g.passing_score %}PASS{% else %}FAIL{% endif %}\n\n\n"
+        ))
+        .arg("--globals-json")
+        .arg("globals.json")
+        .arg("data.csv");
+
+    let got: String = wrk.stdout(&mut cmd);
+    let expected = concat!(
+        "School: Test Academy\n",
+        "Year: 2023\n",
+        "Student: Alice\n",
+        "Score: 85\n",
+        "Status: FAIL\n\n",
+        "School: Test Academy\n",
+        "Year: 2023\n",
+        "Student: Bob\n",
+        "Score: 92\n",
+        "Status: PASS"
+    );
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn template_globals_json_invalid() {
+    let wrk = Workdir::new("template_globals_invalid");
+    wrk.create("data.csv", vec![svec!["name"], svec!["test"]]);
+
+    wrk.create_from_string(
+        "invalid.json",
+        r#"{
+            "bad_json": "missing_comma"
+            "another_field": true
+        }"#,
+    );
+
+    let mut cmd = wrk.command("template");
+    cmd.arg("--template")
+        .arg("{{name}}\n")
+        .arg("--globals-json")
+        .arg("invalid.json")
+        .arg("data.csv");
+
+    let got: String = wrk.output_stderr(&mut cmd);
+    assert!(got.contains("Failed to parse globals JSON file"));
 }

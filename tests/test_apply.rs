@@ -14,7 +14,7 @@ fn apply_ops_unknown_operation() {
         .arg("data.csv");
 
     let got: String = wrk.output_stderr(&mut cmd);
-    assert_eq!(&*got, "usage error: Unknown 'obfuscate' operation\n")
+    similar_asserts::assert_eq!(&*got, "usage error: Unknown 'obfuscate' operation\n")
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn apply_ops_upper() {
         svec!["SUE", "BIRD"],
         svec!["HOPKINS", "JADE"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -99,7 +99,7 @@ fn apply_ops_gender_guess() {
         svec!["Abdurrahman", "Male"],
         svec!["Abbe", "NotSure"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -129,7 +129,7 @@ fn apply_ops_escape() {
         svec!["Sue", "Bird\\u{1f426}"],
         svec!["Hop\\u{119}kins", "J\\u{e6}de"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -161,7 +161,7 @@ fn apply_ops_upper_rename() {
         svec!["SUE", "BIRD"],
         svec!["HOPKINS", "JADE"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -186,7 +186,7 @@ fn apply_ops_upper_rename_invalid() {
         .arg("data.csv");
 
     let got: String = wrk.output_stderr(&mut cmd);
-    assert_eq!(
+    similar_asserts::assert_eq!(
         got,
         "usage error: Number of new columns does not match input column selection.\n"
     );
@@ -221,7 +221,7 @@ fn apply_ops_upper_index_params() {
         svec!["SUE", "BIRD"],
         svec!["HOPKINS", "JADE"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -259,7 +259,7 @@ fn apply_ops_encode62() {
         ],
         svec!["7671262618974725285", "98gSmJMD1XB", "7671262618974725285"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -298,7 +298,7 @@ fn apply_ops_decode62() {
             "encode62 error: ParseIntError { kind: InvalidDigit }"
         ],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -350,7 +350,7 @@ fn apply_ops_encode64() {
             "UnVzdO+8iOODqeOCueODiO+8ieOBr+S4puWIl+OBi+OBpOODnuODq+ODgeODkeODqeODgOOCpOODoOOBruODl+ODreOCsOODqeODn+ODs+OCsOiogOiqnuOBp+OBguOCiw=="],
 
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -397,7 +397,7 @@ fn apply_ops_decode64() {
             "UnVzdO+8iOODqeOCueODiO+8ieOBr+S4puWIl+OBi+OBpOODnuODq+ODgeODkeODqeODgOOCpOODoOOBruODl+ODreOCsOODqeODn+ODs+OCsOiogOiqnuOBp+OBguOCiw==",
             "Rust（ラスト）は並列かつマルチパラダイムのプログラミング言語である"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -467,7 +467,7 @@ fn apply_dynfmt() {
              strawberries, all 3 - is just worth it!"
         ],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -537,7 +537,7 @@ fn apply_dynfmt_keepcase() {
              strawberries, all 3 - is just worth it!"
         ],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -569,7 +569,7 @@ fn apply_dynfmt_issue1458() {
         svec!["Gordon", "H", "Irvin", "Sir/Madam Gordon H. Irvin"],
         svec!["Jack", "K", "Lynch", "Sir/Madam Jack K. Lynch"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -601,7 +601,7 @@ fn apply_regex_replace_issue1469() {
         svec!["Gordon", "H", "Irvin"],
         svec!["Jack", "K", "Lynch"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -637,7 +637,7 @@ fn apply_calcconv() {
         svec!["10", "bananas", "120", "0.50", "1.395600"],
         svec!["3", "strawberries", "20", "0.10", "0.069780"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -691,7 +691,7 @@ fn apply_calcconv_invalid() {
             "ERROR: Lexing error: Invalid string: bitcoins"
         ],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -727,7 +727,7 @@ fn apply_calcconv_units() {
         svec!["10", "bananas", "120", "0.50", "1.395600 WattHour"],
         svec!["3", "strawberries", "20", "0.10", "0.069780 WattHour"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -758,7 +758,7 @@ fn enum_apply_calconv_issue1458() {
         svec!["Jack", "K", "Lynch", "3"],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 
     wrk.create("enum.csv", got);
 
@@ -780,7 +780,7 @@ fn enum_apply_calconv_issue1458() {
         svec!["Jack", "K", "Lynch", "3", "9"],
     ];
 
-    assert_eq!(got2, expected2);
+    similar_asserts::assert_eq!(got2, expected2);
 }
 
 #[test]
@@ -807,7 +807,7 @@ fn apply_ops_empty_shortcircuit() {
         svec!["0"],
         svec!["7"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -839,7 +839,7 @@ fn apply_ops_titlecase() {
         svec!["New York City Police Department - NYPD"],
         svec!["Department of Human Services"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -877,7 +877,7 @@ fn apply_ops_censor_check() {
         svec!["fluff truck", "false"],
         svec!["fukushima", "false"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -915,7 +915,7 @@ fn apply_ops_censor_count() {
         svec!["fluff truck", "0"],
         svec!["fukushima", "0"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -953,7 +953,7 @@ fn apply_ops_censor() {
         svec!["kiss my ass!", "kiss my ***!"],
         svec!["shittitties", "***********"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -999,7 +999,7 @@ fn apply_ops_censor_check_addlwords() {
         svec!["long john silver's shlong", "true"],
         svec!["Whoa! I see her cameltoe thru her athleisure!", "true"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1051,7 +1051,7 @@ fn apply_ops_censor_addlwords() {
             "ding **** the ***** is dead!"
         ],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1097,7 +1097,7 @@ fn apply_ops_censor_count_addlwords() {
         svec!["that cameltoe is so penistracting!", "2"],
         svec!["ding dong the bitch is dead!", "2"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1133,7 +1133,7 @@ fn apply_ops_replace() {
         svec!["Mr. Brown is not pleased."],
         svec!["this is a silverado car"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1156,7 +1156,7 @@ fn apply_ops_replace_validation_error() {
         .arg("data.csv");
 
     let got = wrk.output_stderr(&mut cmd);
-    assert_eq!(
+    similar_asserts::assert_eq!(
         got,
         "usage error: --comparand (-C) and --replacement (-R) are required for replace \
          operation.\n"
@@ -1197,7 +1197,7 @@ fn apply_ops_regex_replace() {
         svec!["Won't fall for that scam!"],
         svec!["Just enter SSN when prompted. Also try SSN if it doesn't work."],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1220,7 +1220,7 @@ fn apply_ops_regex_replace_validation_error() {
         .arg("data.csv");
 
     let got = wrk.output_stderr(&mut cmd);
-    assert_eq!(
+    similar_asserts::assert_eq!(
         got,
         "usage error: --comparand (-C) and --replacement (-R) are required for regex_replace \
          operation.\n"
@@ -1289,7 +1289,7 @@ fn apply_ops_mtrim() {
         svec!["Embedded (((multiple parens"],
         svec!["reverse parens"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1319,7 +1319,7 @@ fn apply_ops_chain() {
         svec!["MARY SUE"],
         svec!["HOPKINS"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1340,7 +1340,7 @@ fn apply_ops_chain_validation_error() {
         .arg("data.csv");
 
     let got = wrk.output_stderr(&mut cmd);
-    assert_eq!(
+    similar_asserts::assert_eq!(
         got,
         "usage error: you can only use censor(0), copy(0), eudex(0), regex_replace(0), \
          replace(0), sentiment(0), similarity(2), strip(0), and whatlang(0) ONCE per operation \
@@ -1365,7 +1365,7 @@ fn apply_ops_chain_validation_error_missing_comparand() {
         .arg("data.csv");
 
     let got = wrk.output_stderr(&mut cmd);
-    assert_eq!(
+    similar_asserts::assert_eq!(
         got,
         "usage error: --comparand (-C) and --new_column (-c) is required for similarity \
          operations.\n"
@@ -1400,7 +1400,7 @@ fn apply_ops_chain_squeeze0() {
         svec!["MARYSUE"],
         svec!["HOPKINS"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1430,7 +1430,7 @@ fn apply_ops_squeeze0() {
         svec!["MarySue"],
         svec!["JohnHopkins"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1462,7 +1462,7 @@ fn apply_ops_chain_strip() {
         svec!["MARY SUE"],
         svec!["HOPKINS"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1492,7 +1492,7 @@ fn apply_ops_mixed_case_chain() {
         svec!["MARY SUE"],
         svec!["HOPKINS"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1516,7 +1516,7 @@ fn apply_no_headers() {
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![svec!["JOHN"], svec!["MARY"], svec!["SUE"], svec!["HOPKINS"]];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1548,7 +1548,7 @@ fn apply_rename() {
         svec!["SUE"],
         svec!["HOPKINS"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1580,7 +1580,7 @@ fn apply_new_column() {
         svec!["Sue", "SUE"],
         svec!["Hopkins", "HOPKINS"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1628,7 +1628,7 @@ fn apply_ops_thousands() {
         svec!["-5"],
         svec!["not a number, should be ignored"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1665,7 +1665,7 @@ fn apply_ops_thousands_space() {
         svec!["5"],
         svec!["not a number, should be ignored"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1702,7 +1702,7 @@ fn apply_ops_thousands_indiancomma() {
         svec!["5"],
         svec!["not a number, should be ignored"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1742,7 +1742,7 @@ fn apply_ops_thousands_eurostyle() {
         svec!["5"],
         svec!["not a number, should be ignored"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1781,7 +1781,7 @@ fn apply_ops_thousands_hexfour() {
         svec!["5"],
         svec!["not a number, should be ignored"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1833,7 +1833,7 @@ fn apply_ops_round() {
         svec!["-5"],
         svec!["not a number, should be ignored"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1874,7 +1874,7 @@ fn apply_ops_round_5places() {
         svec!["5"],
         svec!["not a number, should be ignored"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -1887,8 +1887,14 @@ fn apply_ops_currencytonum() {
             svec!["$10.00"],
             svec!["$-10.00"],
             svec!["$ 12 500.00"],
+            svec!["12,500.00"],
+            svec!["1,250,000"],
             svec!["$5"],
             svec!["0"],
+            svec!["$ 0.00"],
+            svec!["USD 0"],
+            svec!["USD 0.00"],
+            svec!["0.00 $"],
             svec!["5"],
             svec!["$0.25"],
             svec!["$ 10.05"],
@@ -1910,6 +1916,8 @@ fn apply_ops_currencytonum() {
             svec!["USD 10,000"],
             svec!["EUR 1234.50"],
             svec!["JPY 9,999,999.99"],
+            // RMB is not a valid ISO currency code
+            // but we handle it anyway
             svec!["RMB 6543.21"],
             svec!["$10.0099"],
             svec!["$10.0777"],
@@ -1931,8 +1939,14 @@ fn apply_ops_currencytonum() {
         svec!["10.00"],
         svec!["-10.00"],
         svec!["12500.00"],
+        svec!["12500.00"],
+        svec!["1250000.00"],
         svec!["5.00"],
-        svec!["0"],
+        svec!["0.00"],
+        svec!["0.00"],
+        svec!["0.00"],
+        svec!["0.00"],
+        svec!["0.00"],
         svec!["5.00"],
         svec!["0.25"],
         svec!["10.05"],
@@ -1962,7 +1976,113 @@ fn apply_ops_currencytonum() {
         svec!["10.78"],
         svec!["10.78"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
+}
+
+#[test]
+fn apply_ops_currencytonum_strict() {
+    let wrk = Workdir::new("apply_currencytonum_strict");
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["money"],
+            svec!["$10.00"],
+            svec!["$-10.00"],
+            svec!["$ 12 500.00"],
+            svec!["12,500.00"],
+            svec!["1,250,000"],
+            svec!["$5"],
+            svec!["0"],
+            svec!["$ 0.00"],
+            svec!["USD 0"],
+            svec!["USD 0.00"],
+            // in strict mode this will be ignored
+            // because you can't have a trailing currency symbol
+            svec!["0.00 $"],
+            svec!["5"],
+            svec!["$0.25"],
+            svec!["$ 10.05"],
+            svec!["¥10,000,000.00"],
+            svec!["£423.56"],
+            svec!["€120.00"],
+            svec!["֏99,999.50"],
+            svec!["€300 999,55"],
+            svec!["This is not money. Leave untouched."],
+            svec!["₱1,234,567.89"],
+            svec!["₽234,567.89"],
+            svec!["₪ 567.89"],
+            svec!["₩ 567.89"],
+            svec!["₩ 89,123.0"],
+            svec!["ƒ 123,456.00"],
+            svec!["฿ 789,123"],
+            svec!["₫ 456"],
+            svec!["123,456.00 $"],
+            svec!["USD 10,000"],
+            svec!["EUR 1234.50"],
+            svec!["JPY 9,999,999.99"],
+            // RMB is not a valid ISO currency code
+            // so in strict mode it will be ignored
+            svec!["RMB 6543.21"],
+            svec!["$10.0099"],
+            svec!["$10.0777"],
+            svec!["$10.0723"],
+            svec!["$10.8723"],
+            svec!["$10.77777"],
+            svec!["$10.777"],
+        ],
+    );
+    let mut cmd = wrk.command("apply");
+    cmd.arg("operations")
+        .arg("currencytonum")
+        .arg("money")
+        .arg("--formatstr")
+        .arg("strict")
+        .arg("data.csv");
+
+    let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
+    let expected = vec![
+        svec!["money"],
+        svec!["10.00"],
+        svec!["-10.00"],
+        svec!["12500.00"],
+        svec!["12,500.00"],
+        svec!["1,250,000"],
+        svec!["5.00"],
+        svec!["0"],
+        svec!["0.00"],
+        svec!["0.00"],
+        svec!["0.00"],
+        svec!["0.00 $"],
+        svec!["5"],
+        svec!["0.25"],
+        svec!["10.05"],
+        svec!["10000000.00"],
+        svec!["423.56"],
+        svec!["120.00"],
+        svec!["99999.50"],
+        svec!["300999.55"],
+        svec!["This is not money. Leave untouched."],
+        svec!["1234567.89"],
+        svec!["234567.89"],
+        svec!["567.89"],
+        svec!["567.89"],
+        svec!["89123.00"],
+        svec!["123456.00"],
+        svec!["789123.00"],
+        svec!["456.00"],
+        svec!["123,456.00 $"],
+        svec!["10000.00"],
+        svec!["1234.50"],
+        svec!["9999999.99"],
+        svec!["RMB 6543.21"],
+        svec!["10.01"],
+        svec!["10.08"],
+        svec!["10.07"],
+        svec!["10.87"],
+        svec!["10.78"],
+        svec!["10.78"],
+    ];
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2052,7 +2172,7 @@ fn apply_ops_numtocurrency() {
         svec!["$10.78"],
         svec!["$10.78"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2104,7 +2224,7 @@ fn apply_ops_numtocurrency_convert() {
         svec!["EUR 149,999.25"],
         svec!["EUR 451,499.32"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2158,7 +2278,7 @@ fn apply_ops_numtocurrency_convert_euro_format() {
         svec!["EUR 149.999,25"],
         svec!["EUR 451.499,32"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2192,7 +2312,7 @@ fn apply_ops_similarity() {
         svec!["Edna", "0.0"],
         svec!["Larry", "0.0"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2228,7 +2348,7 @@ fn apply_ops_similarity_eudex() {
         svec!["Larry", "false"],
         svec!["Joel", "false"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2266,7 +2386,7 @@ fn apply_ops_similarity_more_eudex() {
         svec!["Michael", "false"],
         svec!["Jingjing", "false"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2313,7 +2433,7 @@ fn apply_ops_sentiment() {
         svec!["5 stars! Highly recommended!", "0.3973495344831422"],
         svec!["What were they thinking!?!", "-0.19353437967075598"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2399,7 +2519,7 @@ fn apply_ops_whatlang() {
             "Tgl"
         ],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2487,7 +2607,7 @@ fn apply_ops_whatlang_high_confidence_threshold() {
             "Tgl(1.000)"
         ],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2575,7 +2695,7 @@ fn apply_ops_whatlang_low_confidence_threshold() {
             "Tgl"
         ],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2606,7 +2726,7 @@ fn apply_emptyreplace() {
         svec!["Sue"],
         svec!["Hopkins"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2637,7 +2757,7 @@ fn apply_emptyreplace_multiple_columns() {
         svec!["Sue", "NA", "Boston"],
         svec!["Hopkins", "40", "NA"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2668,7 +2788,7 @@ fn apply_emptyreplace_all_columns() {
         svec!["Sue", "NA", "Boston"],
         svec!["Hopkins", "40", "NA"],
     ];
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]
@@ -2704,5 +2824,5 @@ fn apply_crc32() {
         ],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }

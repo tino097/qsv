@@ -1,6 +1,6 @@
 use std::fs;
 
-use filetime::{set_file_times, FileTime};
+use filetime::{FileTime, set_file_times};
 
 use crate::workdir::Workdir;
 
@@ -60,7 +60,7 @@ fn index_outdated_stats() {
     // even if the index is stale, stats should succeed
     // as the index is automatically updated
     let mut cmd = wrk.command("stats");
-    cmd.arg("in.csv");
+    cmd.args(&["--dataset-stats", "in.csv"]);
 
     let got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     let expected = vec![
@@ -73,19 +73,25 @@ fn index_outdated_stats() {
             "max",
             "range",
             "sort_order",
+            "sortiness",
             "min_length",
             "max_length",
             "sum_length",
             "avg_length",
+            "stddev_length",
+            "variance_length",
+            "cv_length",
             "mean",
             "sem",
+            "geometric_mean",
+            "harmonic_mean",
             "stddev",
             "variance",
             "cv",
             "nullcount",
             "max_precision",
             "sparsity",
-            "qsv__value",
+            "qsv__value"
         ],
         svec![
             "letter",
@@ -98,8 +104,14 @@ fn index_outdated_stats() {
             "Ascending",
             "1",
             "1",
+            "1",
             "3",
             "1",
+            "0",
+            "0",
+            "0",
+            "",
+            "",
             "",
             "",
             "",
@@ -108,7 +120,7 @@ fn index_outdated_stats() {
             "0",
             "",
             "0",
-            "",
+            ""
         ],
         svec![
             "number",
@@ -119,22 +131,34 @@ fn index_outdated_stats() {
             "3",
             "2",
             "Descending",
-            "1",
-            "1",
-            "3",
-            "1",
+            "-1",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
             "2",
             "0.4714",
+            "1.8171",
+            "1.6364",
             "0.8165",
             "0.6667",
             "40.8248",
             "0",
             "",
             "0",
-            "",
+            ""
         ],
         svec![
             "qsv__rowcount",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
             "",
             "",
             "",
@@ -177,10 +201,22 @@ fn index_outdated_stats() {
             "",
             "",
             "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
             "2"
         ],
         svec![
             "qsv__filesize_bytes",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
             "",
             "",
             "",
@@ -223,11 +259,17 @@ fn index_outdated_stats() {
             "",
             "",
             "",
-            "597e467c8f605d260295bc4e059ffb683ac06139c701eda3bf6d5df7d6b1bc8f"
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "544903bb86bbdfdbbd119d5db5316048887046c24d7b6a4e757a2cf88543006f"
         ],
     ];
 
-    assert_eq!(got, expected);
+    similar_asserts::assert_eq!(got, expected);
 }
 
 #[test]

@@ -8,9 +8,9 @@ automatically used by commands that can benefit from it. If the original CSV
 data changes after the index is made, commands that try to use it will result
 in an error (you have to regenerate the index before it can be used again).
 
-However, if the environment variable QSV_AUTOINDEX is set, qsv will automatically
-create an index when none is detected, and stale indices will be automatically
-updated as well.
+However, if the environment variable QSV_AUTOINDEX_SIZE is set, qsv will
+automatically create an index when the input file size >= specified size (bytes).
+It will also automatically update stale indices as well.
 
 Usage:
     qsv index [options] <input>
@@ -35,8 +35,9 @@ use csv_index::RandomAccessSimple;
 use serde::Deserialize;
 
 use crate::{
+    CliResult,
     config::{Config, DEFAULT_WTR_BUFFER_CAPACITY},
-    util, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]

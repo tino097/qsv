@@ -106,7 +106,7 @@ fn generate_schema_with_optional_flags_notrim_and_validate_with_errors() {
 
     // validation report
     let validation_errors_expected = r#"row_number	field	error
-1	OpeningHours	"S = 09:00 - 21:00 W = 09:00 - 17:00 " is not one of ["09.00 - 17.00","S = 08:00 - 21:00 W = 08:00 - 17:00","S = 09:00 - 15:00 W = 09:00 - 15:00","S = 09:00 - 21:00 W = 09:00 - 17:00",null]
+1	OpeningHours	"S = 09:00 - 21:00 W = 09:00 - 17:00 " is not one of [null,"09.00 - 17.00","S = 08:00 - 21:00 W = 08:00 - 17:00","S = 09:00 - 15:00 W = 09:00 - 15:00","S = 09:00 - 21:00 W = 09:00 - 17:00"]
 2	ExtractDate	"07/07/2014 00:00" is not a "date"
 3	ExtractDate	"2014-07-07 00:00" is not a "date"
 4	ExtractDate	"07/07/2014 00:00" is not a "date"
@@ -137,7 +137,7 @@ fn generate_schema_with_optional_flags_notrim_and_validate_with_errors() {
 
     assert!(!validation_error_output.is_empty());
 
-    assert_eq!(
+    similar_asserts::assert_eq!(
         validation_errors_expected.to_string(),
         validation_error_output
     );
@@ -222,7 +222,7 @@ fn generate_schema_with_optional_flags_trim_and_validate_with_errors() {
 
     assert!(!validation_error_output.is_empty());
 
-    assert_eq!(
+    similar_asserts::assert_eq!(
         validation_errors_expected.to_string(),
         validation_error_output
     );
@@ -378,5 +378,5 @@ fn generate_schema_with_const_and_enum_constraints() {
   ]
 }"#;
 
-    assert_eq!(output_schema_string, expected_schema);
+    similar_asserts::assert_eq!(output_schema_string, expected_schema);
 }

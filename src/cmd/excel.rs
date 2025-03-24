@@ -155,13 +155,13 @@ Common options:
     -o, --output <file>        Write output to <file> instead of stdout.
     -d, --delimiter <arg>      The delimiter to use when writing CSV data.
                                Must be a single character. [default: ,]
-    -Q, --quiet                Do not display export summary message.
+    -q, --quiet                Do not display export summary message.
 "#;
 
 use std::{cmp, fmt::Write, io::Read, path::PathBuf};
 
 use calamine::{
-    open_workbook, open_workbook_auto, Data, Error, HeaderRow, Range, Reader, SheetType, Sheets,
+    Data, Error, HeaderRow, Range, Reader, SheetType, Sheets, open_workbook, open_workbook_auto,
 };
 use file_format::FileFormat;
 use indicatif::HumanCount;
@@ -170,8 +170,9 @@ use rayon::prelude::{IndexedParallelIterator, ParallelIterator, ParallelSlice};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    CliError, CliResult,
     config::{Config, Delimiter},
-    util, CliError, CliResult,
+    util,
 };
 
 #[derive(Deserialize)]
@@ -534,20 +535,25 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 || metadata_mode == MetadataMode::ShortJSON
             {
                 Range::empty()
-            } else if let Some(result) = sheets.worksheet_range_at(i) {
-                match result {
-                    Ok(result) => result,
-                    Err(e) => {
-                        if sheets.sheets_metadata()[i].typ == SheetType::ChartSheet {
-                            // return an empty range for ChartSheet
-                            Range::empty()
-                        } else {
-                            return fail_clierror!("Cannot retrieve range from {sheet_name}: {e}.");
+            } else {
+                match sheets.worksheet_range_at(i) {
+                    Some(result) => {
+                        match result {
+                            Ok(result) => result,
+                            Err(e) => {
+                                if sheets.sheets_metadata()[i].typ == SheetType::ChartSheet {
+                                    // return an empty range for ChartSheet
+                                    Range::empty()
+                                } else {
+                                    return fail_clierror!(
+                                        "Cannot retrieve range from {sheet_name}: {e}."
+                                    );
+                                }
+                            },
                         }
                     },
+                    _ => Range::empty(),
                 }
-            } else {
-                Range::empty()
             };
 
             let (header_vec, column_count, row_count, safenames_vec, unsafeheaders_vec, dupe_count) =
@@ -574,7 +580,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                                     }
                                 } else {
                                     unsafenames_vec.push(header.to_string());
-                                };
+                                }
 
                                 // check for duplicate headers/columns
                                 if checkednames_vec.contains(&header) {
@@ -738,7 +744,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 return fail_clierror!(
                     "\"{requested_table}\" table not found. Available tables are {table_names:?}"
                 );
-            };
+            }
             Some(xlsx_wb.table_by_name(&found_table).map_err(Error::Xlsx)?)
         } else {
             return fail_incorrectusage_clierror!("--table is only valid for XLSX files");
@@ -836,10 +842,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             let name_contains_exclamation: bool = requested_range.contains('!');
             let parsed_range = if requested_range.contains(':') && !name_contains_exclamation {
                 // if there is a colon, we treat it as a range for the current sheet
-                sheet_range = if let Some(result) = sheets.worksheet_range_at(sheet_index) {
-                    result?
-                } else {
-                    Range::empty()
+                sheet_range = match sheets.worksheet_range_at(sheet_index) {
+                    Some(result) => result?,
+                    _ => Range::empty(),
                 };
                 RequestedRange::from_string(requested_range, sheet_range.get_size())?
             } else if name_contains_exclamation {
@@ -871,7 +876,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         "\"{requested_range}\" named range not found. Available named ranges are \
                          {named_ranges:?}"
                     );
-                };
+                }
                 let range_str = get_requested_range(
                     &found_range,
                     &mut sheet,
@@ -1008,20 +1013,22 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             };
             let mut float_val;
             let mut work_date;
-            let mut format_buffer = String::new();
+            let mut error_buffer = String::new();
             let mut formatted_date = String::new();
 
             let mut processed_chunk: Vec<csv::StringRecord> = Vec::with_capacity(chunk_size);
             let mut col_idx = 0_u32;
 
             let mut cell_formula;
+            let mut itoa_buf = itoa::Buffer::new();
+            let mut ryu_buf = ryu::Buffer::new();
 
             for (row_idx, row) in chunk {
                 for cell in *row {
                     match *cell {
                         Data::Empty => record.push_field(""),
                         Data::String(ref s) => record.push_field(s),
-                        Data::Int(ref i) => record.push_field(itoa::Buffer::new().format(*i)),
+                        Data::Int(ref i) => record.push_field(itoa_buf.format(*i)),
                         Data::Float(ref f) => {
                             float_val = *f;
                             // push the ryu-formatted float value if its
@@ -1032,12 +1039,11 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                                 || float_val > i64::MAX as f64
                                 || float_val < i64::MIN as f64
                             {
-                                record.push_field(ryu::Buffer::new().format_finite(float_val));
+                                record.push_field(ryu_buf.format_finite(float_val));
                             } else {
                                 // its an i64 integer. We can't use ryu to format it, because it
-                                // will be formatted as a
-                                // float (have a ".0"). So we use itoa.
-                                record.push_field(itoa::Buffer::new().format(float_val as i64));
+                                // will be formatted as a float (have a ".0"). So we use itoa.
+                                record.push_field(itoa_buf.format(float_val as i64));
                             }
                         },
                         Data::DateTime(ref edt) => {
@@ -1079,7 +1085,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                                 // safety: we know this is a duration coz we did a is_datetime check
                                 // above & ExcelDataTime only has 2 variants, DateTime & Duration
                                 work_date = edt.as_duration().unwrap().to_string();
-                            };
+                            }
 
                             record.push_field(&work_date);
                         },
@@ -1091,23 +1097,23 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                         Data::Error(ref e) => {
                             // safety: the unwraps in this block are safe because the format strings
                             // are hardcoded and are guaranteed to be correct
-                            format_buffer.clear();
+                            error_buffer.clear();
                             if error_format == ErrorFormat::Code {
-                                write!(format_buffer, "{e}").unwrap();
+                                write!(error_buffer, "{e}").unwrap();
                             } else {
                                 cell_formula = sheet_formulas
                                     .get_value((*row_idx, col_idx))
                                     .unwrap_or(&formula_get_value_error);
                                 if error_format == ErrorFormat::Formula {
-                                    write!(format_buffer, "#={cell_formula}").unwrap();
+                                    write!(error_buffer, "#={cell_formula}").unwrap();
                                 } else {
                                     // ErrorFormat::Both
-                                    write!(format_buffer, "{e}: ={cell_formula}").unwrap();
+                                    write!(error_buffer, "{e}: ={cell_formula}").unwrap();
                                 }
-                            };
-                            record.push_field(format_buffer.as_str());
+                            }
+                            record.push_field(error_buffer.as_str());
                         },
-                    };
+                    }
                     col_idx += 1;
                 }
 

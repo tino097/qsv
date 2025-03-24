@@ -28,7 +28,7 @@ jobs:
     # runs-on: macos-latest
     strategy:
       matrix:
-        rust: [nightly-2024-11-28]
+        rust: [nightly-2025-03-07]
         job:
           - os: macos
             os-name: macos
@@ -109,10 +109,11 @@ jobs:
         is-executable: false
         working-directory: "."
     - name: Download latest release zip
-      uses: robinraju/release-downloader@v1.11
+      uses: robinraju/release-downloader@v1.12
       with:
         repository: "dathere/qsv"
         latest: true
+        preRelease: true
         token: ${{ secrets.GITHUB_TOKEN }}
         fileName: qsv-${{ needs.analyze-tags.outputs.previous-tag }}-${{ matrix.job.target }}.zip
     - name: remove zipsign signature from zip archive
@@ -132,6 +133,8 @@ jobs:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: qsv-${{ needs.analyze-tags.outputs.previous-tag }}-${{ matrix.job.target }}.zip
         asset_name: qsv-${{ needs.analyze-tags.outputs.previous-tag }}-${{ matrix.job.target }}.zip
+        prerelease: true
+        make_latest: false
         overwrite: true
         tag: ${{ needs.analyze-tags.outputs.previous-tag }}    
  

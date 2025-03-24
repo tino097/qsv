@@ -368,12 +368,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ahash::RandomState;
-use cached::{proc_macro::cached, SizedCache};
-use dynfmt::Format;
+use cached::{SizedCache, proc_macro::cached};
+use dynfmt2::Format;
+use foldhash::fast::RandomState;
 use geosuggest_core::{
-    storage::{self, IndexStorage},
     CitiesRecord, CountryRecord, Engine,
+    storage::{self, IndexStorage},
 };
 use geosuggest_utils::{IndexUpdater, IndexUpdaterSettings, SourceItem};
 use indicatif::{ProgressBar, ProgressDrawTarget};
@@ -392,13 +392,13 @@ use util::expand_tilde;
 use uuid::Uuid;
 
 use crate::{
+    CliResult,
     clitypes::CliError,
     config::{Config, Delimiter},
     regex_oncelock,
     select::SelectColumns,
     util,
     util::replace_column_value,
-    CliResult,
 };
 
 #[derive(Deserialize)]
@@ -750,7 +750,7 @@ async fn geocode_main(args: Args) -> CliResult<()> {
         let cities_filename = args
             .flag_cities_url
             .split('/')
-            .last()
+            .next_back()
             .unwrap()
             .replace(".zip", ".txt");
 
@@ -1933,7 +1933,7 @@ fn format_result(
             };
         }
 
-        if let Ok(formatted) = dynfmt::SimpleCurlyFormat.format(formatstr, cityrecord_map) {
+        if let Ok(formatted) = dynfmt2::SimpleCurlyFormat.format(formatstr, cityrecord_map) {
             formatted.to_string()
         } else {
             INVALID_DYNFMT.to_string()
@@ -2047,7 +2047,7 @@ fn get_countryinfo(
             };
         }
 
-        if let Ok(formatted) = dynfmt::SimpleCurlyFormat.format(formatstr, countryrecord_map) {
+        if let Ok(formatted) = dynfmt2::SimpleCurlyFormat.format(formatstr, countryrecord_map) {
             Some(formatted.to_string())
         } else {
             Some(INVALID_DYNFMT.to_string())
