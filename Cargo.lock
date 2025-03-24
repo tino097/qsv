@@ -1205,9 +1205,9 @@ dependencies = [
 
 [[package]]
 name = "chrono-tz"
-version = "0.10.2"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "350e47081e7261af42fc634dfea5be88662523cc5acd9fe51da3fe44ba058669"
+checksum = "efdce149c370f133a071ca8ef6ea340b7b88748ab0810097a9e2976eaa34b4f3"
 dependencies = [
  "chrono",
  "chrono-tz-build 0.4.0",
@@ -4525,7 +4525,7 @@ dependencies = [
  "avro-schema",
  "bytemuck",
  "chrono",
- "chrono-tz 0.10.2",
+ "chrono-tz 0.10.3",
  "dyn-clone",
  "either",
  "ethnum",
@@ -4590,7 +4590,7 @@ dependencies = [
  "bitflags 2.9.0",
  "bytemuck",
  "chrono",
- "chrono-tz 0.10.2",
+ "chrono-tz 0.10.3",
  "comfy-table",
  "either",
  "hashbrown 0.14.5",
@@ -4660,7 +4660,7 @@ dependencies = [
  "blake3",
  "bytes",
  "chrono",
- "chrono-tz 0.10.2",
+ "chrono-tz 0.10.3",
  "fast-float2",
  "flate2",
  "fs4",
@@ -4702,7 +4702,7 @@ version = "0.46.0"
 source = "git+https://github.com/pola-rs/polars?tag=py-1.26.0#ac9d598fd07d85b26a29bd7465a7bfa945b6f963"
 dependencies = [
  "chrono",
- "chrono-tz 0.10.2",
+ "chrono-tz 0.10.3",
  "fallible-streaming-iterator",
  "hashbrown 0.15.2",
  "indexmap",
@@ -4776,7 +4776,7 @@ dependencies = [
  "base64",
  "bytemuck",
  "chrono",
- "chrono-tz 0.10.2",
+ "chrono-tz 0.10.3",
  "either",
  "hashbrown 0.15.2",
  "hex",
@@ -4874,7 +4874,7 @@ dependencies = [
  "bytemuck",
  "bytes",
  "chrono",
- "chrono-tz 0.10.2",
+ "chrono-tz 0.10.3",
  "either",
  "futures",
  "hashbrown 0.15.2",
@@ -4986,7 +4986,7 @@ dependencies = [
  "atoi_simd",
  "bytemuck",
  "chrono",
- "chrono-tz 0.10.2",
+ "chrono-tz 0.10.3",
  "now",
  "num-traits",
  "polars-arrow",
@@ -5246,7 +5246,7 @@ dependencies = [
  "calamine",
  "censor",
  "chrono",
- "chrono-tz 0.10.2",
+ "chrono-tz 0.10.3",
  "console",
  "cpc",
  "crc32fast",
